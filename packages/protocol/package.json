@@ -1,0 +1,15 @@
+{
+  "name": "@irori/protocol",
+  "private": true,
+  "version": "0.1.0",
+  "description": "irori の通信の型・上限値・検証。入出力を持たない。",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  }
+}

@@ -1,0 +1,47 @@
+name: ゲームの登録を頼む
+description: PRの書き方が分からないとき。登録情報を、保守者が代わりに書きます
+labels: [registry]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        登録の流れと審査の基準は [docs/registry.md](https://github.com/haranishi/irori/blob/main/docs/registry.md) にあります。PRを出せるなら、そちらが早いです。
+  - type: input
+    id: url
+    attributes:
+      label: ゲームのURL（https）
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: ソースの場所（任意）
+  - type: input
+    id: license
+    attributes:
+      label: コードと素材のライセンス
+      description: 例：MIT／素材は自作
+    validations:
+      required: true
+  - type: input
+    id: players
+    attributes:
+      label: 遊べる人数（最小〜最大）
+    validations:
+      required: true
+  - type: textarea
+    id: network
+    attributes:
+      label: ゲームが外へ送る情報
+      description: 何も送らないなら「なし」。解析・広告・課金への誘導は受け付けません。
+    validations:
+      required: true
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: 確認
+      options:
+        - label: 自作か、許諾を得た素材だけで作った。他社のキャラクター・商標・音楽・画像を含まない
+          required: true
+        - label: 全年齢向けである
+          required: true

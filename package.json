@@ -1,0 +1,39 @@
+{
+  "name": "irori",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Gather around one screen. Phones are the controllers. An open-source web game console that anyone can add games to.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node tools/dev.mjs",
+    "prepare:web": "npm run build -w @irori/sdk && node tools/sync-sdk.mjs && node tools/build-registry.mjs && node tools/build-notices.mjs",
+    "build": "npm run prepare:web && npm run build -w @irori/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present && npm run test:tools && npm run test:games",
+    "test:e2e": "playwright test -c tests/e2e/playwright.config.ts && npm run test:e2e:host -w @irori/web && npm run test:e2e:pad -w @irori/web",
+    "budgets": "node tools/check-budgets.mjs",
+    "check": "node tools/check-all.mjs",
+    "mutations": "node tools/mutations/run.mjs",
+    "sync:sdk": "node tools/sync-sdk.mjs",
+    "smoke:dev": "node tools/smoke-dev.mjs",
+    "test:tools": "node --test \"tools/tests/**/*.test.mjs\"",
+    "test:games": "vitest run --config vitest.games.config.ts"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.x",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "typescript": "~6.0.3",
+    "vitest": "5.0.5"
+  }
+}

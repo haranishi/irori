@@ -1,0 +1,48 @@
+name: 不具合の報告
+description: 動かない、おかしい、期待と違うとき
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        名前・メール・IPアドレスなど、実在の人に結びつく情報は貼らないでください。
+  - type: input
+    id: version
+    attributes:
+      label: 版
+      description: "`git rev-parse --short HEAD` の結果、または公開サーバーのURL"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 環境
+      description: "ホスト（PC/TV）とスマホの、機種・OS・ブラウザ。例：MacBook / Chrome 130、iPhone 15 / iOS 19 Safari"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 手順
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待した結果
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の結果
+      description: 画面の写真やスクリーンショットがあれば添えてください（個人情報が写らないように）。
+    validations:
+      required: true
+  - type: checkboxes
+    id: no-real-data
+    attributes:
+      label: 確認
+      options:
+        - label: 実在の人に結びつく情報を含めていない
+          required: true

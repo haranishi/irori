@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: セキュリティの報告（非公開）
+    url: https://github.com/haranishi/irori/security/advisories/new
+    about: 隔離枠の突破、鍵のなりすまし、検証の迂回、費用を暴走させる方法は、公開のIssueに書かず、こちらから知らせてください。

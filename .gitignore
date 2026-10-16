@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+test-results/
+playwright-report/
+coverage/
+*.log
+.DS_Store
+.agent-harness/runs/**/tmp/
+# ビルドが作る置き場（tools/build-registry.mjs と tools/sync-sdk.mjs）
+apps/web/public/games/
+apps/web/public/registry/
+apps/web/public/sdk/
+apps/web/public/licenses.txt
+
+# 採点用のスクリーンショット（再生成できる。OS の書体で描かれ、容量も大きいので、公開しない）
+.agent-harness/runs/*/review/shots*/

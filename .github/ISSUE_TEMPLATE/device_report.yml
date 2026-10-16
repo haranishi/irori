@@ -1,0 +1,35 @@
+name: 実機での確認の報告
+description: 「この組み合わせで、ここまで遊べた」を知らせる（不具合でなくても歓迎）
+labels: [device-report]
+body:
+  - type: input
+    id: host
+    attributes:
+      label: ホスト（大画面）
+      description: 機種・OS・ブラウザ・つなぎ方（HDMI、キャスト、TVのブラウザ）
+    validations:
+      required: true
+  - type: input
+    id: phones
+    attributes:
+      label: スマホ（何台、どの機種・OS・ブラウザか）
+    validations:
+      required: true
+  - type: dropdown
+    id: games
+    attributes:
+      label: 遊べたゲーム
+      multiple: true
+      options: [hello-pad, tap-race, quiz-4, dot-grab]
+  - type: textarea
+    id: result
+    attributes:
+      label: どこまで遊べたか、止まったところ
+      description: 参加・操作の手応え・途中で画面を消したとき・Wi-Fiを切り替えたとき、など。
+    validations:
+      required: true
+  - type: textarea
+    id: latency
+    attributes:
+      label: 遅れの体感（任意）
+      description: 押してから画面が動くまで。気になった場面があれば。

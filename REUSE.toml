@@ -1,0 +1,44 @@
+version = 1
+SPDX-PackageName = "irori"
+SPDX-PackageDownloadLocation = "https://github.com/haranishi/irori"
+
+# 既定: コード（TypeScript、同梱ゲーム、スクリプト、CIの設定）。MIT OR Apache-2.0 の選択式。
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "2026 Ikki Nishihara and the irori contributors"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+# 文書、判断の記録、ハーネスの記録。
+[[annotations]]
+path = ["*.md", "docs/**", ".agent-harness/**", "games/*/README.md"]
+SPDX-FileCopyrightText = "2026 Ikki Nishihara and the irori contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# 自作の画像（ロゴ、OGP、サムネイル）。コードで描いた・画面から撮ったもので、第三者の素材を含まない。
+[[annotations]]
+path = ["registry/thumbs/**", "apps/web/public/**", "apps/web/og/**"]
+SPDX-FileCopyrightText = "2026 Ikki Nishihara and the irori contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# 設定ファイルと、ゲームの登録情報（誰でも再利用してよいメタデータ）。
+[[annotations]]
+path = [
+    ".gitignore",
+    ".gitattributes",
+    ".editorconfig",
+    ".nvmrc",
+    "REUSE.toml",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.base.json",
+    "**/package.json",
+    "**/tsconfig*.json",
+    "**/wrangler.jsonc",
+    "registry/games/**",
+    "registry/schema/**",
+    ".github/ISSUE_TEMPLATE/**",
+    ".github/pull_request_template.md",
+    ".github/dependabot.yml",
+]
+SPDX-FileCopyrightText = "2026 Ikki Nishihara and the irori contributors"
+SPDX-License-Identifier = "CC0-1.0"

@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- OGP の画像（1200×630）の元。tools/make-og.mjs が、この画面を Chromium で描画して apps/web/public/og.png を作る。
+     文字は画像に後から乗せず、ここで HTML として描く。撮るときに、書体は再配布してよい Noto Sans（SIL OFL）に差し替える（tools/make-og.mjs）。絵は自作の図形だけ。 -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>irori OGP</title>
+  <link rel="stylesheet" href="og.css">
+</head>
+<body>
+  <main class="og">
+    <section class="og__text">
+      <div class="og__brand">
+        <svg class="og__mark" viewBox="0 0 48 48" aria-hidden="true">
+          <defs>
+            <linearGradient id="f" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stop-color="#ff8a3d"/>
+              <stop offset="1" stop-color="#ffb070"/>
+            </linearGradient>
+          </defs>
+          <path d="M24 4c3 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11c.5 4 2.5 6 5 7c-2-6-1-12 1-17Z" fill="url(#f)"/>
+          <path d="M24 20c2 4 5 6 5 10a5 5 0 0 1-10 0c0-3 2-5 3-7c.3 2 1 3 2 3.5c-.6-2.2-.4-4.3 0-6.5Z" fill="#ffd9a0"/>
+          <path d="M9 40.5l30-3.5a2.2 2.2 0 0 1 .5 4.4l-30 3.5a2.2 2.2 0 0 1-.5-4.4Z" fill="#8a6448"/>
+          <path d="M39 40.5l-30-3.5a2.2 2.2 0 0 0-.5 4.4l30 3.5a2.2 2.2 0 0 0 .5-4.4Z" fill="#6e4f39"/>
+        </svg>
+        <span class="og__name">irori</span>
+      </div>
+      <p class="og__lead"><span>スマホがコントローラー。</span><span>みんなで囲むゲーム機</span></p>
+      <p class="og__sub"><span>インストールもアカウントも要りません。</span><span>オープンソースで、誰でもゲームを足せます。</span></p>
+    </section>
+    <section class="og__art" aria-hidden="true">
+      <div class="og__screen">
+        <svg class="og__flame" viewBox="0 0 48 48">
+          <path d="M24 4c3 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11c.5 4 2.5 6 5 7c-2-6-1-12 1-17Z" fill="#ff8a3d"/>
+          <path d="M24 20c2 4 5 6 5 10a5 5 0 0 1-10 0c0-3 2-5 3-7c.3 2 1 3 2 3.5c-.6-2.2-.4-4.3 0-6.5Z" fill="#ffd9a0"/>
+        </svg>
+        <div class="og__code">R4X9</div>
+      </div>
+      <div class="og__phones">
+        <div class="og__phone og__phone--1"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20a10 10 0 1 1 0-20Z" fill="#E69F00"/></svg></div>
+        <div class="og__phone og__phone--2"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3Z" fill="#56B4E9"/></svg></div>
+        <div class="og__phone og__phone--3"><svg viewBox="0 0 24 24"><path d="M12 1L22.4 19H1.6Z" fill="#009E73"/></svg></div>
+        <div class="og__phone og__phone--4"><svg viewBox="0 0 24 24"><path d="M12 1L23 12L12 23L1 12Z" fill="#F0E442"/></svg></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

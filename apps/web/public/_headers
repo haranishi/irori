@@ -1,0 +1,20 @@
+# 静的配信（Worker を通らない応答）のヘッダー。Workers Static Assets が読む。
+# Worker を通る / と /pad と /api/* のヘッダーは apps/edge/src が付ける（同じ方針。値は apps/edge/src/policy.ts）。
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: accelerometer=(), gyroscope=(), camera=(), display-capture=(), geolocation=(), hid=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), serial=(), usb=(), xr-spatial-tracking=()
+
+# ファイル名にハッシュが付いたビルドの成果物。中身が変われば名前が変わるので、長く持たせてよい。
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 同梱のゲーム。オリジンを持たない隔離枠で動かすので、CSP でも sandbox にし、別オリジンからの読み込みを許す。
+/games/*
+  Content-Security-Policy: sandbox allow-scripts; default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'
+  Access-Control-Allow-Origin: *
+
+# SDK は外部のゲームからも読み込む。
+/sdk/*
+  Access-Control-Allow-Origin: *

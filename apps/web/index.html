@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>irori — スマホをコントローラーにして、みんなで囲むゲーム機</title>
+  <meta name="description" content="1つの大画面を囲んで、スマホをコントローラーにして遊ぶ、オープンソースのWebゲーム機。インストールもアカウントも要りません。">
+  <!-- 相対パスで書く。Worker が、公開URL（PUBLIC_URL か、リクエストのオリジン）の絶対URLに書き換える。
+       vite-ignore が無いと、vite が "/" を静的ファイルとして読みにいって EISDIR で落ちる。 -->
+  <link rel="canonical" href="/" vite-ignore>
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="irori">
+  <meta property="og:title" content="irori — スマホをコントローラーにして、みんなで囲むゲーム機">
+  <meta property="og:description" content="1つの大画面を囲んで、スマホをコントローラーにして遊ぶ、オープンソースのWebゲーム機。">
+  <meta property="og:url" content="/">
+  <meta property="og:image" content="/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="irori — スマホをコントローラーにして、みんなで囲むゲーム機">
+  <meta name="twitter:image" content="/og.png">
+  <meta property="og:image:alt" content="irori の火の印と、スマホがコントローラーになる大画面のゲーム機の説明">
+  <meta name="twitter:description" content="1つの大画面を囲んで、スマホをコントローラーにして遊ぶ、オープンソースのWebゲーム機。">
+  <meta name="theme-color" content="#1a1411">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="license" href="/licenses.txt">
+</head>
+<body>
+  <!-- 画面のスクリプトが動けば、中身はすぐに置き換わる。動かない古いブラウザ（TVの内蔵ブラウザなど）にだけ、この案内が残る。 -->
+  <div id="app" data-state="boot">
+    <p class="boot-fallback">irori を読み込んでいます。表示が変わらないときは、パソコンのブラウザ（Chrome・Safari・Edge・Firefox の最新版）で開いてください。<br>Loading irori. If nothing changes, open this page in a desktop browser (latest Chrome, Safari, Edge or Firefox).</p>
+  </div>
+  <script type="module" src="/src/host/main.ts"></script>
+</body>
+</html>

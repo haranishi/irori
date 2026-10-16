@@ -1,0 +1,2276 @@
+/* ホストの画面の見た目。値の正本は tokens.css、決まりは docs/identity.md。
+   3m離れて読むので、1080pで本文が24px以上になるよう、文字の大きさは画面の大きさから決める（1rem）。
+   CSPで style 属性が使えないので、動的な値は data 属性とクラスで切り替える。 */
+@import './tokens.css';
+
+:root {
+  --ink: #1a1411;
+  --qr-light: #fbf4ea;
+  --stage: #0f0b09;
+  --raise: rgba(255, 217, 160, 0.06);
+  --pad: clamp(16px, 2.4vw, 48px);
+  --pad-y: clamp(14px, 3.3vh, 40px);
+  --gap: clamp(10px, 2.1vh, 26px);
+  --gap-x: clamp(16px, 2.4vw, 46px);
+  --aside: clamp(290px, 23vw, 460px);
+  --hero-h: clamp(170px, 36vh, 460px);
+  --card-h: clamp(100px, 18vh, 230px);
+  /* 選んでいる札の輪と光（拡大3%・光34px）が、棚の端で切れないための余白 */
+  --glow-room: 44px;
+  --qr: clamp(150px, 33vh, 400px);
+  --soft-glow: 0 30px 80px -40px rgba(255, 138, 61, 0.38);
+  /* 重ねる板と、部屋のない画面の背景（1種類） */
+  --scrim: rgba(10, 7, 6, 0.92);
+  /* 参加者の区画（見出し＋札2行）と、選び方の1行の高さ（実際に測った値）。主役のカードを人数で変えないために取っておく */
+  --people-h: 7.6rem;
+  --prompt-h: 1.47rem;
+}
+
+html {
+  font-size: clamp(16px, calc(0.9vw + 0.75vh), 28px);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  line-height: 1.5;
+  font-weight: 500;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(65vw 55vh at 50% 40%, rgba(255, 138, 61, 0.075), transparent 72%),
+    radial-gradient(120vw 70vh at 50% 118%, rgba(255, 138, 61, 0.06), transparent 62%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+#app {
+  min-height: 100dvh;
+}
+
+button,
+a {
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus {
+  outline: none;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+h1,
+h2 {
+  text-wrap: balance;
+}
+
+/* 2文以上の本文は、文ごとの塊（ui.ts の sentences）。行は文の切れ目で替わり、1行に収まらない文だけが中で折れる。 */
+.sentence {
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* 短い複数行の文（案内・警告・確かめ）は、行の長さをそろえ、最後の行に1語だけ残さない。対応しない環境では何も起きない。 */
+.dialog__body,
+.status__body,
+.status__hint,
+.note,
+.start-prompt,
+.join__note,
+.join__warn,
+.join__type,
+.join__scan,
+.join__lock,
+.guide__text,
+.detail__summary,
+.detail__controls p,
+.fit,
+.loop-band,
+.launch__msg {
+  text-wrap: balance;
+}
+
+.sr-only,
+.host-copy-buffer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  opacity: 0;
+}
+
+/* JS が動かない古いブラウザでだけ見える案内（index.html に書いた文） */
+.boot-fallback {
+  max-width: 40rem;
+  margin: 20vh auto 0;
+  padding: 0 24px;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+/* ---- 部品 ---- */
+
+.icon {
+  width: 1.25em;
+  height: 1.25em;
+  flex: none;
+}
+
+.icon--small {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: max(44px, 2.5rem);
+  padding: 0.35rem 1.15rem;
+  border-radius: 999px;
+  border: 2px solid var(--line-ui);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform var(--t-fast) ease-out,
+    box-shadow var(--t-fast) ease-out,
+    background-color var(--t-fast) ease-out;
+}
+
+.btn:hover {
+  background: #3a2c23;
+}
+
+.btn--primary {
+  background: var(--glow);
+  border-color: var(--glow);
+  color: var(--ink);
+}
+
+.btn--primary:hover {
+  background: #ffe4b8;
+}
+
+.btn:disabled {
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
+
+.btn.is-off .icon,
+.btn.is-on .icon {
+  color: var(--glow);
+}
+
+.btn.is-on {
+  border-color: rgba(255, 217, 160, 0.7);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.3rem 0.45rem;
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* 選択中の輪：光の色3px。カードは1.06倍（reduced-motion では大きくしない） */
+[data-focused] {
+  outline: 3px solid var(--glow);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 7px rgba(255, 217, 160, 0.16),
+    0 0 34px rgba(255, 217, 160, 0.3);
+}
+
+.card[data-focused] {
+  outline-offset: -3px;
+  box-shadow: 0 0 34px rgba(255, 217, 160, 0.34);
+}
+
+.btn--primary[data-focused] {
+  outline-offset: 4px;
+}
+
+.section-title {
+  margin: 0 0 0.45rem;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+  margin-bottom: 0.45rem;
+}
+
+.section-head .section-title {
+  margin: 0;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.note .icon {
+  margin-top: 0.12em;
+}
+
+.note--external {
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 217, 160, 0.4);
+  background: rgba(255, 217, 160, 0.07);
+  color: var(--text);
+}
+
+.note--external .icon {
+  color: var(--glow);
+}
+
+.key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.4em;
+  height: 1.7em;
+  padding: 0 0.45em;
+  border-radius: 7px;
+  border: 2px solid var(--glow);
+  color: var(--glow);
+  font-size: 0.82em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.ember-bar {
+  position: relative;
+  width: min(70%, 20rem);
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 138, 61, 0.18);
+}
+
+.ember-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--ember), transparent);
+  animation: ember-run 1.3s ease-in-out infinite;
+}
+
+@keyframes ember-run {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+
+/* ---- ホーム ---- */
+
+.home {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--aside);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--gap) var(--gap-x);
+  height: 100dvh;
+  padding: var(--pad-y) var(--pad);
+  overflow: clip;
+}
+
+.home__top {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1.5rem;
+  min-width: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.logo-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  filter: drop-shadow(0 0 14px rgba(255, 138, 61, 0.4));
+}
+
+.brand__name {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.brand__tag {
+  margin: 0.25rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+/* ゲーム中の音の案内（見出しの音のボタンが見えないときだけ）。最初のクリック・キー・タップで消える。 */
+.hint--sound {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.35rem 1.1rem;
+  border: 1px solid rgba(255, 217, 160, 0.35);
+  border-radius: 999px;
+  background: rgba(47, 36, 29, 0.95);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.hint--sound .icon {
+  color: var(--glow);
+}
+
+/* 最初の操作の前の音のボタン（「音：クリックで開始」）。押すと鳴り始める。 */
+.btn.is-start {
+  border-color: rgba(255, 217, 160, 0.7);
+}
+
+.padlink,
+.loop-band {
+  display: none;
+}
+
+/* 狭い画面でだけ使う部品（道具の短い名前・指で触る画面向けの選び方の文・切断中の短い札） */
+.btn__short,
+.start-prompt__touch,
+.seat__off-short {
+  display: none;
+}
+
+/* ライセンスの紙の絵は、狭い画面でボタンを絵だけにたたむときに使う */
+.toolbar__doc {
+  display: none;
+}
+
+.toolbar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.toolbar .btn {
+  padding-inline: 0.95rem;
+}
+
+.toolbar__link {
+  font-size: 0.95rem;
+}
+
+.home__main {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  /* 列の幅は、中身（棚に並ぶカードの数）で広げない。棚が増えても、右の参加の板に重ならず、棚の中で横に送る。 */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-auto-rows: auto;
+  gap: var(--gap);
+  min-width: 0;
+  min-height: 0;
+}
+
+.home__prompt:empty,
+.home__people:empty,
+.home__guide:empty {
+  display: none;
+}
+
+.home__hero {
+  display: flex;
+  min-height: 0;
+  /* 主役のカードは残りの高さを使う。低いときは、大事でない行から順に隠す（下の @container）。 */
+  container: hero / size;
+}
+
+.home__join {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.hero {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 38fr) minmax(0, 62fr);
+  align-items: center;
+  gap: clamp(16px, 2vw, 40px);
+  min-height: 0;
+  padding: clamp(10px, 0.9vw, 18px);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius-card) + 6px);
+  background: linear-gradient(135deg, rgba(255, 138, 61, 0.07), transparent 55%), var(--bg-card);
+  box-shadow: var(--soft-glow);
+}
+
+.hero--empty {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: calc(var(--hero-h) * 0.6);
+}
+
+.hero__mark {
+  width: 4rem;
+  height: 4rem;
+}
+
+/* 見本の絵（640×480）は、16:9 の画面の上下に暗い帯がある。16:9 の枠で帯を切り、枠いっぱいに見せる。 */
+.hero__thumb {
+  position: relative;
+  align-self: center;
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+}
+
+.hero__info {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  /* 収まらないときに上を切らない（safe）。収まらない行は、下の @container で先に隠す。 */
+  justify-content: safe center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 行を縮めて重ねない。収まらない分は、下の @container で行ごと隠す。 */
+.hero__info > * {
+  flex-shrink: 0;
+}
+
+/* 低いときに隠す順は「説明を2行→1行 → 説明 → 人数と操作の札」。境目は、行の高さ（rem）の和に0.1remの余裕を
+   足したもの：上下の余白1.47、題名3.1、説明1行1.67、札2.1、遊べない理由1.53、行間0.5。ふつうの大きさの画面では、
+   主役のカードの高さは人数によらず一定で、どれも出る（撮影の試験が、切れを数える）。下の規則は、あとに書いた
+   .hero__summary などに書く順で負けないよう、.hero を前に付ける。 */
+@container hero (max-height: 11.1rem) {
+  .hero .hero__summary {
+    max-height: 1.55em;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+}
+
+@container hero (max-height: 9.45rem) {
+  .hero .hero__summary {
+    display: none;
+  }
+}
+
+@container hero (max-height: 7.3rem) {
+  .hero .hero__chips {
+    display: none;
+  }
+}
+
+@container hero (max-height: 13.15rem) {
+  .hero[data-playable='false'] .hero__summary {
+    max-height: 1.55em;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+}
+
+@container hero (max-height: 11.45rem) {
+  .hero[data-playable='false'] .hero__summary {
+    display: none;
+  }
+}
+
+@container hero (max-height: 9.3rem) {
+  .hero[data-playable='false'] .hero__chips {
+    display: none;
+  }
+}
+
+.hero__title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 2.7rem;
+  font-weight: 800;
+  line-height: 1.15;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+.hero__summary {
+  display: -webkit-box;
+  max-height: calc(1.55em * 2);
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 1.08rem;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.players-chip,
+.pad-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.85rem;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--raise);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.players-chip .icon,
+.pad-chip .icon {
+  color: var(--glow);
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.15rem 1rem;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.meta__row {
+  display: contents;
+}
+
+.meta--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1.4rem;
+}
+
+.meta--inline .meta__row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.meta dt {
+  color: var(--text-dim);
+}
+
+.meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.detail__info .meta {
+  margin-top: 0.2rem;
+  color: var(--text-dim);
+}
+
+.detail__info .meta dd {
+  color: var(--text-dim);
+}
+
+.fit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: fit-content;
+  margin: 0.15rem 0 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.fit--no {
+  color: var(--text);
+}
+
+.fit--no .icon {
+  color: var(--ember);
+}
+
+/* 棚 */
+
+/* 棚は自分の列の中だけで横に送る。輪と光の分の余白（--glow-room）は、上下は丸ごと、左右は列の外の余白
+   （画面の端の余白・右の板との間）を超えない分だけ取る。選択を動かすと、見える位置まで送る（scroll-padding）。 */
+.shelf {
+  --shelf-side: min(var(--glow-room), var(--gap-x), var(--pad));
+  display: flex;
+  gap: clamp(12px, 1.4vw, 28px);
+  margin: calc(var(--glow-room) * -1) calc(var(--shelf-side) * -1);
+  padding: var(--glow-room) var(--shelf-side);
+  overflow-x: auto;
+  list-style: none;
+  scroll-padding-inline: var(--shelf-side);
+  scrollbar-width: none;
+}
+
+.shelf::-webkit-scrollbar {
+  display: none;
+}
+
+.shelf__item {
+  flex: none;
+}
+
+.shelf--msg {
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-dim);
+}
+
+.card {
+  position: relative;
+  display: block;
+  width: calc(var(--card-h) * 4 / 3);
+  height: var(--card-h);
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--line-ui);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--t-fast) ease-out,
+    box-shadow var(--t-fast) ease-out;
+}
+
+.card[data-focused] {
+  z-index: 2;
+  transform: scale(1.06);
+}
+
+.shelf__item:first-child .card {
+  transform-origin: left center;
+}
+
+/* 選んでいる札（1.06倍）の下端から、次の見出しまで30px前後（画面の高さで変わる行間 --gap を差し引く） */
+.home__shelf {
+  margin-bottom: calc(34px - var(--gap));
+}
+
+.card[data-selected]:not([data-focused]) {
+  border-color: rgba(255, 217, 160, 0.55);
+}
+
+.card .thumb {
+  position: absolute;
+  inset: 0;
+}
+
+.card__caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding: 2.2rem 0.65rem 0.55rem;
+  background: linear-gradient(to top, rgba(18, 13, 11, 0.98) 62%, rgba(18, 13, 11, 0.8) 82%, rgba(18, 13, 11, 0));
+}
+
+.card__title {
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card__sub {
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card__sub--no {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb--blank {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 58%, rgba(255, 138, 61, 0.28), transparent 66%), #241b16;
+}
+
+.thumb__mark {
+  width: 42%;
+  height: 42%;
+}
+
+.thumb__letter {
+  display: none;
+}
+
+/* 参加者の帯と、最初の案内（はじめかた）。はじめかた（0人）と「選び方＋参加者」（1人以上）で高さをそろえ、
+   主役のカードが上下に動かないようにする（下の min-height は、実際に測った高さ）。 */
+
+.home__people {
+  min-height: var(--people-h);
+}
+
+.home__guide {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(var(--prompt-h) + var(--gap) + var(--people-h));
+}
+
+.home__guide .guide {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* 「{リーダー}さんのスマホの［決定］か、キーボードの［Enter］で、このゲームを選びます」（棚の下の1行） */
+.start-prompt {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+/* 参加者がそろったら、部屋のコードは主役のカードより控えめに（QRの大きさは変えない） */
+
+
+.people__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+}
+
+.people__count {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  margin: 0;
+  padding: 0.2rem;
+  list-style: none;
+}
+
+.seat {
+  --seat-color: var(--line);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: max(44px, 2.4rem);
+  padding: 0.25rem 1rem 0.25rem 0.65rem;
+  border: 2px solid var(--seat-color);
+  border-radius: 999px;
+  background: var(--bg-card);
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.seat[data-seat='1'] { --seat-color: var(--p1); }
+.seat[data-seat='2'] { --seat-color: var(--p2); }
+.seat[data-seat='3'] { --seat-color: var(--p3); }
+.seat[data-seat='4'] { --seat-color: var(--p4); }
+.seat[data-seat='5'] { --seat-color: var(--p5); }
+.seat[data-seat='6'] { --seat-color: var(--p6); }
+.seat[data-seat='7'] { --seat-color: var(--p7); }
+.seat[data-seat='8'] { --seat-color: var(--p8); }
+
+.seat[data-online='false'] {
+  border-style: dashed;
+  border-color: var(--line-ui);
+  background: transparent;
+}
+
+.seat[data-seat='5']:not([data-focused]) {
+  box-shadow: inset 0 0 0 1.5px rgba(214, 236, 255, 0.55);
+}
+
+/* 濃い青の星（5番の席）は、暗い地との差が小さいので、明るい縁取りを付ける（色そのものは変えない） */
+.seat-mark[data-seat='5'] path {
+  stroke: #d6ecff;
+  stroke-width: 2;
+  paint-order: stroke;
+}
+
+/* 「［Enter］で外す」は、札の上に浮かべる小さな札。札の幅を変えると並びが動き、マウスで押した札がずれて押せなくなるため。 */
+.seat {
+  position: relative;
+}
+
+.people__hint {
+  display: none;
+  color: var(--glow);
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.home__people:has(.seat[data-focused]) .people__hint {
+  display: inline;
+}
+
+.seat[data-online='false'] .seat-mark {
+  opacity: 0.5;
+}
+
+.seat__name {
+  max-width: 12em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.seat__off {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-dim);
+  font-size: 1rem;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.seat-mark {
+  display: inline-flex;
+  flex: none;
+}
+
+.seat-mark svg {
+  width: 1.3em;
+  height: 1.3em;
+}
+
+.badge--leader {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.12rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 217, 160, 0.14);
+  color: var(--glow);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.guide__steps {
+  display: flex;
+  flex: 1;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide__step {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.guide__num {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: var(--ember);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.guide__text {
+  flex: 1;
+  text-wrap: pretty;
+  text-spacing-trim: trim-start;
+}
+
+/* 手順の札は、取っておいた高さいっぱいに伸ばす（下端を右の参加の板とそろえる）。番号は左、文は右で、縦に中央。
+   番号を文の上に置くと、警告のとき（文が3行）に高さがあふれて主役のカードが縮むので、横に並べる。 */
+.home__guide .guide__step {
+  font-size: 1.1rem;
+}
+
+.home__guide .guide__num {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.guide__step--alert .guide__num {
+  background: var(--glow);
+}
+
+.guide__step--alert {
+  border-color: rgba(255, 138, 61, 0.6);
+}
+
+.guide__step--later {
+  color: var(--text-dim);
+}
+
+.guide__step--later .guide__num {
+  background: var(--line-ui);
+}
+
+.guide__after {
+  color: var(--text-dim);
+}
+
+.guide__where--above {
+  display: none;
+}
+
+/* 参加の板（右下） */
+
+.join {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: clamp(12px, 1.1vw, 22px);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius-card) + 6px);
+  background: var(--bg-card);
+}
+
+/* 見出しは上、QRとコードは下（右下の1か所） */
+.join__head {
+  margin-bottom: auto;
+  text-align: center;
+}
+
+.join__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.join__note {
+  margin: 0.2rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.join__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.join__qr {
+  position: relative;
+  width: min(100%, var(--qr));
+  container-type: inline-size;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--qr-light);
+}
+
+.join__qr--empty {
+  background: var(--raise);
+}
+
+.qr {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.join__scan {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.join__codebox {
+  text-align: center;
+}
+
+.join__label {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.join__code {
+  margin: 0.1rem 0 0.15rem;
+  padding-left: 0.14em;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: 0.12em;
+}
+
+/* 開発用サーバーの警告のあいだ、部屋のコードは使えないので、小さく淡く（飾りの扱い） */
+.join--loopback .join__code {
+  color: var(--text-dim);
+  font-size: 1.6rem;
+  opacity: 0.6;
+}
+
+.join--loopback .join__label {
+  opacity: 0.7;
+}
+
+.join__code--empty {
+  color: var(--line);
+}
+
+.join__type {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+.join__type--fix {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.join__url {
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.join--locked .qr,
+.join--full .qr,
+.join--loopback .qr {
+  opacity: 0.14;
+}
+
+/* ほかの端末から開けないアドレスのQRは読めないので、小さくして、警告と開き直す先に場所をゆずる */
+.join--loopback .join__qr {
+  width: min(100%, calc(var(--qr) * 0.5));
+}
+
+/* QRの上に重ねる理由（締め切り中・満員・ほかの端末から開けないアドレス） */
+.join__cover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  padding: 0.9rem;
+  background: rgba(26, 20, 17, 0.86);
+  color: var(--text);
+  text-align: center;
+}
+
+.join__lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: min(1.05rem, 9cqi);
+  font-weight: 800;
+}
+
+.join__lock .icon {
+  width: 2em;
+  height: 2em;
+  color: var(--glow);
+}
+
+.join__lock--alert .icon {
+  width: 3em;
+  height: 3em;
+  color: var(--ember);
+}
+
+/* ほかの端末から開けないアドレスの警告。板の全幅に出し、2行に収める。 */
+.join__warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(255, 138, 61, 0.6);
+  border-radius: 12px;
+  background: rgba(255, 138, 61, 0.12);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.join__warn .icon {
+  margin-top: 0.1em;
+  color: var(--ember);
+}
+
+/* ---- 重ねる板 ---- */
+
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: var(--pad);
+  overflow: auto;
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.layer + .layer {
+  background: rgba(10, 7, 6, 0.72);
+}
+
+/* つながりの覆い（切れた・別のタブで開かれた）は、部屋のない画面と同じ背景にする（後ろのホームは使えないので見せない） */
+.layer--cover {
+  background:
+    linear-gradient(var(--scrim), var(--scrim)),
+    radial-gradient(65vw 55vh at 50% 40%, rgba(255, 138, 61, 0.075), transparent 72%),
+    var(--bg);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(100%, 44rem);
+  max-height: 100%;
+  overflow: auto;
+  padding: clamp(18px, 2vw, 40px);
+  border: 1px solid var(--line-ui);
+  border-radius: calc(var(--radius-card) + 8px);
+  background: var(--bg-card);
+  box-shadow:
+    0 0 0 1px rgba(255, 217, 160, 0.05) inset,
+    0 40px 120px -40px rgba(255, 138, 61, 0.35);
+}
+
+.dialog--wide {
+  width: min(100%, 64rem);
+}
+
+.dialog--menu {
+  width: min(100%, 34rem);
+}
+
+.dialog--narrow {
+  width: min(100%, 32rem);
+}
+
+/* つながりの覆いは、部屋のない画面と同じ組み方（中央揃え・ロゴつき・同じ幅） */
+.dialog--cover {
+  align-items: center;
+  width: min(100%, 40rem);
+  text-align: center;
+}
+
+.dialog--cover .dialog__actions {
+  justify-content: center;
+}
+
+.dialog__title {
+  margin: 0;
+  font-size: clamp(1.35rem, 5.4vw, 1.7rem);
+  font-weight: 800;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.dialog__body {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 0.3rem;
+}
+
+.dialog .btn,
+.results .btn,
+.status .btn,
+.launch .btn {
+  min-height: max(48px, 2.8rem);
+  padding: 0.45rem 1.6rem;
+  font-size: 1.08rem;
+}
+
+.detail {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: start;
+  gap: 1.6rem;
+}
+
+.detail__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+.detail__controls p {
+  margin: 0;
+}
+
+.detail__controls .detail__controls-title {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.detail__thumb {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+}
+
+.detail[data-playable='false'] .detail__thumb img {
+  filter: grayscale(1) brightness(0.85);
+}
+
+.detail__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.detail__summary {
+  margin: 0;
+  font-size: 1.12rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.menu__game {
+  margin: -0.5rem 0 0;
+  color: var(--text-dim);
+  font-size: 1.05rem;
+}
+
+.menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.menu__list .btn {
+  justify-content: flex-start;
+  width: 100%;
+  padding-inline: 1.3rem;
+}
+
+.menu__hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1rem;
+}
+
+.menu__seat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.menu__rule {
+  margin: 0.25rem 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.dialog .join {
+  box-shadow: none;
+}
+
+.share__url {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.share__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.share__grid[data-count='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.share__btn {
+  justify-content: center;
+  width: 100%;
+  text-decoration: none;
+}
+
+.share__btn .icon {
+  color: var(--glow);
+}
+
+.share__btn .icon--small {
+  color: var(--text-dim);
+}
+
+.kick__who {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+/* ---- ゲーム ---- */
+
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--stage);
+}
+
+.stage[hidden] {
+  display: none;
+}
+
+.stage__frame,
+.stage__frame iframe {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* 枠の中のゲームはスマホで操作する。ホストのキー操作（Esc でメニュー）を枠に奪われないよう、ポインタを通さない。 */
+.stage__frame iframe {
+  background: var(--stage);
+  pointer-events: none;
+}
+
+.launch {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--pad);
+  background:
+    radial-gradient(60vw 50vh at 50% 45%, rgba(255, 138, 61, 0.1), transparent 70%),
+    var(--bg);
+}
+
+.launch__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: min(100%, 38rem);
+  text-align: center;
+}
+
+.launch__thumb {
+  position: relative;
+  width: min(62vw, 24rem);
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  box-shadow: var(--soft-glow);
+}
+
+.launch__title {
+  margin: 0.4rem 0 0;
+  font-size: 2.1rem;
+  font-weight: 800;
+}
+
+.launch__msg {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.launch .dialog__actions {
+  justify-content: center;
+}
+
+/* 始まる前に読んでおく案内（メニューの開き方・音）。ゲームが始まったら、画面に何も重ねない。 */
+.launch__hints {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.launch__hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.launch__hint .icon {
+  color: var(--glow);
+}
+
+/* ---- 結果 ---- */
+
+.results {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--pad);
+}
+
+.results__card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  width: min(100%, 40rem);
+}
+
+.results__head {
+  text-align: center;
+}
+
+.results__title {
+  margin: 0;
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.results__game {
+  margin: 0.3rem 0 0;
+  color: var(--text-dim);
+  font-size: 1.12rem;
+}
+
+.results__list {
+  display: grid;
+  grid-template-columns: 4.4rem auto minmax(0, 1fr) auto auto;
+  gap: 0.55rem 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 行は、表の列（順位・印・名前・記録・点数）を共有する。記録と点数の位置が、行ごとにずれない。 */
+.result {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid var(--line-ui);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  font-size: 1.2rem;
+}
+
+.result--top {
+  border-width: 2px;
+  border-color: rgba(255, 138, 61, 0.85);
+  background: linear-gradient(90deg, rgba(255, 138, 61, 0.2), transparent 62%), var(--bg-card);
+  box-shadow: 0 18px 50px -26px rgba(255, 138, 61, 0.6);
+}
+
+.result--top .result__name,
+.result--top .result__score {
+  font-size: 1.3em;
+}
+
+.result__rank {
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.result .seat-mark svg {
+  width: 1.5em;
+  height: 1.5em;
+}
+
+.result__who {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.result__name {
+  overflow: hidden;
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.result__gone,
+.result__label {
+  color: var(--text-dim);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.result__label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.result__caption {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.result__value {
+  color: var(--text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.result__score {
+  min-width: 4ch;
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.results__none {
+  margin: 1rem 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.results__actions {
+  justify-content: center;
+  margin-top: max(24px, 1.2rem);
+}
+
+/* 5人以上の結果：行と見出しを詰め、1280×720 で8人（全員が同じ1位の大きな行）でもボタンまで画面に収める（通しの試験で数える） */
+.results--dense .results__card {
+  gap: 0.7rem;
+}
+
+.results--dense .results__title {
+  font-size: 2rem;
+}
+
+.results--dense .results__game {
+  margin-top: 0.1rem;
+  font-size: 1rem;
+}
+
+.results--dense .results__list {
+  row-gap: 0.35rem;
+}
+
+.results--dense .result {
+  padding-block: 0.3rem;
+  line-height: 1.25;
+}
+
+.results--dense .results__actions {
+  margin-top: 0.3rem;
+}
+
+/* ---- 部屋のない画面 ---- */
+
+.status {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--pad);
+  background: var(--scrim);
+}
+
+.status__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: min(100%, 40rem);
+  padding: clamp(20px, 3vw, 52px);
+  border: 1px solid var(--line-ui);
+  border-radius: calc(var(--radius-card) + 8px);
+  background: var(--bg-card);
+  box-shadow: var(--soft-glow);
+  text-align: center;
+}
+
+.status__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.status__brand .brand__name {
+  font-size: 1.6rem;
+}
+
+.status__title {
+  margin: 0;
+  font-size: clamp(1.35rem, 5.6vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.status__body {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1.08rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.status__wait {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.status__hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1rem;
+}
+
+.status__link {
+  min-height: 0;
+  padding: 0.2rem 0.3rem;
+  color: var(--text);
+}
+
+.status .dialog__actions {
+  justify-content: center;
+}
+
+.status--connecting .status__card {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ---- 小さな案内 ---- */
+
+/* 小さな案内（ゲームの始めの案内・知らせ）は、画面の右下の隅に。ゲームの上の得点や残り時間にかぶせない。 */
+.hints {
+  position: fixed;
+  right: max(16px, 1rem);
+  bottom: max(16px, 1rem);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  width: max-content;
+  max-width: min(calc(100vw - 32px), 32rem);
+  pointer-events: none;
+}
+
+.hint {
+  margin: 0;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(47, 36, 29, 0.95);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 12px 30px -14px rgba(255, 138, 61, 0.4);
+}
+
+.hint.hint--sound {
+  border-color: rgba(255, 217, 160, 0.35);
+  box-shadow: none;
+}
+
+.toast {
+  border-color: rgba(255, 217, 160, 0.5);
+}
+
+/* ---- 狭い画面・縦長の画面 ---- */
+
+@media (max-width: 900px), (max-aspect-ratio: 1/1) {
+  .home {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    overflow-x: clip;
+  }
+
+  /* 置き場所は1か所のまま、見る順を「参加の板（QR・コード）→ 参加者 → 選び方 → 主役のカード → 棚 → はじめかた」にする。
+     スマホを鏡写しで大画面に出す人も、まず参加の入口と、入った人が見えるように。 */
+  .home__main {
+    display: contents;
+  }
+
+  .home__top {
+    order: 0;
+  }
+
+  .home__join {
+    order: 1;
+  }
+
+  .home__people {
+    order: 2;
+  }
+
+  /* 選び方の案内は、主役のカード（選択中のゲーム）のすぐ上。カードの下に置くと、説明が4行のゲームや8人のときに
+     最初の画面（844px）からはみ出すため、上に置いて、どの人数でも最初の画面に入るようにする（試験で測る） */
+  .home__prompt {
+    order: 3;
+  }
+
+  .home__hero {
+    order: 4;
+    container-type: normal;
+  }
+
+  .home__shelf {
+    order: 5;
+  }
+
+  .home__guide {
+    order: 6;
+    min-height: 0;
+  }
+
+  /* 縦に積む画面では、区画の高さを取っておかない（下へ伸びるだけなので、主役のカードは動かない） */
+  .home__people {
+    min-height: 0;
+  }
+
+  .home__guide .guide__step {
+    font-size: 1.02rem;
+  }
+
+  .home__guide .guide__num {
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+
+  .brand__tag {
+    white-space: normal;
+  }
+
+  .toolbar {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .home__hero,
+  .home__shelf,
+  .home__prompt,
+  .home__people,
+  .home__guide,
+  .home__join {
+    grid-column: 1;
+    grid-row: auto;
+    min-width: 0;
+  }
+
+  /* 参加の板：QR（220px以下）とコードを横に並べ、手入力の案内と警告は全幅に */
+  .home__join .join {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.45rem 1rem;
+    padding: 12px 14px;
+  }
+
+  .home__join .join__head {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    text-align: left;
+  }
+
+  .home__join .join__body {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+  }
+
+  .home__join .join__qr {
+    width: min(40vw, 200px);
+  }
+
+  .home__join .join__codebox {
+    display: contents;
+  }
+
+  .home__join .join__label {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+  }
+
+  .home__join .join__code {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: start;
+    font-size: 2.6rem;
+    letter-spacing: 0.1em;
+  }
+
+  .home__join .join--loopback .join__code {
+    font-size: 1.6rem;
+  }
+
+  .home__join .join__warn {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+
+  .home__join .join__type {
+    grid-column: 1 / -1;
+    grid-row: 5;
+  }
+
+  .home__join .join__qr--empty {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+  }
+
+  .home__join .join__code--empty {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero__thumb {
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
+
+  /* 縦に伸ばせるので、題名と説明は切らずに全部出す */
+  .hero__summary,
+  .hero__title {
+    display: block;
+    max-height: none;
+  }
+
+  .hero__title {
+    font-size: 2rem;
+  }
+
+  /* 棚は横に1列で、指で横に送る。画面の端から端まで使い、選択中の札は大きくせず輪だけで示す。 */
+  .shelf {
+    margin: -0.3rem calc(var(--pad) * -1) 0;
+    padding: 0.8rem var(--pad) 1rem;
+    scroll-padding-inline: var(--pad);
+  }
+
+  .card[data-focused] {
+    transform: none;
+  }
+
+  .guide__steps {
+    flex-direction: column;
+  }
+
+  .guide__where--right {
+    display: none;
+  }
+
+  .guide__where--above {
+    display: inline;
+  }
+
+  .detail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .share__grid,
+  .share__grid[data-count='3'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .result {
+    grid-template-columns: 3.4rem auto minmax(0, 1fr) auto;
+    gap: 0.2rem 0.6rem;
+    padding: 0.55rem 0.8rem;
+  }
+
+  .result__label {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .result__score {
+    grid-column: 4;
+    grid-row: 1;
+  }
+}
+
+/* スマホの幅：上の操作群を軽く（帯は細く、道具は絵だけのボタン1行）、最初の画面に参加の入口と参加者が入るように。
+   上の操作群は、画面の高さの2割以下に収める（撮影の試験で数える）。 */
+@media (max-width: 700px) {
+  .home {
+    row-gap: 12px;
+    padding-top: 8px;
+    padding-bottom: max(28px, var(--pad-y));
+  }
+
+  .home__top {
+    gap: 6px 8px;
+  }
+
+  /* このページをスマホで開いた人へ：参加のページへの細い帯 */
+  .padlink {
+    display: flex;
+    flex: 0 0 100%;
+    order: -3;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding: 0 1rem;
+    border: 1px solid var(--line-ui);
+    border-radius: 12px;
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .padlink__arrow {
+    color: var(--glow);
+  }
+
+  /* ほかの端末から開けないアドレスのときの、短い警告の帯 */
+  .loop-band {
+    display: flex;
+    flex: 0 0 100%;
+    order: -2;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.35rem 0.9rem;
+    border: 1px solid rgba(255, 138, 61, 0.6);
+    border-radius: 12px;
+    background: rgba(255, 138, 61, 0.12);
+    color: var(--text);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .loop-band .icon {
+    color: var(--ember);
+  }
+
+  .brand__tag {
+    display: none;
+  }
+
+  /* ロゴと道具を1行に収める（上の操作群を低く保つ） */
+  .brand {
+    gap: 0.5rem;
+  }
+
+  .brand__name {
+    font-size: 1.4rem;
+  }
+
+  /* 道具は、絵だけの48pxのボタン1行（文字は読み上げに残す）。音の帯が出ているあいだは、音のボタンを隠す。 */
+  .toolbar {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .toolbar .btn,
+  .toolbar__link {
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    min-width: 48px;
+    min-height: 52px;
+    padding: 4px 6px;
+  }
+
+  .toolbar .btn__short {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  .toolbar__link {
+    border: 2px solid var(--line-ui);
+    border-radius: 999px;
+    color: var(--text);
+  }
+
+  .toolbar .btn__label,
+  .toolbar__link .link__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .toolbar__link .icon--small {
+    display: none;
+  }
+
+  .toolbar__doc {
+    display: block;
+  }
+
+  /* 主役のカードは、見本の絵を隠して高さを詰める */
+  .hero__thumb {
+    display: none;
+  }
+
+  /* 指で触る画面向けに、選び方はスマホの［決定］だけを書く */
+  .start-prompt__wide {
+    display: none;
+  }
+
+  .start-prompt__touch {
+    display: inline;
+  }
+
+  /* 参加者の札は2列の格子に。同じ行の札は同じ高さ、左端はほかのカードの線にそろえる */
+  .roster {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0;
+  }
+
+  .roster > li {
+    display: flex;
+  }
+
+  .roster .seat {
+    flex: 1;
+  }
+
+  /* リーダーの札は、冠の絵だけ（文字は読み上げに残る。札を1行に収める） */
+  .roster .badge--leader > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* 参加の板を低く：一言の補足と「カメラでQRを読む」は、この幅では出さない（見出しとQRで足りる） */
+  .home__join .join__note,
+  .home__join .join__scan {
+    display: none;
+  }
+
+  .roster .seat {
+    flex-wrap: wrap;
+    row-gap: 0.1rem;
+    width: 100%;
+    padding-right: 0.85rem;
+  }
+
+  /* 「切断中」は名前の下の行に置き、名前の幅を奪わない（「けん／た」のように短い名前が折れないように） */
+  .roster .seat__off {
+    flex-basis: 100%;
+    padding-left: calc(1.3em + 0.55rem);
+  }
+
+  .roster .seat__off-long {
+    display: none;
+  }
+
+  .roster .seat__off-short {
+    display: inline;
+  }
+
+  /* 2列の格子では、長い名前は「…」で切らず、2行まで折る */
+  .roster .seat__name {
+    display: -webkit-box;
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .results__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .results__actions .btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card[data-focused] {
+    transform: none;
+  }
+
+  .ember-bar::after {
+    width: 100%;
+    animation: none;
+    opacity: 0.55;
+  }
+}

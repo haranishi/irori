@@ -1,0 +1,144 @@
+/* OGP の画像の見た目。色は apps/web/src/styles/tokens.css と同じ値（docs/identity.md）。 */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 1200px;
+  height: 630px;
+  overflow: hidden;
+  background: #1a1411;
+  color: #f5ebe0;
+  font-family: ui-rounded, 'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Yu Gothic UI', 'Noto Sans JP', system-ui, sans-serif;
+}
+
+.og {
+  display: grid;
+  grid-template-columns: 1fr 440px;
+  align-items: center;
+  gap: 40px;
+  width: 1200px;
+  height: 630px;
+  padding: 64px 72px;
+  background:
+    radial-gradient(520px 380px at 78% 46%, rgba(255, 138, 61, 0.2), transparent 70%),
+    radial-gradient(900px 500px at 30% 120%, rgba(255, 138, 61, 0.1), transparent 65%),
+    #1a1411;
+}
+
+.og__brand {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.og__mark {
+  width: 96px;
+  height: 96px;
+  filter: drop-shadow(0 0 24px rgba(255, 138, 61, 0.45));
+}
+
+.og__name {
+  font-size: 104px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.og__lead {
+  margin: 34px 0 0;
+  font-size: 43px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.og__lead span,
+.og__sub span {
+  display: block;
+}
+
+.og__sub {
+  margin: 22px 0 0;
+  color: #c9b8a6;
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.og__art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 34px;
+}
+
+.og__screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 420px;
+  height: 250px;
+  border: 3px solid #4a382c;
+  border-radius: 26px;
+  background: radial-gradient(circle at 50% 42%, rgba(255, 138, 61, 0.24), transparent 64%), #2f241d;
+  box-shadow: 0 30px 90px -30px rgba(255, 138, 61, 0.55);
+}
+
+.og__flame {
+  width: 104px;
+  height: 104px;
+  filter: drop-shadow(0 0 22px rgba(255, 138, 61, 0.6));
+}
+
+.og__code {
+  color: #f5ebe0;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  padding-left: 0.3em;
+}
+
+.og__phones {
+  display: flex;
+  gap: 22px;
+}
+
+.og__phone {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 120px;
+  border: 4px solid;
+  border-radius: 18px;
+  background: #2f241d;
+}
+
+.og__phone svg {
+  width: 40px;
+  height: 40px;
+}
+
+.og__phone--1 {
+  border-color: #e69f00;
+  transform: rotate(-6deg);
+}
+
+.og__phone--2 {
+  border-color: #56b4e9;
+  transform: translateY(-8px);
+}
+
+.og__phone--3 {
+  border-color: #009e73;
+  transform: translateY(-8px);
+}
+
+.og__phone--4 {
+  border-color: #f0e442;
+  transform: rotate(6deg);
+}

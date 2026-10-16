@@ -1,0 +1,1616 @@
+/* スマホの画面（/pad）。色と書体は tokens.css の変数（docs/identity.md）。部品は48px以上、文字は16px以上。
+   色だけで区別しない：席は形と名前と「橙の丸」のような言葉を添え、つながりの状態は縁の線の形（実線・破線）と帯の文字でも示す。
+   点線（破線）は、誤りと切断の2つにだけ使う。押せない状態は薄く、影なし。
+   スマホで壊れやすいところ：引っ張って更新・拡大・長押しの選択・overscroll・ノッチ・100vh・ホームバー・ソフトキーボード。 */
+
+:root {
+  --pp-safe-t: env(safe-area-inset-top, 0px);
+  --pp-safe-r: env(safe-area-inset-right, 0px);
+  --pp-safe-b: env(safe-area-inset-bottom, 0px);
+  --pp-safe-l: env(safe-area-inset-left, 0px);
+  --pp-seat: var(--glow);
+  --pp-raise: 0 14px 36px rgba(0, 0, 0, 0.42);
+  --pp-face-hi: rgba(255, 217, 160, 0.06);
+  /* 主ボタンの立体：下の縁と、やわらかい火の光。どの主ボタンも同じにする。 */
+  --pp-primary-depth: 0 10px 26px -10px rgba(255, 138, 61, 0.7), inset 0 -3px 0 rgba(120, 60, 20, 0.2);
+  /* 操作ボタン（ゲームの行動）の色。色なしはクリーム地に暗い字。ゲームが選べる5色は、暖色の地になじむ控えめな色に固定する
+     （鮮やかな赤・青・緑・黄は使わない。席の8色と紛れないため）。文字との比はどれも5:1以上。 */
+  --pp-cream: #f2e3c6;
+  --pp-cream-down: #e3c99a;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background-color: var(--bg);
+  /* 地は平坦な暗色。真ん中に、ごく弱い火の光を置く。 */
+  background-image:
+    radial-gradient(85% 55% at 50% 44%, rgba(255, 138, 61, 0.11), rgba(255, 138, 61, 0) 72%),
+    radial-gradient(60% 30% at 50% 100%, rgba(255, 217, 160, 0.05), rgba(255, 217, 160, 0) 75%);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 見えている範囲に合わせる。iOS はキーボードが出ても画面の高さを変えないので、visualViewport の高さ（--vvh）を使う。 */
+#app {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--vvt, 0px);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: var(--vvh, 100dvh);
+}
+
+/* 語の途中で折らない塊（shared/phrase.ts）。塊のあいだの <wbr> でだけ折る。 */
+.pp-nw {
+  white-space: nowrap;
+}
+
+/* 句読点までの節（pad/phrase.ts の clauses）。入りきらない節は次の行から始め、文を句読点のあとで折る。 */
+.pp-cl {
+  display: inline-block;
+}
+
+/* 見た目は隠し、読み上げには残す。 */
+.pp-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- 部屋に入る前と出たあとの画面 ---- */
+
+.pp-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(var(--pp-safe-t) + 28px) calc(var(--pp-safe-r) + 20px) calc(var(--pp-safe-b) + 24px) calc(var(--pp-safe-l) + 20px);
+}
+
+.pp-wrap {
+  width: 100%;
+  max-width: 420px;
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.pp-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pp-intro--center {
+  align-items: center;
+  text-align: center;
+}
+
+.pp-panel,
+.pp-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pp-actions {
+  gap: 12px;
+}
+
+.pp-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+.pp-intro--center .pp-brand {
+  justify-content: center;
+}
+
+/* ロゴの火は、席1の琥珀色と紛れないよう少し赤に寄せる。 */
+.pp-flame__outer {
+  fill: #f0653a;
+}
+
+.pp-flame__inner {
+  fill: var(--glow);
+}
+
+.pp-ember {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 58%, rgba(240, 101, 58, 0.32), rgba(240, 101, 58, 0.08) 58%, rgba(240, 101, 58, 0) 70%);
+}
+
+.pp-ember .pp-flame {
+  animation: pp-flicker 2.4s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+@keyframes pp-flicker {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  45% {
+    transform: scale(1.05, 0.97);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(0.97, 1.04);
+  }
+}
+
+.pp-h1 {
+  margin: 0;
+  font-size: 27px;
+  line-height: 1.4;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  /* 行をそろえる（balance）と「ほかのスマホや／タブで…」のように語のまとまりを割るので、前から詰めて最後の行だけ整える。 */
+  text-wrap: pretty;
+}
+
+.pp-h1:focus,
+.pp-h2:focus {
+  outline: none;
+}
+
+.pp-h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.4;
+  font-weight: 800;
+  text-wrap: balance;
+}
+
+.pp-lead {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 17px;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+.pp-note {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+/* ---- ボタン ---- */
+
+.pp-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 12px 20px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--t-fast), background-color var(--t-fast), border-color var(--t-fast);
+}
+
+.pp-btn--primary {
+  min-height: 64px;
+  background: var(--glow);
+  color: var(--bg);
+  font-size: 20px;
+  box-shadow: var(--pp-primary-depth);
+}
+
+.pp-btn--primary:active {
+  transform: scale(0.98);
+  background: #ffcb85;
+}
+
+/* 押せない状態の見た目は1つ：塗りと影はなく、輪郭は --line-ui、文字は --text-dim（地との比 9.5:1）。点線は使わない。 */
+.pp-btn--primary:disabled,
+.pp-btn--ghost:disabled {
+  background: transparent;
+  border-color: var(--line-ui);
+  color: var(--text-dim);
+  box-shadow: none;
+  opacity: 1;
+  cursor: default;
+  transform: none;
+}
+
+.pp-btn--ghost {
+  background: rgba(255, 217, 160, 0.04);
+  border-color: var(--line-ui);
+  color: var(--text);
+}
+
+.pp-btn--ghost:active {
+  background: rgba(255, 217, 160, 0.12);
+}
+
+.pp-btn:focus-visible,
+.pp-link:focus-visible,
+.pp-badge:focus-visible,
+.pp-menubtn:focus-visible,
+.pp-menu__item:focus-visible {
+  outline: 3px solid var(--glow);
+  outline-offset: 3px;
+}
+
+/* 「コードを変える」：押せる高さ（48px）が見えるように、輪郭のある小さなボタンにする。 */
+.pp-link {
+  appearance: none;
+  flex: none;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 2px solid var(--line-ui);
+  border-radius: 999px;
+  background: rgba(255, 217, 160, 0.05);
+  color: var(--glow);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pp-link:active {
+  background: rgba(255, 217, 160, 0.14);
+}
+
+/* ---- コードの入力 ---- */
+
+/* 4つの枠の列は、見出しとボタンの左右の端にそろえる。 */
+.pp-code {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.pp-code__box {
+  width: 100%;
+  min-width: 0;
+  height: 88px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--line-ui);
+  border-radius: 18px;
+  background: var(--bg-card);
+  box-shadow: inset 0 2px 0 var(--pp-face-hi), 0 8px 18px -12px rgba(0, 0, 0, 0.8);
+  color: var(--text);
+  caret-color: var(--glow);
+  font-family: var(--font-mono);
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.pp-code__box::selection {
+  background: rgba(255, 217, 160, 0.32);
+  color: var(--text);
+}
+
+.pp-code__box[data-filled] {
+  border-color: var(--text-dim);
+}
+
+.pp-code__box:focus {
+  outline: none;
+  border-color: var(--glow);
+  box-shadow: 0 0 0 4px rgba(255, 217, 160, 0.3);
+}
+
+/* 誤りは、枠の線を火の色の破線にして、文字の知らせと一緒に出す（色だけに頼らない）。 */
+.pp-code[data-error] .pp-code__box:not(:focus) {
+  border-color: var(--ember);
+  border-style: dashed;
+}
+
+/* 枠の下の場所：ふだんはコードの在りかの一文、誤りのときは知らせ。知らせの2行ぶんを先に取る（出ても画面が跳ばない）。 */
+.pp-slot {
+  display: grid;
+  align-items: center;
+  min-height: calc(2 * 1.5em + 16px + 2px);
+  font-size: 16px;
+}
+
+/* 枠・案内・ボタンの間を詰める（案内のない空きを作らない）。 */
+.pp-screen--entry .pp-panel {
+  gap: 12px;
+}
+
+.pp-hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.pp-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 138, 61, 0.55);
+  border-radius: 14px;
+  background: rgba(255, 138, 61, 0.1);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.pp-msg[data-empty] {
+  display: none;
+}
+
+.pp-msg .pp-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--ember);
+}
+
+/* ---- 参加 ---- */
+
+.pp-room {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 8px 8px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(47, 36, 29, 0.72);
+  box-shadow: inset 0 1px 0 var(--pp-face-hi);
+}
+
+.pp-room__label {
+  color: var(--text-dim);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.pp-room__code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  line-height: 1;
+}
+
+.pp-intro--center .pp-room {
+  justify-content: center;
+}
+
+.pp-intro--center .pp-room__code {
+  flex: none;
+}
+
+.pp-field {
+  margin-bottom: -6px;
+}
+
+.pp-label {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.pp-input {
+  width: 100%;
+  min-height: 60px;
+  margin: 0;
+  padding: 12px 18px;
+  border: 2px solid var(--line-ui);
+  border-radius: 16px;
+  background: rgba(16, 12, 10, 0.6);
+  color: var(--text);
+  font: inherit;
+  font-size: 21px;
+  font-weight: 700;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.pp-input:focus {
+  outline: none;
+  border-color: var(--glow);
+  box-shadow: 0 0 0 4px rgba(255, 217, 160, 0.26);
+}
+
+/* 名前の欄のすぐ下の一文は、文言が替わっても2行ぶんの場所を残す（名前を入れても右の列が動かない）。 */
+.pp-note--field {
+  min-height: calc(2 * 1.65em);
+  margin-top: -8px;
+}
+
+/* 見本の文字は、ふだんは見せない（欄の上に見出しがある）。キーボードが出て見出しを隠したときだけ見せる。 */
+.pp-input::placeholder {
+  color: transparent;
+}
+
+.pp-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.pp-privacy .pp-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--glow);
+}
+
+.pp-btn--join {
+  margin-top: 4px;
+  min-height: 68px;
+  font-size: 22px;
+}
+
+.pp-state-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, rgba(255, 138, 61, 0.3), rgba(255, 138, 61, 0.07) 64%, rgba(255, 138, 61, 0) 72%);
+  box-shadow: inset 0 0 0 1px rgba(255, 217, 160, 0.2);
+  color: var(--glow);
+}
+
+/* ---- 部屋の中 ---- */
+
+.pp-play {
+  position: fixed;
+  inset: 0;
+  padding: calc(var(--pp-safe-t) + 8px) calc(var(--pp-safe-r) + 8px) calc(var(--pp-safe-b) + 12px) calc(var(--pp-safe-l) + 8px);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.pp-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border: 6px solid var(--pp-seat);
+  border-radius: 30px;
+  background: rgba(20, 15, 12, 0.55);
+  background: radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--pp-seat) 13%, transparent), transparent 62%), rgba(20, 15, 12, 0.55);
+  box-shadow: 0 0 34px -12px var(--pp-seat), inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+  transition: border-color var(--t-fast);
+}
+
+/* 切れている間は、縁を破線にする（帯の文字と合わせて、色に頼らず分かる）。 */
+.pp-play[data-link='lost'] .pp-frame {
+  border-style: dashed;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+.pp-frame[data-fx] {
+  animation: pp-fx 360ms ease-out;
+}
+
+@keyframes pp-fx {
+  0% {
+    box-shadow: 0 0 0 2px var(--pp-seat), 0 0 64px 4px var(--pp-seat), inset 0 0 40px -6px var(--pp-seat);
+  }
+  100% {
+    box-shadow: 0 0 34px -12px var(--pp-seat), inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* 上の段：左に席の札、右にメニューの「…」（名前の長さで動かない）。 */
+.pp-top {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 10px 0;
+}
+
+.pp-badge {
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  max-width: calc(100% - 68px);
+  min-height: 60px;
+  margin: 0;
+  padding: 7px 18px 7px 12px;
+  /* 暗めの席の色（青など）でも地から浮くよう、縁だけ少し明るく混ぜる（look の色そのものは変えない）。 */
+  border: 2px solid color-mix(in srgb, var(--pp-seat) 72%, var(--text));
+  border-radius: 999px;
+  background: var(--bg-card);
+  box-shadow: inset 0 1px 0 var(--pp-face-hi), 0 8px 20px -12px rgba(0, 0, 0, 0.9);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform var(--t-fast), background-color var(--t-fast);
+}
+
+.pp-badge__shape {
+  display: grid;
+  flex: none;
+}
+
+/* 席の形には明るい縁を付ける（暗い地の上で、青い星なども形が読めるように）。 */
+.pp-badge__shape .irori-shape path,
+.pp-menu__shape .irori-shape path {
+  stroke: rgba(245, 235, 224, 0.85);
+  stroke-width: 1.4px;
+}
+
+.pp-badge__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pp-badge__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.pp-look {
+  color: var(--text-dim);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+/* 長押し（近道）の進み具合：600ms で、光の輪が左から満ちる。 */
+.pp-badge::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border: 3px solid var(--glow);
+  border-radius: 999px;
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  pointer-events: none;
+}
+
+.pp-badge[data-holding] {
+  transform: scale(0.98);
+  background: #3a2c23;
+}
+
+.pp-badge[data-holding]::after {
+  opacity: 1;
+  animation: pp-hold 600ms linear forwards;
+}
+
+@keyframes pp-hold {
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.pp-menubtn {
+  appearance: none;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--line-ui);
+  border-radius: 50%;
+  background: var(--bg-card);
+  box-shadow: inset 0 1px 0 var(--pp-face-hi), 0 8px 20px -12px rgba(0, 0, 0, 0.9);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pp-menubtn:active {
+  border-color: var(--glow);
+  background: #3a2c23;
+}
+
+.pp-stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.pp-pad {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 案内・メニュー・帯を重ねている間は、下の操作を隠す（押せない部品をのぞかせない）。inert と組む。 */
+.pp-pad[data-dim] {
+  visibility: hidden;
+}
+
+/* ---- 部品（pad-ui）をこの画面に合わせる ---- */
+
+.pp-pad .irori-pad {
+  /* 十字は1マス60〜70px。縦は幅から、横は高さから決める。 */
+  --pad-size: clamp(170px, min(60cqi, 50dvh), 230px);
+  padding: 10px 14px 16px;
+}
+
+/* 操作は親指の届く下にまとめ、説明の一行はそのすぐ上に置く。 */
+.pp-pad .irori-pad[data-kind='pad'],
+.pp-pad .irori-pad[data-kind='remote'],
+.pp-pad .irori-pad[data-kind='buzzer'],
+.pp-pad .irori-pad[data-kind='choices'],
+.pp-pad .irori-pad[data-kind='tilt'] {
+  justify-content: flex-end;
+}
+
+.pp-pad .irori-pad__hint {
+  font-size: 17px;
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.pp-pad .irori-pad__title {
+  font-size: 26px;
+  text-wrap: balance;
+}
+
+.pp-pad .irori-pad__text {
+  font-size: 17px;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+/* 部品の文言には、語の切れ目に幅のない空白を入れてある（softBreaks）。そこでだけ折る。 */
+.pp-pad .irori-pad__status {
+  max-width: 22em;
+  font-size: 17px;
+  line-height: 1.65;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.pp-pad .irori-pad[data-kind='pad'] .irori-pad__body,
+.pp-pad .irori-pad[data-kind='remote'] .irori-pad__body {
+  flex: 0 0 auto;
+  align-items: stretch;
+  gap: 14px;
+  padding-bottom: 4px;
+}
+
+.pp-pad .irori-pad__dpad,
+.pp-pad .irori-pad__cross,
+.pp-pad .irori-pad__stick {
+  align-self: center;
+}
+
+.pp-pad .irori-pad__arrow {
+  border-color: var(--line-ui);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* 操作ボタン：色なしはクリーム地に暗い字。色の名前ごとに控えめな色に固定し、どれも同じ輪郭と立体にする。 */
+.pp-pad .irori-pad__btn:not(.irori-pad__arrow) {
+  --b: var(--pp-cream);
+  --b-down: var(--pp-cream-down);
+  --f: var(--bg);
+  border-color: var(--line-ui);
+  background: var(--b);
+  color: var(--f);
+  box-shadow: inset 0 -4px 0 rgba(60, 35, 15, 0.28), 0 10px 20px -14px rgba(0, 0, 0, 0.9);
+}
+
+.pp-pad .irori-pad__btn[data-color='red'] {
+  --b: #7a3729;
+  --b-down: #8e4535;
+  --f: var(--text);
+}
+
+.pp-pad .irori-pad__btn[data-color='blue'] {
+  --b: #384763;
+  --b-down: #455677;
+  --f: var(--text);
+}
+
+.pp-pad .irori-pad__btn[data-color='green'] {
+  --b: #4b5a34;
+  --b-down: #586a3e;
+  --f: var(--text);
+}
+
+.pp-pad .irori-pad__btn[data-color='yellow'] {
+  --b: #b48e3e;
+  --b-down: #c39d4c;
+  --f: var(--bg);
+}
+
+/* 灰色は「押せない」に見せない：ほかの色と同じ明るさの輪郭と立体を持つ。 */
+.pp-pad .irori-pad__btn[data-color='gray'] {
+  --b: #6a5d53;
+  --b-down: #786a5f;
+  --f: var(--text);
+}
+
+.pp-pad .irori-pad__btn:not(.irori-pad__arrow)[data-pressed] {
+  border-color: var(--glow);
+  background: var(--b-down);
+  color: var(--f);
+  box-shadow: 0 0 0 3px rgba(255, 217, 160, 0.4), inset 0 3px 6px rgba(0, 0, 0, 0.25);
+  transform: translateY(2px) scale(0.98);
+}
+
+/* 押せない部品は、ページの押せないボタンと同じ見た目（塗りと影なし・輪郭だけ・文字は --text-dim）。
+   押せる灰色（「おわる」など）の塗りとは、はっきり分かれる。傾きの許可の前のボタン（inert）も同じ。 */
+.pp-pad .irori-pad .irori-pad__btn:disabled,
+.pp-pad .irori-pad .irori-pad__btns[inert] .irori-pad__btn {
+  --b: transparent;
+  background: transparent;
+  border-color: var(--line-ui);
+  color: var(--text-dim);
+  box-shadow: none;
+  opacity: 1;
+  cursor: default;
+}
+
+/* 縦に並ぶ操作ボタンのあいだは24px以上（連打中に指がずれて、下の「おわる」などを押さないように）。 */
+.pp-pad .irori-pad__btns {
+  flex: 0 1 230px;
+  align-self: stretch;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(64px, 1fr);
+  row-gap: 24px;
+}
+
+.pp-pad .irori-pad__btns:only-child {
+  flex: 1 1 auto;
+}
+
+.pp-pad .irori-pad__btns[data-count='1'],
+.pp-pad .irori-pad__btns[data-count='2'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pp-pad .irori-pad__btns .irori-pad__btn {
+  min-width: 0;
+  min-height: 64px;
+  padding: 8px 6px;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+/* リモコン：決定は主ボタン（光の色）を上に大きく、戻るは控えめに下へ。あいだは24px。 */
+.pp-pad .irori-pad__keys {
+  flex-basis: 160px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: auto;
+  align-content: end;
+  row-gap: 24px;
+}
+
+.pp-pad .irori-pad__keys .irori-pad__ok {
+  --b: var(--glow);
+  --b-down: #ffc77a;
+  min-height: max(96px, min(22cqi, 26dvh));
+  border-color: var(--glow);
+  font-size: 22px;
+  box-shadow: var(--pp-primary-depth);
+}
+
+.pp-pad .irori-pad__keys .irori-pad__back {
+  --b: var(--bg-card);
+  --b-down: #3a2c23;
+  --f: var(--text);
+  min-height: 60px;
+  box-shadow: none;
+}
+
+/* 早押し：親指の届く下寄りに、大きく。 */
+.pp-pad .irori-pad[data-kind='buzzer'] .irori-pad__body {
+  flex: 0 0 auto;
+  padding-bottom: 6px;
+}
+
+.pp-pad .irori-pad__buzzer {
+  width: clamp(180px, min(78cqi, 46dvh), 300px);
+  font-size: 30px;
+  box-shadow: inset 0 -8px 0 rgba(60, 35, 15, 0.28), 0 16px 40px -18px rgba(0, 0, 0, 0.9);
+}
+
+/* 選択肢は、親指の届く下に置く。選んだものには印を付ける。 */
+.pp-pad .irori-pad[data-kind='choices'] .irori-pad__body {
+  flex: 0 0 auto;
+  align-items: flex-end;
+  padding-bottom: 6px;
+}
+
+.pp-pad .irori-pad__choice {
+  min-height: max(64px, min(88px, 17dvh));
+  padding: 10px 8px;
+  font-size: 21px;
+  overflow-wrap: anywhere;
+}
+
+.pp-pad .irori-pad__choice[data-picked] {
+  border-color: var(--glow);
+  box-shadow: 0 0 0 3px rgba(255, 217, 160, 0.55);
+}
+
+.pp-pad .irori-pad__choice[data-picked]::before {
+  content: '✓';
+  margin-right: 8px;
+}
+
+/* なぞる面：実線の枠。触れていないときは、真ん中に指を置く場所の目印を出す。 */
+.pp-pad .irori-pad__touch {
+  border-style: solid;
+  border-color: var(--line-ui);
+  background: radial-gradient(circle at 50% 50%, rgba(255, 217, 160, 0.08), rgba(255, 217, 160, 0) 55%), var(--bg-card);
+}
+
+.pp-pad .irori-pad__touch::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 104px;
+  height: 104px;
+  margin: -52px 0 0 -52px;
+  border: 3px solid var(--text-dim);
+  border-radius: 50%;
+  opacity: 0.75;
+  pointer-events: none;
+  transition: opacity var(--t-fast);
+}
+
+.pp-pad .irori-pad__touch::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  pointer-events: none;
+  transition: opacity var(--t-fast);
+}
+
+.pp-pad .irori-pad__touch:has(.irori-pad__dot[data-on])::before,
+.pp-pad .irori-pad__touch:has(.irori-pad__dot[data-on])::after {
+  opacity: 0;
+}
+
+/* 傾ける操作：説明と許可のボタンを真ん中に、ほかのボタンは下に並べる。許可が済むまで、ほかのボタンは押せない（play.ts の lockTiltButtons）。 */
+.pp-pad .irori-pad[data-kind='tilt'] .irori-pad__body {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 22px;
+}
+
+.pp-pad .irori-pad__tilt {
+  flex: 1;
+  justify-content: center;
+  gap: 16px;
+}
+
+.pp-pad .irori-pad__tilt::before {
+  content: '';
+  width: 48px;
+  height: 80px;
+  border: 4px solid var(--glow);
+  border-radius: 12px;
+  box-shadow: inset 0 -10px 0 -6px rgba(255, 217, 160, 0.5);
+  transform: rotate(-16deg);
+}
+
+.pp-pad .irori-pad__tilt[data-on]::before {
+  animation: pp-rock 2.4s ease-in-out infinite;
+}
+
+@keyframes pp-rock {
+  0%,
+  100% {
+    transform: rotate(-16deg);
+  }
+  50% {
+    transform: rotate(16deg);
+  }
+}
+
+/* 許可は主ボタン（ほかの主ボタンと同じ光と立体）。部品のボタンの色の決まりより強く当てる。 */
+.pp-pad .irori-pad__tilt .irori-pad__allow {
+  --b: var(--glow);
+  --b-down: #ffc77a;
+  width: min(100%, 340px);
+  min-height: 64px;
+  border-color: var(--glow);
+  font-size: 20px;
+  box-shadow: var(--pp-primary-depth);
+}
+
+/* 許可の前だけ、ボタンの列のすぐ上に理由を1行添える。 */
+.pp-pad .pp-tilt-side {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: 10px;
+}
+
+.pp-pad .pp-tilt-note {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.pp-pad .irori-pad[data-kind='tilt'] .irori-pad__btns {
+  flex: none;
+  align-self: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-auto-rows: minmax(72px, auto);
+}
+
+/* 待ちの画面では、自分の席の形を大きく出す。 */
+.pp-pad .irori-pad[data-kind='wait'] .irori-pad__wait::before {
+  content: '';
+  width: 92px;
+  height: 92px;
+  margin-bottom: 14px;
+  background: var(--pp-seat);
+  -webkit-mask: var(--pp-shape) center / contain no-repeat;
+  mask: var(--pp-shape) center / contain no-repeat;
+}
+
+/* 大きな形のすぐ下に「あなたの印」と添える（見出しに出る別の人の名前と、形を結び付けないため）。 */
+.pp-pad .pp-wait-you {
+  margin: -6px 0 14px;
+  color: var(--text-dim);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ---- 重ねるもの ---- */
+
+/* つなぎ直しの案内は、枠の真ん中のカード（.pp-cover）。ほかの案内より前に出し、重なる案内は隠す。 */
+.pp-banner {
+  z-index: 4;
+}
+
+.pp-play[data-link='lost'] [data-cover='host'],
+.pp-play[data-link='lost'] [data-cover='orient'] {
+  display: none;
+}
+
+.pp-state-icon--lost {
+  color: var(--ember);
+}
+
+.pp-banner .pp-btn {
+  width: 100%;
+}
+
+/* 案内のカードだけを出す。下の操作は .pp-pad[data-dim] で隠れている。 */
+.pp-cover {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.pp-card {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--bg-card);
+  box-shadow: var(--pp-raise), inset 0 1px 0 var(--pp-face-hi);
+}
+
+.pp-card--cover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.pp-card--cover .pp-state-icon {
+  width: 76px;
+  height: 76px;
+  margin-bottom: 4px;
+}
+
+.pp-card--cover .pp-btn {
+  margin-top: 6px;
+}
+
+/* 向きの案内の絵：いまの向きのスマホを描く（縦がおすすめのときは、横のスマホを回す絵）。 */
+.pp-play[data-orient-need='portrait'] .pp-state-icon--rotate .pp-icon {
+  transform: rotate(-90deg);
+}
+
+/* ---- メニュー（札ごと覆い、親指の届く下に出す） ---- */
+
+.pp-menu {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 10px;
+  background: #0e0a08;
+}
+
+.pp-menu__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 440px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--bg-card);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 var(--pp-face-hi);
+}
+
+.pp-menu__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 2px 4px 6px;
+}
+
+.pp-menu__shape {
+  display: grid;
+  flex: none;
+}
+
+.pp-menu__seat {
+  margin: 2px 0 0;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.pp-menu__items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pp-menu__item {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  grid-template-rows: auto auto;
+  align-content: center;
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 2px;
+  min-height: 76px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 2px solid var(--line-ui);
+  border-radius: 18px;
+  background: var(--pp-face-hi);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pp-menu__item:active {
+  border-color: var(--glow);
+  background: rgba(255, 217, 160, 0.14);
+}
+
+.pp-menu__item:disabled {
+  opacity: 0.45;
+}
+
+.pp-menu__icon {
+  display: grid;
+  grid-row: span 2;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(255, 217, 160, 0.1);
+  color: var(--glow);
+}
+
+.pp-menu__item strong {
+  font-size: 19px;
+  line-height: 1.3;
+}
+
+.pp-menu__note {
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1.45;
+  /* 「…が／出ます」のように、最後の行に短い語だけが残らないようにする。 */
+  text-wrap: balance;
+}
+
+/* 退出は取り消せない操作：地を塗らず、火の色の輪郭と印で分ける。 */
+.pp-menu__item--leave {
+  border-color: rgba(255, 138, 61, 0.7);
+  background: transparent;
+}
+
+.pp-menu__item--leave .pp-menu__icon {
+  background: rgba(255, 138, 61, 0.14);
+  color: var(--ember);
+}
+
+.pp-menu__item--leave:active {
+  border-color: var(--ember);
+  background: rgba(255, 138, 61, 0.12);
+}
+
+/* ライセンスとクレジット：枠も塗りもない、下線の控えめなリンク（取り消せない操作と見間違えない）。押せる高さは44px。 */
+.pp-menu__licenses {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.pp-menu__licenses:focus-visible {
+  outline: 3px solid var(--glow);
+  outline-offset: 2px;
+}
+
+/* 短い知らせは右上の「…」のすぐ下に出し、小さな矢印で「…」を指す（操作のボタンにかぶせない）。 */
+.pp-toast {
+  position: absolute;
+  z-index: 7;
+  right: 12px;
+  top: 80px;
+  width: max-content;
+  max-width: min(320px, calc(100% - 24px));
+  padding: 10px 16px;
+  border: 1px solid #6b5242;
+  border-radius: 16px;
+  background: #3b2d24;
+  box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.8);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-wrap: balance;
+  pointer-events: none;
+}
+
+.pp-toast::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 30px;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid #6b5242;
+  border-left: 1px solid #6b5242;
+  background: #3b2d24;
+  transform: rotate(45deg);
+}
+
+/* ---- 縦向き ---- */
+
+@media (orientation: portrait) {
+  .pp-pad .irori-pad[data-kind='tilt'] .irori-pad__btns .irori-pad__btn {
+    min-height: 80px;
+  }
+}
+
+/* キーボードが出て、縦の見える高さが低いとき：飾りを畳み、入力欄と主ボタンを一緒に見せる。 */
+@media (orientation: portrait) and (max-height: 560px) {
+  .pp-screen {
+    padding-top: calc(var(--pp-safe-t) + 14px);
+    padding-bottom: 14px;
+  }
+
+  .pp-wrap {
+    gap: 18px;
+  }
+
+  .pp-brand {
+    display: none;
+  }
+
+  .pp-h1 {
+    font-size: 23px;
+  }
+
+  .pp-code__box {
+    height: 72px;
+    font-size: 36px;
+  }
+
+  /* 知らせの場所は先に取らない（キーボードの上に主ボタンを残す）。名前の欄の下の一文も畳む（見出しが「なくても入れます」と言う）。 */
+  .pp-slot {
+    min-height: 0;
+  }
+
+  .pp-note--field {
+    display: none;
+  }
+}
+
+/* ---- 横向き（高さの低い画面） ---- */
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .pp-screen {
+    padding-top: calc(var(--pp-safe-t) + 16px);
+    padding-bottom: calc(var(--pp-safe-b) + 16px);
+  }
+
+  .pp-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 16px 40px;
+    max-width: 780px;
+  }
+
+  .pp-screen--checking .pp-wrap,
+  .pp-screen--connecting .pp-wrap {
+    align-items: center;
+  }
+
+  /* 押せるのが「やめる」だけの画面は、右の列に1つだけ浮かせず、1列にまとめる。 */
+  .pp-screen--checking .pp-wrap,
+  .pp-screen--connecting:not(:has([data-act='retry'])) .pp-wrap {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 420px;
+  }
+
+  .pp-intro {
+    gap: 10px;
+  }
+
+  .pp-brand {
+    margin-bottom: 2px;
+  }
+
+  .pp-h1 {
+    font-size: 25px;
+  }
+
+  .pp-panel {
+    gap: 12px;
+  }
+
+  .pp-code__box {
+    height: 80px;
+  }
+
+  .pp-ember {
+    width: 88px;
+    height: 88px;
+  }
+
+  .pp-state-icon {
+    width: 72px;
+    height: 72px;
+  }
+
+  .pp-btn--join {
+    min-height: 64px;
+  }
+
+  .pp-play {
+    padding-top: calc(var(--pp-safe-t) + 12px);
+    padding-bottom: calc(var(--pp-safe-b) + 10px);
+  }
+
+  .pp-top {
+    padding-top: 8px;
+  }
+
+  .pp-badge {
+    min-height: 56px;
+  }
+
+  /* 横向きでは、上の段の「…」の左に出し、右向きの矢印で「…」を指す（下の操作にかからない）。 */
+  .pp-toast {
+    top: 14px;
+    right: 82px;
+    max-width: min(460px, calc(100% - 330px));
+  }
+
+  .pp-toast::before {
+    top: calc(50% - 6px);
+    right: -7px;
+    border-top: 1px solid #6b5242;
+    border-right: 1px solid #6b5242;
+    border-left: 0;
+  }
+
+  /* 両手で横に持つと親指は左右の端にある。早押しは横に広い大きなボタンにする。 */
+  .pp-pad .irori-pad[data-kind='buzzer'] .irori-pad__body {
+    flex: 1 1 auto;
+    align-items: stretch;
+  }
+
+  .pp-pad .irori-pad__buzzer {
+    width: 100%;
+    height: auto;
+    aspect-ratio: auto;
+    border-radius: 36px;
+  }
+
+  .pp-pad .irori-pad[data-kind='tilt'] .irori-pad__body {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .pp-pad .irori-pad[data-kind='tilt'] .irori-pad__btns,
+  .pp-pad .irori-pad[data-kind='tilt'] .pp-tilt-side {
+    flex: 0 1 240px;
+    align-self: stretch;
+  }
+
+  .pp-pad .irori-pad[data-kind='tilt'] .pp-tilt-side > .irori-pad__btns {
+    flex: 1 1 auto;
+  }
+
+  /* 横向きでは、横持ちのスマホを描く。 */
+  .pp-pad .irori-pad__tilt::before {
+    width: 80px;
+    height: 48px;
+    transform: rotate(-12deg);
+  }
+
+  .pp-pad .irori-pad__choices,
+  .pp-pad .irori-pad__choices[data-count='5'],
+  .pp-pad .irori-pad__choices[data-count='6'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .pp-pad .irori-pad__choices[data-count='2'],
+  .pp-pad .irori-pad__choices[data-count='4'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pp-pad .irori-pad__choice {
+    min-height: max(64px, min(84px, 21dvh));
+  }
+
+  .pp-card--cover {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 18px;
+    row-gap: 6px;
+    max-width: 560px;
+    padding: 18px 20px;
+    text-align: left;
+  }
+
+  .pp-card--cover .pp-state-icon {
+    grid-row: span 4;
+    width: 64px;
+    height: 64px;
+    margin: 0;
+  }
+
+  .pp-card--cover .pp-btn {
+    margin-top: 4px;
+  }
+
+  .pp-menu {
+    align-items: center;
+  }
+
+  /* 横向きは高さが足りないので、「ライセンスとクレジット」は「閉じる」と同じ段の右に置く（いちばん下の段のまま）。 */
+  .pp-menu__panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    max-width: 660px;
+  }
+
+  .pp-menu__head,
+  .pp-menu__items {
+    grid-column: 1 / -1;
+  }
+
+  .pp-menu__items {
+    flex-direction: row;
+  }
+
+  /* 2つの項目の見出しの高さをそろえる。 */
+  .pp-menu__item {
+    flex: 1;
+    min-width: 0;
+    align-content: start;
+  }
+}
+
+/* キーボードが出た横向き（見える高さが300px未満）：入力欄から主ボタンまでを一画面に収める。 */
+@media (orientation: landscape) and (max-height: 300px) {
+  .pp-screen {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .pp-brand,
+  .pp-lead,
+  .pp-hint {
+    display: none;
+  }
+
+  .pp-h1 {
+    font-size: 20px;
+  }
+
+  .pp-panel,
+  .pp-screen--entry .pp-panel {
+    gap: 8px;
+  }
+
+  /* 入力欄に入ってキーボードが出ている間だけ、欄の上の見出しは読み上げに残して隠す（欄と主ボタンを優先する）。 */
+  .pp-field {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .pp-input {
+    min-height: 48px;
+    padding: 6px 14px;
+    font-size: 19px;
+  }
+
+  .pp-note--field {
+    display: none;
+  }
+
+  .pp-slot {
+    min-height: 0;
+  }
+
+  /* 見出しを隠したので、欄の中の見本の文字で「名前（なくても入れます）」と伝える。 */
+  .pp-input::placeholder {
+    color: var(--text-dim);
+  }
+
+  .pp-privacy {
+    line-height: 1.45;
+  }
+
+  .pp-btn--primary,
+  .pp-btn--join {
+    min-height: 52px;
+    margin-top: 0;
+    font-size: 19px;
+  }
+
+  .pp-code__box {
+    height: 56px;
+    font-size: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-ember .pp-flame,
+  .pp-pad .irori-pad__tilt[data-on]::before {
+    animation: none;
+  }
+
+  /* 動かさない代わりに、縁を一瞬だけ光の色にする。 */
+  .pp-frame[data-fx] {
+    animation: none;
+    box-shadow: 0 0 0 4px var(--glow);
+  }
+
+  .pp-badge[data-holding]::after {
+    animation: none;
+    clip-path: inset(0 0 0 0);
+  }
+}

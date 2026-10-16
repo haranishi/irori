@@ -1,0 +1,80 @@
+{
+  "games": [
+    {
+      "schema": 1,
+      "id": "fixture-race",
+      "title": { "ja": "はやおしレース", "en": "Buzzer Race" },
+      "summary": { "ja": "合図のあと、いちばん早く押した人が勝ち。", "en": "Press first after the signal." },
+      "authors": [{ "name": "Fixture Author" }],
+      "license": { "code": "MIT OR Apache-2.0", "assets": "original" },
+      "players": { "min": 2, "max": 8 },
+      "pads": ["buzzer", "wait"],
+      "entry": { "bundled": "games/fixture-race/" },
+      "thumbnail": "fixture-race.png",
+      "thumbUrl": "/registry/thumbs/fixture-race.png",
+      "sdk": 1,
+      "rating": "all",
+      "added": "2026-10-16"
+    },
+    {
+      "schema": 1,
+      "id": "fixture-solo",
+      "title": { "ja": "ひとりでも", "en": "Solo Too" },
+      "summary": { "ja": "1人から4人まで遊べる見本。", "en": "A sample for 1 to 4 players." },
+      "authors": [{ "name": "Fixture Author" }, { "name": "Second Author" }],
+      "license": { "code": "MIT", "assets": "CC-BY-4.0" },
+      "players": { "min": 1, "max": 4 },
+      "pads": ["pad", "choices"],
+      "entry": { "bundled": "games/fixture-solo/" },
+      "thumbnail": "fixture-solo.png",
+      "sdk": 1,
+      "rating": "all",
+      "added": "2026-10-15"
+    },
+    {
+      "schema": 1,
+      "id": "fixture-far",
+      "title": { "ja": "とおくのゲーム" },
+      "summary": { "ja": "外のサーバーで動くゲームの見本。" },
+      "authors": [{ "name": "Remote Author", "url": "https://author.example.invalid/" }],
+      "license": { "code": "LicenseRef-closed", "assets": "LicenseRef-closed" },
+      "players": { "min": 1, "max": 8 },
+      "pads": ["touch"],
+      "entry": { "url": "https://games.example.invalid/far/" },
+      "thumbnail": "fixture-far.webp",
+      "sdk": 1,
+      "rating": "all",
+      "added": "2026-10-14"
+    },
+    {
+      "schema": 1,
+      "id": "Broken_ID",
+      "title": { "ja": "こわれた登録" },
+      "summary": { "ja": "id の形が違うので、棚に出ない。" },
+      "authors": [{ "name": "x" }],
+      "license": { "code": "MIT", "assets": "original" },
+      "players": { "min": 1, "max": 2 },
+      "pads": ["pad"],
+      "entry": { "bundled": "games/broken/" },
+      "thumbnail": "broken.png",
+      "sdk": 1,
+      "rating": "all",
+      "added": "2026-10-13"
+    },
+    {
+      "schema": 1,
+      "id": "fixture-race",
+      "title": { "ja": "二重の登録" },
+      "summary": { "ja": "同じ id は、最初のものだけを使う。" },
+      "authors": [{ "name": "x" }],
+      "license": { "code": "MIT", "assets": "original" },
+      "players": { "min": 1, "max": 2 },
+      "pads": ["pad"],
+      "entry": { "bundled": "games/fixture-race/" },
+      "thumbnail": "fixture-race.png",
+      "sdk": 1,
+      "rating": "all",
+      "added": "2026-10-12"
+    }
+  ]
+}

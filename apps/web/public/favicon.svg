@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- irori の印：囲炉裏の火と薪。自作の図形（docs/identity.md「ロゴ」）。 -->
+  <defs>
+    <linearGradient id="f" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#ff8a3d"/>
+      <stop offset="1" stop-color="#ffb070"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="11" fill="#1a1411"/>
+  <path d="M24 4c3 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11c.5 4 2.5 6 5 7c-2-6-1-12 1-17Z" fill="url(#f)"/>
+  <path d="M24 20c2 4 5 6 5 10a5 5 0 0 1-10 0c0-3 2-5 3-7c.3 2 1 3 2 3.5c-.6-2.2-.4-4.3 0-6.5Z" fill="#ffd9a0"/>
+  <path d="M9 40.5l30-3.5a2.2 2.2 0 0 1 .5 4.4l-30 3.5a2.2 2.2 0 0 1-.5-4.4Z" fill="#8a6448"/>
+  <path d="M39 40.5l-30-3.5a2.2 2.2 0 0 0-.5 4.4l30 3.5a2.2 2.2 0 0 0 .5-4.4Z" fill="#6e4f39"/>
+</svg>

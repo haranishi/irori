@@ -40,6 +40,7 @@ The reasoning, and the things deliberately left out (accounts, analytics, ads, p
 | Four sample games (`hello-pad`, `tap-race`, `quiz-4`, `dot-grab`), every way of ending them is tested | Alpha |
 | Long sessions on real iPhones and Android phones, TV browsers | Not tested yet. Reports are very welcome. Automated tests run Chromium and WebKit (Safari's engine, via Playwright) only |
 | Opening the host screen at phone width | Not officially supported (it does not break, but its visual score is around the pass line) |
+| Problems found by playing (overlapping hints with 8 players, results of players who left, ...) | Listed in [docs/known-issues.md](docs/known-issues.md) (Japanese). Reports and fixes are welcome |
 | Passing the console's mute setting on to games' sound | Not yet. The sample games make no sound |
 | WebRTC for lower latency | Planned after measuring ([ADR 0002](docs/decisions/0002-websocket-first.md)) |
 | Accounts, ranking, chat, payments, ads, analytics, game uploads | Not planned |

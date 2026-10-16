@@ -29,6 +29,7 @@
 6. [decisions/](decisions/)：判断の記録（ADR）8本。捨てた案と、見直す条件。
 7. [research/](research/)：先行例、端末とCloudflareの制約、参考にしたサイトの観察。
 8. [legal/](legal/)：権利の確認の記録、参考サイトの扱い、ライセンスの方針。
+9. [known-issues.md](known-issues.md)：実際に遊んで見つけた問題と、まだ確かめていないこと。直したい人の入口。
 
 進め方の約束（AIと一緒に作るときの役割と完了の判定）は [HARNESS.md](../HARNESS.md)、貢献の入口は [CONTRIBUTING.md](../CONTRIBUTING.md)。
 

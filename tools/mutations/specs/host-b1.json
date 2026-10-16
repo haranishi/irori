@@ -473,23 +473,6 @@
     "timeoutMs": 420000
   },
   {
-    "id": "host-x-e2e-play-hint-every-game",
-    "note": "(x) メニューの開き方の案内を、部屋の最初のゲームだけでなく、毎回出す",
-    "file": "apps/web/src/host/console.ts",
-    "find": "      if (room !== null && this.playHintRoom !== room) {",
-    "replace": "      if (room !== null) {",
-    "command": [
-      "npx",
-      "playwright",
-      "test",
-      "-c",
-      "apps/web/playwright.host.config.ts",
-      "--project=host-chromium",
-      "host.e2e.ts"
-    ],
-    "timeoutMs": 420000
-  },
-  {
     "id": "host-y-e2e-header-down-geometric",
     "note": "(y) 上の並びから下へ、棚の選択中のカードへ決まった道で下りない（画面の上の近さだけで選ぶ）",
     "file": "apps/web/src/host/console.ts",
@@ -555,5 +538,39 @@
       "host.e2e.ts"
     ],
     "timeoutMs": 420000
+  },
+  {
+    "id": "host-x-e2e-hint-over-game",
+    "note": "(x) ゲームの最中に、メニューの開き方の案内を画面の右下へ戻す（8人の点の札や絵に重なる）",
+    "file": "apps/web/src/host/console.ts",
+    "find": "    const items: HTMLElement[] = [];",
+    "replace": "    const items: HTMLElement[] = this.m.phase === 'playing' ? [h('p', { class: 'hint hint--play', data: { hint: 'play' } }, t('host.play.menuHint'))] : [];",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "play-layout.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "host-cc-e2e-results-not-dense",
+    "note": "(cc) 5人以上の結果を詰めない（1280×720 で8人だと、ボタンが画面の下に切れる）",
+    "file": "apps/web/src/host/view-panels.ts",
+    "find": "    { class: `screen results${rows.length >= 5 ? ' results--dense' : ''}` },",
+    "replace": "    { class: 'screen results' },",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "play-layout.e2e.ts"
+    ],
+    "timeoutMs": 600000
   }
 ]

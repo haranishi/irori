@@ -193,19 +193,17 @@ test('キーボードでも同じ操作：矢印・Enter・Esc（ゲーム中は
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   await k.press('Enter');
   await host.expectState('detail');
+  // メニューの開き方は、詳細の「操作」で伝える（ゲームの画面には重ねない）。
+  await expect(host.page.locator('[data-layer="detail"] [data-hint="menu"]')).toHaveText('メニュー：［Esc］か、スマホの右上の「…」から');
   await k.press('Escape');
   await host.expectState('home');
   await k.press('Enter');
   await k.press('Enter');
   await host.expectState('playing');
   await pad.expectSpec((s) => s?.k === 'pad', 'ゲームの画面');
-  // メニューの開き方の案内は、その部屋の最初のゲームで、画面の右下の隅に出る（上の得点や残り時間にかぶせない）。
-  const playHint = host.page.locator('[data-hint="play"]');
-  await expect(playHint).toHaveText('メニュー：［Esc］か、スマホの右上の「…」から');
-  const box = (await playHint.boundingBox())!;
-  const view = host.page.viewportSize()!;
-  expect(box.y).toBeGreaterThan(view.height / 2);
-  expect(box.x).toBeGreaterThan(view.width / 2);
+  // ゲームの最中は、ホストは案内をゲームの画面に重ねない（短い知らせのほかは、何も出さない）。
+  const overlays = host.page.locator('.hints .hint:not(.toast)');
+  expect(await overlays.count(), 'ゲームの最中に案内が出た').toBe(0);
   await k.press('Escape');
   await host.expectState('paused');
   // 一時停止中のスマホは「メニューを操作中です」（リーダーはリモコンのまま、メニューを動かせる）。
@@ -226,12 +224,11 @@ test('キーボードでも同じ操作：矢印・Enter・Esc（ゲーム中は
   await host.expectState('playing');
   pad.press('end');
   await host.expectState('results');
-  // 同じ部屋の2つ目のゲームでは、メニューの開き方の案内を出さない。
+  // 2つ目のゲームでも、案内は重ねない。
   await k.press('Enter');
   await host.expectState('playing');
   await pad.expectSpec((s) => s?.k === 'pad', '2つ目のゲームの画面');
-  // 案内は数秒で消えるので、待って消えるのを確かめるのでなく、始まった時点で出ていないことを、その場で数える。
-  expect(await playHint.count(), '2つ目のゲームでも案内が出た').toBe(0);
+  expect(await overlays.count(), '2つ目のゲームで案内が出た').toBe(0);
   pad.press('end');
   await host.expectState('results');
   pad.close();

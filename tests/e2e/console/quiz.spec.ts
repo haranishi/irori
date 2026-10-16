@@ -1,4 +1,4 @@
-// quiz-4（4択クイズ）の終わり方3つ：全問／全員が時間切れ／全員退出。ホストの時計を差し替えて、締切を進める。
+// quiz-4（4択クイズ）の終わり方3つ：全問／全員が時間切れ／全員退出（抜けた人も、抜けたときの点で結果に残る）。ホストの時計を差し替えて、締切を進める。
 // 問題ごとに、スマホの choices の文字がその問題の選択肢に変わること、正解・誤答・時間切れで点が変わることを、
 // ゲームの画面（枠の中の DOM）・スマホの答え合わせの画面・ホストの結果の3か所で突き合わせる。
 // 正解は、ゲームの問題の表（games/quiz-4/questions.js）から、問題文で引く。
@@ -120,14 +120,33 @@ test('quiz-4 全員が時間切れ：誰も答えないまま8問が進み、全
   expect(rows.map((r) => r.seat)).toEqual([1, 2, 3]);
 });
 
-test('quiz-4 全員退出：出題の途中で3台が bye。結果は空', HOST, async ({ rig }) => {
+test('quiz-4 全員退出：1問目のあと、出題の途中で3台が bye。抜けた人の札は「退出」、結果には3人とも抜けたときの点で残る', HOST, async ({ rig }) => {
   const host = await rig.openHost({ clock: true });
   const pads = await rig.join(host, ['たろう', 'はなこ', 'じろう']);
   await host.choose('quiz-4', pads[0]);
-  await shown(host, 1);
-  await pads[0]!.expectKind('choices');
-  for (const p of pads) await p.leave();
-  expect(await host.results()).toEqual([]);
+  const s = await shown(host, 1);
+  const right = s.choices.find((c) => c.label === answerOf(s.question));
+  const wrong = s.choices.find((c) => c.label !== answerOf(s.question));
+  if (!right || !wrong) throw new Error(`第1問の正解が選択肢にない: ${s.question}`);
+  await pads[0]!.choose(right.id);
+  await pads[1]!.choose(wrong.id);
+  await pads[2]!.choose(wrong.id); // 全員が答えたので、締切を待たずに答え合わせ
+  await expect(pads[0]!.page.locator('.irori-pad__title')).toHaveText(/^正解！ \+\d+$/);
+  const plus = Number(((await pads[0]!.waitText()).title.match(/\+(\d+)/) ?? [])[1]);
+  await host.advance(REVEAL_MS + 200);
+  await shown(host, 2);
+  await pads[1]!.leave();
+  // ゲームの札：席が消えた人は「切断」でなく「退出」。点はそのまま見せる。
+  const chips = () => host.inGame(() => [...document.querySelectorAll('#seats .seat')].map((li) => `${li.querySelector('.seat__score')?.textContent}:${li.querySelector('.seat__chip')?.textContent ?? ''}`));
+  await expect.poll(chips).toEqual([`${plus}:`, `${WRONG_POINTS}:退出`, `${WRONG_POINTS}:`]);
+  await pads[0]!.leave();
+  await pads[2]!.leave();
+  const rows = await host.results();
+  expect(rows.map((r) => [r.seat, r.score, r.label, r.gone])).toEqual([
+    [1, plus, '1問正解', true],
+    [2, WRONG_POINTS, '0問正解', true],
+    [3, WRONG_POINTS, '0問正解', true],
+  ]);
   await host.key('Escape');
   await host.expectState('home');
 });

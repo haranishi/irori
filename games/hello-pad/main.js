@@ -2,11 +2,14 @@
 // ハローパッド：SDKの全体像（players・leader・setPad・input・look・ready・end）を見せる、いちばん小さな見本。
 // 規則は logic.js にあり、ここは irori とのやり取りと描画だけ。
 import { connect } from './irori.js';
-import { BADGE, FLOOR, H, SIZE, W, createWorld, handleInput, handlePlayers, hopScale, leaderOf, padsFor, placeNames, step } from './logic.js';
+import {
+  BADGE, FLOOR, GAME_MS, H, SIZE, W,
+  createClock, createWorld, handleInput, handlePlayers, hopScale, leaderOf, padsFor, placeNames, step, tick, timeLeft,
+} from './logic.js';
 
 /** @typedef {import('./irori.js').Irori} Irori */
 
-const COLOR = { bg: '#1a1411', floor: '#231a15', line: '#4a382c', text: '#f5ebe0', dim: '#c9b8a6', glow: '#ffd9a0' };
+const COLOR = { bg: '#1a1411', floor: '#231a15', card: '#2f241d', line: '#4a382c', text: '#f5ebe0', dim: '#c9b8a6', glow: '#ffd9a0', ember: '#ff8a3d' };
 const FONT = 'ui-rounded, "Hiragino Maru Gothic ProN", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif';
 const stage = /** @type {HTMLElement} */ (document.getElementById('stage'));
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('view'));
@@ -31,7 +34,9 @@ try {
 
 // 2. いまいる席に、四角を1つずつ置く。色と形は irori.look(席番号) で、コンソールの表示とそろう。
 //    リーダー（irori.leader）の席も覚える。「おわる」を押せるのは、リーダーだけ。
-const world = createWorld(irori.players, irori.leader);
+//    時間は、一時停止のあいだ止まる時計で測る（30秒の締切も止まる）。
+const clock = createClock(() => performance.now());
+const world = createWorld(irori.players, irori.leader, clock.now());
 const names = new Map(irori.players.map((p) => [p.id, p.name]));
 const looks = new Map([...world.boxes.keys()].map((p) => {
   const look = irori.look(p);
@@ -43,7 +48,10 @@ const looks = new Map([...world.boxes.keys()].map((p) => {
 sendPads();
 
 // 4. 入力と席の変化を受ける。規則が end を返したら、結果をつけてコンソールに知らせる。
-irori.on('input', (p, input) => run(handleInput(world, p, input, performance.now())));
+irori.on('input', (p, input) => {
+  // 一時停止のあいだは、ぴょんも「おわる」も受けない（時計が止まっている）。スティックの向きだけは覚える。
+  if (!clock.paused || input.k === 'axis') run(handleInput(world, p, input, clock.now()));
+});
 irori.on('players', (players, leader) => {
   for (const pl of players) names.set(pl.id, pl.name);
   run(handlePlayers(world, players, leader));
@@ -52,11 +60,13 @@ irori.on('players', (players, leader) => {
 
 // 5. 一時停止のあいだは、動きを止める（コンソールのメニューが前に出ている）。
 irori.on('pause', () => {
+  clock.pause();
   cancelAnimationFrame(raf);
   raf = 0;
   draw();
 });
 irori.on('resume', () => {
+  clock.resume();
   last = performance.now();
   if (!raf && !world.over) raf = requestAnimationFrame(frame);
 });
@@ -81,6 +91,7 @@ function sendPads() {
 function frame(/** @type {number} */ t) {
   step(world, Math.min(0.1, (t - last) / 1000));
   last = t;
+  run(tick(world, clock.now()));
   draw();
   raf = world.over ? 0 : requestAnimationFrame(frame);
 }
@@ -95,7 +106,7 @@ function fit() {
 }
 
 function draw() {
-  const now = performance.now();
+  const now = clock.now();
   document.documentElement.dataset.phase = world.over ? 'over' : 'play';
   ctx.fillStyle = COLOR.bg;
   ctx.fillRect(0, 0, W, H);
@@ -106,10 +117,25 @@ function draw() {
   ctx.strokeStyle = COLOR.line;
   ctx.lineWidth = 2;
   ctx.stroke();
-  // 上の2行：遊び方と順位の決まり（遊ぶ前に分かるように）、「おわる」を押せる人。
+  // 上の2行：遊び方と順位の決まり（遊ぶ前に分かるように）、「おわる」を押せる人。右上に残りの秒数、縁に残りの帯。
   const lead = leaderOf(world);
-  label('スティックで動く・「ぴょん」でふくらむ・ぴょんの回数で順位がつきます', W / 2, 36, 18, COLOR.text);
-  label(lead === null ? '「おわる」でおしまい' : `「おわる」はリーダー（${names.get(lead) ?? `プレイヤー${lead}`}）だけ`, W / 2, 62, 16, COLOR.dim);
+  const left = timeLeft(world, now);
+  ctx.beginPath();
+  ctx.roundRect(24, 14, W - 48, 4, 2);
+  ctx.fillStyle = COLOR.card;
+  ctx.fill();
+  if (left > 0) {
+    ctx.beginPath();
+    ctx.roundRect(24, 14, (W - 48) * (left / GAME_MS), 4, 2);
+    ctx.fillStyle = COLOR.ember;
+    ctx.fill();
+  }
+  label('スティックで動く・「ぴょん」でふくらむ・30秒のぴょんの回数で順位', W / 2, 40, 18, COLOR.text, 640);
+  label(lead === null ? '「おわる」でおしまい' : `「おわる」はリーダー（${names.get(lead) ?? `プレイヤー${lead}`}）だけ`, W / 2, 64, 16, COLOR.dim, 640);
+  ctx.font = `700 22px ${FONT}`;
+  ctx.fillStyle = COLOR.text;
+  ctx.textAlign = 'right';
+  ctx.fillText(`残り ${Math.ceil(left / 1000)}秒`, W - 28, 46);
   for (const [p, box] of world.boxes) {
     const look = looks.get(p);
     if (!look) continue;
@@ -173,7 +199,7 @@ function draw() {
     label(nameOf(p), r.x + r.w / 2, r.y + r.h / 2 + 6, 18, COLOR.text, r.w - 12);
   }
   if (world.over) label('おわり', W / 2, H / 2 + 16, 48, COLOR.glow);
-  else if (irori.paused) label('一時停止中', W / 2, H / 2 + 16, 40, COLOR.glow);
+  else if (clock.paused) label('一時停止中', W / 2, H / 2 + 16, 40, COLOR.glow);
 }
 
 /**

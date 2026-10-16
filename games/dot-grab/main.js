@@ -2,7 +2,7 @@
 // あつめて点の画面。規則は logic.js にあり、ここは irori とのやり取りと描画だけ。
 import { connect } from './irori.js';
 import {
-  BOUNDS, DOT_R, GAME_MS, H, MOVER_R, W,
+  BOUNDS, DOT_GLOW_R, DOT_R, GAME_MS, H, MOVER_R, W,
   begin, createClock, createField, handleInput, makeRng, step, updatePlayers,
 } from './logic.js';
 
@@ -171,7 +171,7 @@ function hud(/** @type {number} */ now) {
 /** 光る点（残り火のような小さな光）。 */
 function ember(/** @type {number} */ x, /** @type {number} */ y) {
   ctx.beginPath();
-  ctx.arc(x, y, DOT_R * 2, 0, Math.PI * 2);
+  ctx.arc(x, y, DOT_GLOW_R, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(255, 138, 61, 0.22)';
   ctx.fill();
   ctx.beginPath();

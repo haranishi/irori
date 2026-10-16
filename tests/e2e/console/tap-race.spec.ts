@@ -31,7 +31,8 @@ test('tap-race 全員完走：リモコンで選んで開始 → 3台が40回 �
       [2, 2, POINTS[1]],
       [3, 3, POINTS[2]],
     ]);
-    for (const r of rows) expect(r.label).toMatch(/^\d+\.\d秒$/);
+    // 完走の秒は0.01秒まで（同時に近いゴールでも、表示が分かれる）。
+    for (const r of rows) expect(r.label).toMatch(/^\d+\.\d{2}秒$/);
     // 押した数は、送った数とちょうど同じ（取りこぼし・二重がない）。
     expect([1, 2, 3].map((s, i) => downs(host, s) - before[i]!)).toEqual([TAPS_TO_FINISH, TAPS_TO_FINISH, TAPS_TO_FINISH]);
     await pads[0]!.expectKind('remote');

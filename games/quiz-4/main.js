@@ -3,7 +3,7 @@
 // 文字はすべて textContent で入れる（スマホの名前を HTML として解釈しない）。
 import { connect } from './irori.js';
 import {
-  ANSWER_MS, ROUNDS, answer, begin, createClock, createQuiz, makeRng, nextHistory, pickQuestions, tick, toRound, updatePlayers,
+  ANSWER_MS, ROUNDS, answer, begin, createClock, createQuiz, makeRng, nextHistory, pickQuestions, seatTag, tick, toRound, updatePlayers,
 } from './logic.js';
 import { QUESTIONS } from './questions.js';
 
@@ -152,7 +152,8 @@ function speak() {
 }
 
 /**
- * 選択肢のカード。答え合わせのときは、正解を光の輪で示し、選んだ人の印を並べる。
+ * 選択肢のカード。答え合わせのときは、正解を光の輪で示し、選んだ人の印を答えの下の行に並べる。
+ * 印を答えと同じ行に置くと、8人が同じ長い答えを選んだとき、文字が押されて折り返し、枠の上下にはみ出した。
  * @param {{ id: string, label: string }} c
  * @param {number} i
  * @param {string} answerId
@@ -165,19 +166,22 @@ function choiceCard(c, i, answerId) {
   num.className = 'choice__num';
   num.textContent = String(i + 1);
   const label = document.createElement('span');
+  label.className = 'choice__label';
+  // 選択肢は12文字まで。11文字からは字を小さくして、1行に収める。
+  if ([...c.label].length > 10) label.classList.add('is-long');
   label.textContent = c.label;
   li.append(num, label);
   if (quiz.phase === 'reveal') {
-    li.classList.add(c.id === answerId ? 'is-answer' : 'is-dim');
+    li.classList.add('has-who', c.id === answerId ? 'is-answer' : 'is-dim');
     const who = document.createElement('span');
     who.className = 'choice__who';
-    for (const p of order) if (quiz.seats.get(p)?.pick === c.id) who.append(shape(p, 22));
+    for (const p of order) if (quiz.seats.get(p)?.pick === c.id) who.append(shape(p, 18));
     li.append(who);
   }
   return li;
 }
 
-/** 参加者の札：色と形・名前・合計点と、答えたか（答え合わせでは増減）。 */
+/** 参加者の札：色と形・名前・合計点と、答えたか（答え合わせでは増減）。席が消えた人は「退出」。点はそのまま見せる。 */
 function seatChip(/** @type {number} */ p) {
   const seat = quiz.seats.get(p);
   const li = document.createElement('li');
@@ -189,15 +193,13 @@ function seatChip(/** @type {number} */ p) {
   score.className = 'seat__score';
   score.textContent = String(seat?.score ?? 0);
   li.append(shape(p, 24), name, score);
-  const chip = document.createElement('span');
-  chip.className = 'seat__chip';
-  if (quiz.phase === 'question' && seat?.pick) chip.textContent = '回答済み';
-  if (quiz.phase === 'reveal' && seat?.away) chip.textContent = '切断 0';
-  else if (quiz.phase === 'reveal' && seat?.delta !== null && seat?.delta !== undefined) {
-    chip.textContent = seat.delta > 0 ? `+${seat.delta}` : String(seat.delta);
-    if (seat.delta > 0) chip.classList.add('is-good');
+  const tag = seatTag(quiz, p);
+  if (tag.text) {
+    const chip = document.createElement('span');
+    chip.className = tag.good ? 'seat__chip is-good' : 'seat__chip';
+    chip.textContent = tag.text;
+    li.append(chip);
   }
-  if (chip.textContent) li.append(chip);
   return li;
 }
 

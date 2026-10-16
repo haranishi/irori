@@ -1,5 +1,5 @@
 // dot-grab（あつめて点）：スティックを倒し続けると動き続け（スマホが約1秒ごとに同じ向きを送り直す）、
-// 取った点が結果に出る。終わり方は時間切れと全員退出。席が切れると、その席の入力では動き続けない。
+// 取った点が結果に出る。終わり方は時間切れと全員退出（抜けた人も、抜けたときの数で結果に残る）。席が切れると、その席の入力では動き続けない。
 // 位置はゲームのキャンバスから読む（lib/dotgrab.ts）。時間切れは、ホストの時計を進めて起こす。
 import { AXIS_HOLD_MS, GAME_MS, INTRO_MS } from '../../../games/dot-grab/logic.js';
 import { expect, test, type Rig } from './fixtures';
@@ -72,10 +72,18 @@ test('dot-grab 時間切れ：スティックで点を取ると、取った数�
   await host.expectState('home');
 });
 
-test('dot-grab 全員退出：3台が bye。結果は空', HOST, async ({ rig }) => {
+test('dot-grab 全員退出：1台が点を取ってから3台が bye。結果には3人とも、抜けたときの数で残る', HOST, async ({ rig }) => {
   const { host, pads } = await start(rig);
+  const got = await collect(host, pads[0]!, 1, 1);
+  expect(got, '席1が点を取れた（振動の指示の数）').toBeGreaterThanOrEqual(1);
   for (const p of pads) await p.leave();
-  expect(await host.results()).toEqual([]);
+  const rows = await host.results();
+  const n = pads[0]!.fx();
+  expect(rows.map((r) => [r.seat, r.score, r.label, r.gone])).toEqual([
+    [1, n, `${n}こ`, true],
+    [2, 0, '0こ', true],
+    [3, 0, '0こ', true],
+  ]);
   await host.key('Escape');
   await host.expectState('home');
 });

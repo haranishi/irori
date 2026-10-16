@@ -141,7 +141,7 @@ async function kickFromMenu(host: Host, seat: number): Promise<void> {
   await host.expectState('playing');
 }
 
-test('ゲームの最中に外した（kick）席：外された画面は「コードを入れ直す」だけで、押すとコードの入力に戻る。外した席は結果に出ない', HOST, async ({ rig }) => {
+test('ゲームの最中に外した（kick）席：外された画面は「コードを入れ直す」だけで、押すとコードの入力に戻る。外した席は、そのときの回数のまま「退出」で結果に載る', HOST, async ({ rig }) => {
   const host = await rig.openHost();
   const pads = await rig.join(host, ['たろう', 'はなこ', 'じろう']);
   await host.choose('hello-pad', pads[0]);
@@ -154,18 +154,20 @@ test('ゲームの最中に外した（kick）席：外された画面は「コ�
   await pads[1]!.page.locator('[data-act="reenter"]').tap();
   await expect(pads[1]!.page.locator('[data-screen="entry"]')).toBeVisible();
   await expect(pads[1]!.page.locator('.pp-code__box')).toHaveCount(4);
-  // 残りの2人でゲームは続き、リーダーが終える。外した人の「ぴょん」は、結果に出ない。
+  // 残りの2人でゲームは続き、リーダーが終える。外した人も、外されるまでの「ぴょん」のまま、結果に「退出」の印つきで載る
+  // （同点は、席の順。4本のゲームの結果で、抜けた人の扱いをそろえてある）。
   await pads[0]!.expectKind('pad');
   await pads[2]!.tap('hop');
   await pads[0]!.tap('end');
   const rows = await host.results();
-  expect(rows.map((r) => [r.seat, r.label])).toEqual([
-    [3, 'ぴょん1回'],
-    [1, 'ぴょん0回'],
+  expect(rows.map((r) => [r.seat, r.label, r.gone])).toEqual([
+    [2, 'ぴょん1回', true],
+    [3, 'ぴょん1回', false],
+    [1, 'ぴょん0回', false],
   ]);
 });
 
-test('ゲームの途中で空いた席に入った人は、そのゲームの参加者にならない：待機の画面で、結果にも出ない（docs/sdk.md。元は既知の不具合1）', HOST, async ({ rig }) => {
+test('ゲームの途中で空いた席に入った人は、そのゲームの参加者にならない：待機の画面で、結果には元の参加者が「退出」で載る（docs/sdk.md。元は既知の不具合1）', HOST, async ({ rig }) => {
   const host = await rig.openHost();
   const code = await host.code();
   const pads = await rig.join(host, ['たろう', 'はなこ', 'じろう']);
@@ -184,14 +186,16 @@ test('ゲームの途中で空いた席に入った人は、そのゲームの�
   // このゲームの参加者ではないので、待機の画面（次のゲームから）。遊んでいるゲームの画面は出ない。
   await expect(pads[1]!.pad).toHaveAttribute('data-kind', 'wait');
   await expect(pads[1]!.page.locator('.irori-pad__btn[data-id="hop"]')).toHaveCount(0);
-  // 残りの2人で続き、リーダーが終える。席2は結果に出ない。
+  // 残りの2人で続き、リーダーが終える。席2の行は、あとから入った人ではなく、元の参加者（元の名前・「退出」の印）のもの。
   await pads[2]!.tap('hop');
   await pads[0]!.tap('end');
   const rows = await host.results();
-  expect(rows.map((r) => [r.seat, r.label])).toEqual([
-    [3, 'ぴょん1回'],
-    [1, 'ぴょん0回'],
+  expect(rows.map((r) => [r.seat, r.label, r.gone])).toEqual([
+    [3, 'ぴょん1回', false],
+    [1, 'ぴょん0回', false],
+    [2, 'ぴょん0回', true],
   ]);
+  expect(rows.find((r) => r.seat === 2)?.name).toContain('はなこ');
 });
 
 test('棚の読み込みが部屋につながるより遅くても、棚が出たら、ホームの選択の輪は棚のカードに乗り、リモコンの右で動く（元は既知の不具合2）', HOST, async ({ rig }) => {

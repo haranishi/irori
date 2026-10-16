@@ -265,10 +265,30 @@ function finish(/** @type {Quiz} */ quiz, /** @type {'done' | 'left'} */ why) {
   return [{ t: 'end', why, results: results(quiz) }];
 }
 
-/** 合計点の高い順。席が消えた人は外す（コンソールが名前を引けないため）。 */
+/**
+ * 参加者の札の右に出す短い印。席が消えた人は「退出」（点はそのまま見せる）、切れていて0点にした問題は「切断 0」、
+ * 出題中は「回答済み」、答え合わせでは増減。
+ * @param {Quiz} quiz
+ * @param {number} p
+ * @returns {{ text: string, good: boolean }}
+ */
+export function seatTag(quiz, p) {
+  const seat = quiz.seats.get(p);
+  if (!seat) return { text: '', good: false };
+  if (!seat.seated) return { text: '退出', good: false };
+  if (quiz.phase === 'question') return { text: seat.pick ? '回答済み' : '', good: false };
+  if (quiz.phase !== 'reveal' || seat.delta === null) return { text: '', good: false };
+  if (seat.away) return { text: '切断 0', good: false };
+  return { text: seat.delta > 0 ? `+${seat.delta}` : String(seat.delta), good: seat.delta > 0 };
+}
+
+/**
+ * 合計点の高い順。途中で席が消えた人も、そのときの点のまま載せる（4本でそろえている）。
+ * 名前はコンソールが控えていて、結果に「退出」の印を付ける。
+ */
 export function results(/** @type {Quiz} */ quiz) {
-  return [...quiz.seats]
-    .filter(([, s]) => s.seated)
+  const everyone = [...quiz.seats];
+  return everyone
     .sort((a, b) => b[1].score - a[1].score || a[0] - b[0])
     .map(([p, s]) => ({ p, score: s.score, label: `${s.correct}問正解` }));
 }

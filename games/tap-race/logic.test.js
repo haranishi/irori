@@ -78,7 +78,7 @@ describe('完走', () => {
     const fx = tap(race, 1, press, go + 2000, go + 2000);
     expect(race.runners.get(1)?.state).toBe('done');
     expect(fx).toEqual([
-      { t: 'pad', spec: PADS.done(1, '2.0秒'), to: 1 },
+      { t: 'pad', spec: PADS.done(1, '2.00秒'), to: 1 },
       { t: 'buzz', ms: [40, 60, 40], to: 1 },
     ]);
     // 完走した人の連打は、もう数えない。
@@ -95,9 +95,9 @@ describe('完走', () => {
       t: 'end',
       why: 'finish',
       results: [
-        { p: 2, score: 800, label: '4.0秒' },
-        { p: 1, score: 600, label: '5.5秒' },
-        { p: 3, score: 500, label: '9.0秒' },
+        { p: 2, score: 800, label: '4.00秒' },
+        { p: 1, score: 600, label: '5.50秒' },
+        { p: 3, score: 500, label: '9.00秒' },
       ],
     });
     expect(race.phase).toBe('over');
@@ -112,9 +112,19 @@ describe('完走', () => {
     tap(race, 2, press, go + 3001, 5_000_010); // あとで届いたが、サーバーは先に受け取った
     const [end] = ends(tap(race, 3, press, go + 3002, 5_000_010));
     expect(end.results).toEqual([
-      { p: 2, score: 800, label: '3.0秒' },
-      { p: 3, score: 800, label: '3.0秒' },
-      { p: 1, score: 500, label: '3.0秒' },
+      { p: 2, score: 800, label: '3.00秒' },
+      { p: 3, score: 800, label: '3.00秒' },
+      { p: 1, score: 500, label: '3.00秒' },
+    ]);
+  });
+
+  it('完走の秒は0.01秒まで出す。0.01秒ちがいのゴールは、表示も分かれる（0.1秒だと、どちらも「11.6秒」だった）', () => {
+    const race = started(2);
+    mash(race, 1, TAPS_TO_FINISH, go + 11_630);
+    const [end] = ends(mash(race, 2, TAPS_TO_FINISH, go + 11_640));
+    expect(end.results).toEqual([
+      { p: 1, score: 800, label: '11.63秒' },
+      { p: 2, score: 600, label: '11.64秒' },
     ]);
   });
 });
@@ -130,7 +140,7 @@ describe('時間切れ', () => {
     const [end] = ends(tick(race, go + RACE_MS));
     expect(end.why).toBe('time');
     expect(end.results).toEqual([
-      { p: 3, score: 800, label: '8.0秒' },
+      { p: 3, score: 800, label: '8.00秒' },
       { p: 2, score: 600, label: '30回' },
       { p: 1, score: 500, label: '25回' },
       { p: 4, score: 500, label: '25回' },
@@ -205,7 +215,7 @@ describe('切断は「いま押せない」だけ。席が消えたら棄権', (
     expect(race.runners.get(2)).toMatchObject({ state: 'run', taps: 5, online: true });
     mash(race, 2, TAPS_TO_FINISH - 5, clock.now());
     expect(race.runners.get(2)?.state).toBe('done');
-    expect(standings(race).find((s) => s.p === 2)).toMatchObject({ rank: 1, points: 800, label: '1.3秒' });
+    expect(standings(race).find((s) => s.p === 2)).toMatchObject({ rank: 1, points: 800, label: '1.30秒' });
   });
 
   it('猶予のあいだ（切れてから席が消えるまで）は参加者のまま。消えたときに棄権になり、結果に「棄権」0点で残る', () => {
@@ -237,8 +247,8 @@ describe('切断は「いま押せない」だけ。席が消えたら棄権', (
     const [end] = ends(tick(race, go + RACE_MS));
     expect(end.why).toBe('time');
     expect(end.results.map((r) => [r.p, r.score, r.label])).toEqual([
-      [1, 800, '2.0秒'],
-      [2, 600, '3.0秒'],
+      [1, 800, '2.00秒'],
+      [2, 600, '3.00秒'],
       [3, 0, '0回'],
     ]);
   });
@@ -251,8 +261,8 @@ describe('切断は「いま押せない」だけ。席が消えたら棄権', (
     const [end] = ends(mash(race, 2, TAPS_TO_FINISH, go + 2500));
     expect(end.why).toBe('finish');
     expect(end.results).toEqual([
-      { p: 1, score: 800, label: '2.0秒' },
-      { p: 2, score: 600, label: '2.5秒' },
+      { p: 1, score: 800, label: '2.00秒' },
+      { p: 2, score: 600, label: '2.50秒' },
       { p: 3, score: 0, label: OUT_LABEL },
     ]);
   });
@@ -265,9 +275,9 @@ describe('切断は「いま押せない」だけ。席が消えたら棄権', (
     expect(race.phase).toBe('race');
     const [end] = ends(mash(race, 3, TAPS_TO_FINISH, go + 7000));
     expect(end.results).toEqual([
-      { p: 1, score: 800, label: '5.0秒' },
-      { p: 2, score: 600, label: '6.0秒' },
-      { p: 3, score: 500, label: '7.0秒' },
+      { p: 1, score: 800, label: '5.00秒' },
+      { p: 2, score: 600, label: '6.00秒' },
+      { p: 3, score: 500, label: '7.00秒' },
     ]);
   });
 
@@ -317,9 +327,9 @@ describe('8人', () => {
     updatePlayers(race, without(seats(8, [5]), 6)); // 5は切れているだけ、6は席が消えた
     const [end] = ends(tick(race, go + RACE_MS));
     expect(end.results).toEqual([
-      { p: 4, score: 800, label: '4.0秒' },
-      { p: 7, score: 600, label: '5.0秒' },
-      { p: 1, score: 500, label: '6.0秒' },
+      { p: 4, score: 800, label: '4.00秒' },
+      { p: 7, score: 600, label: '5.00秒' },
+      { p: 1, score: 500, label: '6.00秒' },
       { p: 2, score: 400, label: '20回' },
       { p: 8, score: 300, label: '3回' },
       { p: 3, score: 0, label: '0回' },
@@ -349,7 +359,7 @@ describe('コンソールに渡す形', () => {
   const graphemes = (s) => [...new Intl.Segmenter('ja', { granularity: 'grapheme' }).segment(s)].length;
 
   it('画面の文字は上限内（ボタン12・ヒント40・見出し24・本文120）', () => {
-    for (const s of [PADS.ready, PADS.race, PADS.done(8, '29.9秒')]) {
+    for (const s of [PADS.ready, PADS.race, PADS.done(8, '29.99秒')]) {
       if ('label' in s) expect(graphemes(s.label)).toBeLessThanOrEqual(12);
       if ('hint' in s && s.hint) expect(graphemes(s.hint)).toBeLessThanOrEqual(40);
       if ('title' in s && s.title) expect(graphemes(s.title)).toBeLessThanOrEqual(24);

@@ -161,7 +161,8 @@ export function standings(race) {
   for (const [p, r] of done) {
     const rank = 1 + done.filter(([, o]) => /** @type {number} */ (o.doneT) < /** @type {number} */ (r.doneT)).length;
     const secs = (/** @type {number} */ (r.doneAt) - race.goAt) / 1000;
-    list.push({ p, rank, points: POINTS[rank - 1] ?? 0, label: `${secs.toFixed(1)}秒`, taps: r.taps, done: true, out: false });
+    // 0.01秒まで出す。0.1秒だと、同時に近いゴールが同じ表示のまま順位だけ分かれる（順位は T で決める）。
+    list.push({ p, rank, points: POINTS[rank - 1] ?? 0, label: `${secs.toFixed(2)}秒`, taps: r.taps, done: true, out: false });
   }
   for (const [p, r] of running) {
     const rank = 1 + done.length + running.filter(([, o]) => o.taps > r.taps).length;

@@ -134,10 +134,37 @@ body {
   font-size: 22px;
 }
 
+.choice__label {
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.choice__label.is-long {
+  font-size: 26px;
+}
+
+/* 答え合わせ：選んだ人の印は、答えの下の行に並べる（8人が同じ答えでも、文字を押し出さない）。 */
+.choice.has-who {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-rows: auto 18px;
+  align-content: center;
+  column-gap: 16px;
+  row-gap: 6px;
+}
+
+.choice.has-who .choice__num {
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
 .choice__who {
   display: flex;
-  gap: 4px;
-  margin-left: auto;
+  gap: 3px;
+  height: 18px;
 }
 
 .choice.is-answer {

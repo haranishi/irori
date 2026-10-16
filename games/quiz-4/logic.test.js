@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ANSWER_MS, AWAY_POINTS, INTRO_MS, MAX_POINTS, MIN_POINTS, PADS, REVEAL_MS, ROUNDS, TIMEOUT_POINTS, WRONG_POINTS,
-  answer, begin, createClock, createQuiz, makeRng, nextHistory, pickQuestions, pointsFor, results, shuffle, tick, toRound, updatePlayers,
+  answer, begin, createClock, createQuiz, makeRng, nextHistory, pickQuestions, pointsFor, results, seatTag, shuffle, tick, toRound, updatePlayers,
 } from './logic.js';
 import { QUESTIONS } from './questions.js';
 
@@ -247,6 +247,23 @@ describe('切断は「いま答えられない」だけ', () => {
     expect(fx.every((e) => e.t === 'pad')).toBe(true);
   });
 
+  it('札の印：席が消えた人は、どの場面でも「退出」（点はそのまま）。切れているだけなら「切断 0」', () => {
+    const { quiz, at } = asked(3);
+    answer(quiz, 1, pick('c0'), at);
+    expect([1, 2, 3].map((p) => seatTag(quiz, p).text)).toEqual(['回答済み', '', '']);
+    // 2は切れただけ、3は席が消えた。つながっている1は答えたので、ここで答え合わせ。
+    updatePlayers(quiz, without(seats(3, [2]), 3), at + 10);
+    expect(quiz.phase).toBe('reveal');
+    expect([1, 2, 3].map((p) => seatTag(quiz, p))).toEqual([
+      { text: '+1000', good: true }, { text: '切断 0', good: false }, { text: '退出', good: false },
+    ]);
+    tick(quiz, at + 10 + REVEAL_MS); // 次の問題でも、席が消えた人は「退出」のまま
+    expect(quiz.phase).toBe('question');
+    expect([1, 2, 3].map((p) => seatTag(quiz, p).text)).toEqual(['', '', '退出']);
+    expect(quiz.seats.get(3)?.score).toBe(0);
+    expect(seatTag(quiz, 9)).toEqual({ text: '', good: false });
+  });
+
   it('あとから来た席は入れない', () => {
     const { quiz, at } = asked(2);
     expect(updatePlayers(quiz, [...seats(2), { id: 4, name: 'P4', online: true }], at)).toEqual([]);
@@ -301,20 +318,63 @@ describe('終わり方', () => {
     expect(answer(quiz, 1, pick('c0'), now)).toEqual([]);
   });
 
-  it('2：全員の席が消えたら end（出題中・説明中・答え合わせ中のどこでも）。消えた人は結果に入れない', () => {
+  it('2：全員の席が消えたら end（出題中・説明中・答え合わせ中のどこでも）。消えた人も、そのときの点で結果に載る', () => {
     const during = asked(2);
+    answer(during.quiz, 1, pick('c0'), during.at); // 1は+1000
+    answer(during.quiz, 2, pick('c1'), during.at); // 2は-200。全員が答えたので答え合わせ
     expect(updatePlayers(during.quiz, without(seats(2), 1), during.at + 10)).toEqual([]);
-    expect(ends(updatePlayers(during.quiz, [], during.at + 20))).toEqual([{ t: 'end', why: 'left', results: [] }]);
+    tick(during.quiz, during.at + REVEAL_MS); // 第2問へ（1の席はもうない）
+    expect(during.quiz.phase).toBe('question');
+    expect(ends(updatePlayers(during.quiz, [], during.at + REVEAL_MS + 20))).toEqual([{
+      t: 'end',
+      why: 'left',
+      results: [
+        { p: 1, score: 1000, label: '1問正解' },
+        { p: 2, score: -200, label: '0問正解' },
+      ],
+    }]);
 
     const intro = createQuiz(seats(2), fixedRounds, 0);
     begin(intro);
-    expect(ends(updatePlayers(intro, [], 10))).toEqual([{ t: 'end', why: 'left', results: [] }]);
+    expect(ends(updatePlayers(intro, [], 10))).toEqual([{
+      t: 'end',
+      why: 'left',
+      results: [{ p: 1, score: 0, label: '0問正解' }, { p: 2, score: 0, label: '0問正解' }],
+    }]);
 
     const reveal = asked(2);
     answer(reveal.quiz, 1, pick('c0'), reveal.at);
     answer(reveal.quiz, 2, pick('c0'), reveal.at);
     expect(reveal.quiz.phase).toBe('reveal');
-    expect(ends(updatePlayers(reveal.quiz, [], reveal.at + 10))[0]?.why).toBe('left');
+    const [end] = ends(updatePlayers(reveal.quiz, [], reveal.at + 10));
+    expect(end?.why).toBe('left');
+    expect(end?.results.map((r) => [r.p, r.score])).toEqual([[1, 1000], [2, 1000]]);
+  });
+
+  it('8問を終えたときも、途中で席が消えた人は、消えたときの点のまま結果に載る（それより後の問題は0点）', () => {
+    const { quiz } = asked(3);
+    let now = INTRO_MS;
+    answer(quiz, 3, pick('c0'), now); // 3は第1問だけ答えて正解（+1000）
+    tick(quiz, now + ANSWER_MS); // 1と2は時間切れ（-200）
+    updatePlayers(quiz, without(seats(3), 3), now + ANSWER_MS + 10);
+    now += ANSWER_MS;
+    let last = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      last = tick(quiz, now + REVEAL_MS);
+      now += REVEAL_MS;
+      if (i === ROUNDS - 1) break;
+      answer(quiz, 1, pick('c0'), now);
+      last = answer(quiz, 2, pick('c0'), now); // 3は待たずに締め切る
+    }
+    expect(ends(last)[0]).toEqual({
+      t: 'end',
+      why: 'done',
+      results: [
+        { p: 1, score: 6800, label: '7問正解' },
+        { p: 2, score: 6800, label: '7問正解' },
+        { p: 3, score: 1000, label: '1問正解' },
+      ],
+    });
   });
 
   it('始めた時点で誰もいなければ、すぐ end', () => {

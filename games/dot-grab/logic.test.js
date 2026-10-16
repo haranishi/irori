@@ -2,11 +2,13 @@
 // 切断の扱い：online が偽なのは「いま動かせない」だけ。席が全部消えたときだけ終わる。
 import { describe, expect, it } from 'vitest';
 import {
-  AXIS_HOLD_MS, BOUNDS, DOT_R, GAME_MS, INTRO_MS, MAX_DOTS, MAX_DT, MOVER_R, PADS, RESPAWN_MS, SPAWN_GAP, SPEED,
+  AXIS_HOLD_MS, BOUNDS, DOT_GLOW_R, DOT_R, GAME_MS, INTRO_MS, MAX_DOTS, MAX_DT, MOVER_R, PADS, PICK_R, RESPAWN_MS, SPAWN_GAP, SPEED,
   begin, createClock, createField, handleInput, makeRng, results, segmentDistance, step, updatePlayers,
 } from './logic.js';
 
 const seats = (n, offline = []) => Array.from({ length: n }, (_, i) => ({ id: i + 1, name: `P${i + 1}`, online: !offline.includes(i + 1) }));
+/** 席の一覧から、指定の席を消す（猶予切れ・退出・外された）。 */
+const without = (list, ...gone) => list.filter((s) => !gone.includes(s.id));
 const axis = (x, y) => ({ k: 'axis', id: 'stick', x, y });
 const ends = (effects) => effects.filter((e) => e.t === 'end');
 
@@ -146,11 +148,48 @@ describe('点を取る', () => {
     const field = playing(1);
     const m = field.movers.get(1);
     m.x = BOUNDS.left + 10;
-    field.dots = [{ x: m.x + 20, y: m.y + MOVER_R + DOT_R - 1, live: true, at: 0 }];
+    const dot = { x: m.x + 20, y: m.y + PICK_R - 1, live: true, at: 0 };
+    field.dots = [dot];
+    const x0 = m.x;
     handleInput(field, 1, axis(1, 0), t0);
-    step(field, MAX_DT, t0 + 100); // 30px 進む。終点では点から離れている
-    expect(Math.hypot(m.x - field.dots[0].x, m.y - (m.y + MOVER_R + DOT_R - 1))).toBeGreaterThan(MOVER_R + DOT_R);
+    step(field, MAX_DT, t0 + 100); // 30px 進む。始点でも終点でも、点から離れている
+    expect(Math.hypot(x0 - dot.x, m.y - dot.y)).toBeGreaterThan(PICK_R);
+    expect(Math.hypot(m.x - dot.x, m.y - dot.y)).toBeGreaterThan(PICK_R);
     expect(m.score).toBe(1);
+  });
+
+  it('当たりは、描いている光の輪の縁：体が輪に触れたら取れ（中心の距離が MOVER_R + DOT_GLOW_R ちょうどまで）、その外では取れない', () => {
+    expect(DOT_GLOW_R).toBe(DOT_R * 2);
+    const touch = (gap) => {
+      const field = playing(1);
+      const m = field.movers.get(1);
+      m.x = 300;
+      m.y = 300;
+      field.dots = [{ x: 300 + gap, y: 300, live: true, at: 0 }];
+      step(field, 0.016, t0 + 16);
+      return m.score;
+    };
+    expect(touch(MOVER_R + DOT_GLOW_R)).toBe(1);
+    expect(touch(MOVER_R + DOT_GLOW_R + 0.5)).toBe(0);
+    // 前の当たり（MOVER_R + DOT_R = 32）では取れなかった、輪の中の位置（40px）。
+    expect(touch(40)).toBe(1);
+  });
+
+  it('途中で席が消えた人は、その場に残っても点を取らない（結果には、消えたときの数のまま載る）', () => {
+    const field = playing(3);
+    const gone = field.movers.get(2);
+    gone.score = 5;
+    expect(updatePlayers(field, without(seats(3), 2))).toEqual([]);
+    field.dots = [{ x: gone.x, y: gone.y, live: true, at: 0 }];
+    step(field, 0.016, t0 + 16);
+    expect(gone.score).toBe(5);
+    expect(field.dots[0].live).toBe(true);
+    const [end] = ends(step(field, 0.016, t0 + GAME_MS));
+    expect(end?.results).toEqual([
+      { p: 2, score: 5, label: '5こ' },
+      { p: 1, score: 0, label: '0こ' },
+      { p: 3, score: 0, label: '0こ' },
+    ]);
   });
 
   it('2人が同じ点に触れたら、近いほうが取る', () => {
@@ -204,7 +243,16 @@ describe('終わり方', () => {
     expect(field.movers.get(3)).toMatchObject({ online: true, score: 2 });
     expect(updatePlayers(field, [{ id: 3, name: 'P3', online: false }])).toEqual([]);
     const [end] = ends(updatePlayers(field, []));
-    expect(end).toEqual({ t: 'end', why: 'left', results: [] });
+    // 席が消えた人も、そのときの数のまま結果に載る（名前と「退出」の印はコンソールが付ける）。
+    expect(end).toEqual({
+      t: 'end',
+      why: 'left',
+      results: [
+        { p: 3, score: 2, label: '2こ' },
+        { p: 1, score: 0, label: '0こ' },
+        { p: 2, score: 0, label: '0こ' },
+      ],
+    });
   });
 
   it('説明のあいだに全員の席が消えても end', () => {

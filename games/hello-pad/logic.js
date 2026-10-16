@@ -3,14 +3,15 @@
 // 関数は「やること」（効果）の配列を返す。main.js がそれを irori に渡す。
 // 切断の扱い（4本でそろえている）：players の online が偽なのは「いま動かせない」だけ。四角を止めて保ち、戻れば続きから。
 // 席が players から消えたとき（猶予切れ・退出・外された）だけ、いない人として扱う。
+// 遊ぶのは30秒。ぴょんの回数で順位がつき、時間切れかリーダーの「おわる」で終わる。時刻は一時停止で止まる時計で測る。
 
 /** @typedef {import('./irori.js').PlayerInfo} PlayerInfo */
 /** @typedef {import('./irori.js').PadSpec} PadSpec */
 /** @typedef {import('./irori.js').GameInput} GameInput */
 /** @typedef {import('./irori.js').GameResult} GameResult */
-/** @typedef {{ t: 'end', why: 'button' | 'left', results: GameResult[] }} Effect */
+/** @typedef {{ t: 'end', why: 'button' | 'time' | 'left', results: GameResult[] }} Effect */
 /** @typedef {{ x: number, y: number, ax: number, ay: number, hopAt: number, hops: number, online: boolean, seated: boolean }} Box */
-/** @typedef {{ boxes: Map<number, Box>, leader: number | null, over: boolean }} World */
+/** @typedef {{ boxes: Map<number, Box>, leader: number | null, endAt: number, over: boolean }} World */
 
 export const W = 960;
 export const H = 540;
@@ -20,6 +21,8 @@ export const SIZE = 64;
 export const SPEED = 280;
 /** 「ぴょん」でふくらんでいる時間。 */
 export const HOP_MS = 320;
+/** 遊ぶ時間。終わりをリーダーの手だけに任せず、毎回の目標（30秒でたくさんぴょん）を作る。 */
+export const GAME_MS = 30000;
 /** ふくらんだときの倍率の最大。 */
 export const HOP_SCALE = 1.35;
 /** 床（描く枠）。 */
@@ -45,7 +48,7 @@ export const BOUNDS = {
  * 全員の画面：スティックと「ぴょん」。
  * @type {PadSpec}
  */
-export const PAD_PLAYER = { k: 'pad', stick: 'stick', hint: 'スティックで動く。ぴょんの回数で順位がつく', buttons: [{ id: 'hop', label: 'ぴょん' }] };
+export const PAD_PLAYER = { k: 'pad', stick: 'stick', hint: '30秒のあいだのぴょんの回数で順位がつく', buttons: [{ id: 'hop', label: 'ぴょん' }] };
 
 /**
  * リーダーの画面：「おわる」も出す。全員に出すと、連打の最中の押し間違いで、全員のゲームが終わってしまうため。
@@ -54,7 +57,7 @@ export const PAD_PLAYER = { k: 'pad', stick: 'stick', hint: 'スティックで�
 export const PAD_LEADER = {
   k: 'pad',
   stick: 'stick',
-  hint: '「おわる」を押すと、全員のゲームが終わる',
+  hint: '30秒で終わる。「おわる」でも全員のゲームが終わる',
   buttons: [
     { id: 'hop', label: 'ぴょん' },
     { id: 'end', label: 'おわる', color: 'gray' },
@@ -66,16 +69,34 @@ export const PAD_LEADER = {
  * 置いたあと、同じ一覧を handlePlayers にも渡す（誰もいなければ、そこで終わる）。
  * @param {readonly PlayerInfo[]} players
  * @param {number | null} [leader] リーダーの席（irori.leader）。「おわる」を押せるのは、この席だけ
+ * @param {number} [now] ゲームの時計（ミリ秒）。ここから GAME_MS で時間切れ
  * @returns {World}
  */
-export function createWorld(players, leader = null) {
+export function createWorld(players, leader = null, now = 0) {
   /** @type {Map<number, Box>} */
   const boxes = new Map();
   players.forEach((p, i) => {
     const x = (W * (i + 1)) / (players.length + 1);
     boxes.set(p.id, { x, y: H / 2, ax: 0, ay: 0, hopAt: Number.NEGATIVE_INFINITY, hops: 0, online: p.online, seated: true });
   });
-  return { boxes, leader, over: false };
+  return { boxes, leader, endAt: now + GAME_MS, over: false };
+}
+
+/**
+ * 時間で進むこと（時間切れ）。毎フレーム呼ぶ。締切ちょうどで終える。
+ * @param {World} world
+ * @param {number} now
+ * @returns {Effect[]}
+ */
+export function tick(world, now) {
+  if (world.over) return [];
+  if (now >= world.endAt) return finish(world, 'time');
+  return [];
+}
+
+/** 残りの時間（ミリ秒）。 */
+export function timeLeft(/** @type {World} */ world, /** @type {number} */ now) {
+  return Math.max(0, world.endAt - now);
 }
 
 /**
@@ -225,11 +246,36 @@ export function hopScale(/** @type {Box} */ box, /** @type {number} */ now) {
 }
 
 /** @returns {Effect[]} */
-function finish(/** @type {World} */ world, /** @type {'button' | 'left'} */ why) {
+function finish(/** @type {World} */ world, /** @type {'button' | 'time' | 'left'} */ why) {
   if (world.over) return [];
   world.over = true;
-  // 席が消えた人は結果に入れない（コンソールが名前を引けないため）。
+  // 途中で席が消えた人も、そのときの回数のまま載せる（4本でそろえている）。名前はコンソールが控えて「退出」の印を付ける。
+  const everyone = [...world.boxes];
   /** @type {GameResult[]} */
-  const results = [...world.boxes].filter(([, b]) => b.seated).map(([p, b]) => ({ p, score: b.hops, label: `ぴょん${b.hops}回` }));
+  const results = everyone.map(([p, b]) => ({ p, score: b.hops, label: `ぴょん${b.hops}回` }));
   return [{ t: 'end', why, results }];
+}
+
+/**
+ * 一時停止のあいだ止まる時計。ゲームの時刻はすべてこれで測る（pause のあいだ、締切も進まない）。
+ * @param {() => number} realNow
+ */
+export function createClock(realNow) {
+  /** @type {number | null} */
+  let pausedAt = null;
+  let lost = 0;
+  return {
+    now: () => (pausedAt ?? realNow()) - lost,
+    get paused() {
+      return pausedAt !== null;
+    },
+    pause() {
+      if (pausedAt === null) pausedAt = realNow();
+    },
+    resume() {
+      if (pausedAt === null) return;
+      lost += realNow() - pausedAt;
+      pausedAt = null;
+    },
+  };
 }

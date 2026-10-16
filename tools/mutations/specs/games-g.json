@@ -79,5 +79,77 @@
     "replace": "if (false) out.push(",
     "command": ["node", "--test", "tools/tests/registry.test.mjs"],
     "timeoutMs": 180000
+  },
+  {
+    "id": "games-j-quiz-drops-departed",
+    "note": "(j) 4択クイズの結果から、途中で席が消えた人を外す（抜けた人の点が結果に出ない）",
+    "file": "games/quiz-4/logic.js",
+    "find": "const everyone = [...quiz.seats];",
+    "replace": "const everyone = [...quiz.seats].filter(([, s]) => s.seated);",
+    "command": ["npm", "run", "test:games", "--", "games/quiz-4/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-k-hello-pad-drops-departed",
+    "note": "(k) ハローパッドの結果から、途中で席が消えた人を外す",
+    "file": "games/hello-pad/logic.js",
+    "find": "const everyone = [...world.boxes];",
+    "replace": "const everyone = [...world.boxes].filter(([, b]) => b.seated);",
+    "command": ["npm", "run", "test:games", "--", "games/hello-pad/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-l-dot-grab-drops-departed",
+    "note": "(l) あつめて点の結果から、途中で席が消えた人を外す",
+    "file": "games/dot-grab/logic.js",
+    "find": "const everyone = [...field.movers];",
+    "replace": "const everyone = [...field.movers].filter(([, m]) => m.seated);",
+    "command": ["npm", "run", "test:games", "--", "games/dot-grab/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-m-dot-grab-old-pick-radius",
+    "note": "(m) あつめて点の当たりを元の大きさ（MOVER_R + DOT_R = 32）に戻す（光の輪に触れても取れない）",
+    "file": "games/dot-grab/logic.js",
+    "find": "export const PICK_R = MOVER_R + DOT_GLOW_R;",
+    "replace": "export const PICK_R = MOVER_R + DOT_R;",
+    "command": ["npm", "run", "test:games", "--", "games/dot-grab/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-n-hello-pad-no-time-limit",
+    "note": "(n) ハローパッドの30秒の時間切れを外す（リーダーが押すまで終わらない）",
+    "file": "games/hello-pad/logic.js",
+    "find": "if (now >= world.endAt) return finish(world, 'time');",
+    "replace": "if (false) return finish(world, 'time');",
+    "command": ["npm", "run", "test:games", "--", "games/hello-pad/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-o-dot-grab-departed-still-picks",
+    "note": "(o) あつめて点で、席が消えた人も、その場に残った体で点を取る（抜けたあとに点が増える）",
+    "file": "games/dot-grab/logic.js",
+    "find": "if (m.seated) paths.set(p, [x0, y0, m.x, m.y]);",
+    "replace": "paths.set(p, [x0, y0, m.x, m.y]);",
+    "command": ["npm", "run", "test:games", "--", "games/dot-grab/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-p-quiz-departed-shown-as-away",
+    "note": "(p) 4択クイズで、席が消えた人の札を「退出」にしない（「切断 0」のまま）",
+    "file": "games/quiz-4/logic.js",
+    "find": "if (!seat.seated) return { text: '退出', good: false };",
+    "replace": "if (false) return { text: '退出', good: false };",
+    "command": ["npm", "run", "test:games", "--", "games/quiz-4/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-q-tap-race-tenth-seconds",
+    "note": "(q) 連打レースの完走の秒を0.1秒までに戻す（0.01秒ちがいのゴールが同じ表示になる）",
+    "file": "games/tap-race/logic.js",
+    "find": "label: `${secs.toFixed(2)}秒`",
+    "replace": "label: `${secs.toFixed(1)}秒`",
+    "command": ["npm", "run", "test:games", "--", "games/tap-race/"],
+    "timeoutMs": 180000
   }
 ]

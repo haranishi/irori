@@ -1,5 +1,6 @@
-// hello-pad（ハローパッド）の終わり方2つ：リーダーの「おわる」で end／全員退出。ぴょんの回数が結果に出る。
+// hello-pad（ハローパッド）の終わり方3つ：リーダーの「おわる」で end／30秒の時間切れ／全員退出。ぴょんの回数が結果に出る。
 // 「おわる」はリーダー（最初に入った席）のスマホにだけ出る。リーダーが抜けると、次のリーダーの席へ移る。
+import { GAME_MS } from '../../../games/hello-pad/logic.js';
 import { expect, test } from './fixtures';
 import { HOST } from './lib/tags';
 
@@ -32,7 +33,22 @@ test('hello-pad リーダーの「おわる」：ぴょんの回数が結果に�
   await host.expectState('home');
 });
 
-test('hello-pad 全員退出：リーダーが抜けるたびに「おわる」が次の席へ移り、最後の1人が抜けると結果は空', HOST, async ({ rig }) => {
+test('hello-pad 時間切れ：ホストの時計を30秒進めると終わり、ぴょんの回数で結果が出る', HOST, async ({ rig }) => {
+  const host = await rig.openHost({ clock: true });
+  const pads = await rig.join(host, ['たろう', 'はなこ']);
+  await host.choose('hello-pad', pads[0]);
+  await host.expectPhase('play');
+  await pads[1]!.tapMany('hop', 2, 120);
+  await expect.poll(() => host.inputs(2).filter((r) => r.f.i?.id === 'hop' && r.f.i.d === 1).length).toBe(2);
+  await host.advance(GAME_MS);
+  const rows = await host.results();
+  expect(rows.map((r) => [r.seat, r.rank, r.score, r.label])).toEqual([
+    [2, 1, 2, 'ぴょん2回'],
+    [1, 2, 0, 'ぴょん0回'],
+  ]);
+});
+
+test('hello-pad 全員退出：リーダーが抜けるたびに「おわる」が次の席へ移り、最後の1人が抜けると終わる。結果には3人とも、抜けたときの回数で残る', HOST, async ({ rig }) => {
   const host = await rig.openHost();
   const pads = await rig.join(host, ['たろう', 'はなこ', 'じろう']);
   await host.choose('hello-pad', pads[0]);
@@ -44,7 +60,12 @@ test('hello-pad 全員退出：リーダーが抜けるたびに「おわる」�
   await pads[1]!.leave();
   await expect(pads[2]!.button('end')).toBeVisible();
   await pads[2]!.leave();
-  expect(await host.results()).toEqual([]);
+  const rows = await host.results();
+  expect(rows.map((r) => [r.seat, r.rank, r.score, r.label, r.gone])).toEqual([
+    [2, 1, 1, 'ぴょん1回', true],
+    [1, 2, 0, 'ぴょん0回', true],
+    [3, 2, 0, 'ぴょん0回', true],
+  ]);
   await host.key('Escape');
   await host.expectState('home');
 });

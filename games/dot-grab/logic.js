@@ -33,6 +33,10 @@ export const GAME_MS = 45000;
 export const SPEED = 300;
 export const MOVER_R = 22;
 export const DOT_R = 10;
+/** 点のまわりに描く光の輪の半径。当たりもこの輪の縁で決める（描く大きさと当たりをずらさない）。 */
+export const DOT_GLOW_R = DOT_R * 2;
+/** 当たりの距離：体（MOVER_R）が光の輪の縁に触れたら取れる。 */
+export const PICK_R = MOVER_R + DOT_GLOW_R;
 export const MAX_DOTS = 8;
 /** 取られた点が出直すまでの時間。 */
 export const RESPAWN_MS = 700;
@@ -145,7 +149,8 @@ export function step(field, dt, now) {
     const y0 = m.y;
     m.x = clamp(m.x + vx * SPEED * d, BOUNDS.left, BOUNDS.right);
     m.y = clamp(m.y + vy * SPEED * d, BOUNDS.top, BOUNDS.bottom);
-    paths.set(p, [x0, y0, m.x, m.y]);
+    // 席が消えた人は、もう点を取らない（結果には、抜けたときの数のまま載せる）。
+    if (m.seated) paths.set(p, [x0, y0, m.x, m.y]);
   }
   /** @type {Effect[]} */
   const out = [];
@@ -156,7 +161,7 @@ export function step(field, dt, now) {
     }
     // 動いた道すじ（線分）が点に触れたかで見る。速く動いても、すり抜けない。
     let best = -1;
-    let bestDist = MOVER_R + DOT_R;
+    let bestDist = PICK_R;
     for (const [p, [x0, y0, x1, y1]] of paths) {
       const dist = segmentDistance(dot.x, dot.y, x0, y0, x1, y1);
       if (dist <= bestDist && (best === -1 || dist < bestDist || p < best)) {
@@ -190,10 +195,13 @@ export function updatePlayers(field, players) {
   return [...field.movers.values()].some((m) => m.seated) ? [] : finish(field, 'left');
 }
 
-/** 取った数の多い順。席が消えた人は外す（コンソールが名前を引けないため）。 */
+/**
+ * 取った数の多い順。途中で席が消えた人も、そのときの数のまま載せる（4本でそろえている）。
+ * 名前はコンソールが控えていて、結果に「退出」の印を付ける。
+ */
 export function results(/** @type {Field} */ field) {
-  return [...field.movers]
-    .filter(([, m]) => m.seated)
+  const everyone = [...field.movers];
+  return everyone
     .sort((a, b) => b[1].score - a[1].score || a[0] - b[0])
     .map(([p, m]) => ({ p, score: m.score, label: `${m.score}こ` }));
 }
@@ -215,7 +223,7 @@ function spawn(/** @type {Field} */ field, /** @type {number} */ now) {
     x = BOUNDS.left + m + field.rng() * (BOUNDS.right - BOUNDS.left - 2 * m);
     y = BOUNDS.top + m + field.rng() * (BOUNDS.bottom - BOUNDS.top - 2 * m);
     const nearMover = [...field.movers.values()].some((o) => Math.hypot(o.x - x, o.y - y) < SPAWN_GAP);
-    const nearDot = field.dots.some((d) => d.live && Math.hypot(d.x - x, d.y - y) < DOT_R * 4);
+    const nearDot = field.dots.some((d) => d.live && Math.hypot(d.x - x, d.y - y) < DOT_GLOW_R * 2);
     if (!nearMover && !nearDot) break;
   }
   return { x, y, live: true, at: now };

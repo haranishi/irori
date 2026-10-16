@@ -1,10 +1,10 @@
-// ハローパッドの規則の試験。終わり方は2つ（リーダーの「おわる」・全員退出）で、どちらも end まで通す。
+// ハローパッドの規則の試験。終わり方は3つ（リーダーの「おわる」・全員退出・30秒の時間切れ）で、どれも end まで通す。
 // リーダー以外の「おわる」が効かないこと、リーダーが替わった瞬間から新しいリーダーの「おわる」だけが効くことも確かめる。
 // 切断の扱い：online が偽なのは「いま動かせない」だけ。四角を止めて保ち、席が全部消えたときだけ終わる。
 import { describe, expect, it } from 'vitest';
 import {
-  BOUNDS, FLOOR, H, HOP_MS, HOP_SCALE, NAME_H, PAD_LEADER, PAD_PLAYER, SIZE, SPEED, TOP_TEXT, W,
-  boxRect, createWorld, handleInput, handlePlayers, hopScale, leaderOf, padsFor, placeNames, step,
+  BOUNDS, FLOOR, GAME_MS, H, HOP_MS, HOP_SCALE, NAME_H, PAD_LEADER, PAD_PLAYER, SIZE, SPEED, TOP_TEXT, W,
+  boxRect, createClock, createWorld, handleInput, handlePlayers, hopScale, leaderOf, padsFor, placeNames, step, tick, timeLeft,
 } from './logic.js';
 
 const seats = (n, offline = []) => Array.from({ length: n }, (_, i) => ({ id: i + 1, name: `P${i + 1}`, online: !offline.includes(i + 1) }));
@@ -113,7 +113,64 @@ describe('終わり方', () => {
     expect(world.boxes.get(2)).toMatchObject({ online: true, hops: 1 });
     expect(handlePlayers(world, without(seats(2), 2), 1)).toEqual([]);
     const fx = handlePlayers(world, [], null);
-    expect(fx).toEqual([{ t: 'end', why: 'left', results: [] }]);
+    // 席が消えた人も、そのときの回数のまま結果に載る（名前と「退出」の印はコンソールが付ける）。
+    expect(fx).toEqual([{
+      t: 'end',
+      why: 'left',
+      results: [
+        { p: 1, score: 0, label: 'ぴょん0回' },
+        { p: 2, score: 1, label: 'ぴょん1回' },
+      ],
+    }]);
+  });
+
+  it('途中で席が消えた人も、消えたときの回数のまま結果に載る', () => {
+    const world = createWorld(seats(3), 1);
+    for (const t of [0, 400, 800]) handleInput(world, 2, btn('hop'), t);
+    handleInput(world, 3, btn('hop'), 0);
+    expect(handlePlayers(world, without(seats(3), 2), 1)).toEqual([]);
+    const [end] = handleInput(world, 1, btn('end'), 1000);
+    expect(end?.results).toEqual([
+      { p: 1, score: 0, label: 'ぴょん0回' },
+      { p: 2, score: 3, label: 'ぴょん3回' },
+      { p: 3, score: 1, label: 'ぴょん1回' },
+    ]);
+  });
+
+  it('3：30秒で時間切れの end。締切の1ミリ秒前は続き、ちょうどで終わる。「おわる」はそれより前でも効く', () => {
+    const world = createWorld(seats(2), 1, 5000);
+    handleInput(world, 2, btn('hop'), 6000);
+    expect(timeLeft(world, 5000)).toBe(GAME_MS);
+    expect(tick(world, 5000 + GAME_MS - 1)).toEqual([]);
+    expect(timeLeft(world, 5000 + GAME_MS - 1)).toBe(1);
+    expect(tick(world, 5000 + GAME_MS)).toEqual([{
+      t: 'end',
+      why: 'time',
+      results: [
+        { p: 1, score: 0, label: 'ぴょん0回' },
+        { p: 2, score: 1, label: 'ぴょん1回' },
+      ],
+    }]);
+    expect(timeLeft(world, 5000 + GAME_MS + 500)).toBe(0);
+    // 終わったあとは、時間も入力も何も起こさない。
+    expect(tick(world, 5000 + GAME_MS + 16)).toEqual([]);
+    expect(handleInput(world, 1, btn('end'), 5000 + GAME_MS + 20)).toEqual([]);
+    expect(GAME_MS).toBe(30000);
+  });
+
+  it('一時停止のあいだは時計が止まり、30秒の締切も延びる', () => {
+    let real = 1000;
+    const clock = createClock(() => real);
+    const world = createWorld(seats(1), 1, clock.now());
+    real += 10_000;
+    clock.pause();
+    real += 120_000; // メニューを2分開いていた
+    expect(tick(world, clock.now())).toEqual([]);
+    clock.resume();
+    real += GAME_MS - 10_000 - 1;
+    expect(tick(world, clock.now())).toEqual([]);
+    real += 1;
+    expect(tick(world, clock.now())[0]).toMatchObject({ t: 'end', why: 'time' });
   });
 
   it('2の続き：始めた時点で誰もいなければ、最初の handlePlayers で end。全員が切れているだけなら続く', () => {
@@ -208,6 +265,7 @@ describe('コンソールに渡す形', () => {
     expect(PAD_LEADER.buttons.map((b) => b.id)).toEqual(['hop', 'end']);
     expect(PAD_PLAYER.hint).toContain('ぴょんの回数で順位');
     for (const pad of [PAD_PLAYER, PAD_LEADER]) {
+      expect(pad.hint).toContain('30秒');
       expect(pad).toMatchObject({ k: 'pad', stick: 'stick' });
       for (const b of pad.buttons) {
         expect(graphemes(b.label)).toBeLessThanOrEqual(12);

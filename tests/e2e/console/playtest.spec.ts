@@ -107,7 +107,7 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
       [1, 1],
       [2, 2],
     ]);
-    expect(s.host.results[0]!.label).toMatch(/^\d+\.\d秒$/);
+    expect(s.host.results[0]!.label).toMatch(/^\d+\.\d\d秒$/);
     expect(s.host.results[1]!.label).toBe('5回');
     for (const target of ['host', 1] as const) {
       const shot = (await call('POST', '/shot', { target })) as { path: string };

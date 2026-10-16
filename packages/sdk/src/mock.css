@@ -1,0 +1,105 @@
+/* 仮想プレイヤーの表示（開発用）。ゲームの画面を汚さないよう、すべて .irori-mock の下に閉じる。 */
+.irori-mock {
+  --m-bg: #1a1411;
+  --m-card: #2f241d;
+  --m-line: #4a382c;
+  --m-text: #f5ebe0;
+  --m-dim: #c9b8a6;
+  --m-glow: #ffd9a0;
+  color: var(--m-text);
+  font: 14px/1.4 ui-rounded, system-ui, sans-serif;
+}
+.irori-mock__btn {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--m-dim);
+  border-radius: 8px;
+  background: var(--m-card);
+  color: var(--m-text);
+  font: inherit;
+  cursor: pointer;
+}
+.irori-mock__btn:focus-visible { outline: 3px solid var(--m-glow); outline-offset: 2px; }
+.irori-mock__banner {
+  position: fixed;
+  top: 6px;
+  left: 50%;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px 3px 12px;
+  border: 1px solid var(--m-line);
+  border-radius: 999px;
+  background: rgba(26, 20, 17, 0.92);
+  font-size: 13px;
+  transform: translateX(-50%);
+}
+.irori-mock__panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 2147483000;
+  width: min(320px, 92vw);
+  max-height: 100vh;
+  overflow: auto;
+  border-left: 1px solid var(--m-line);
+  background: rgba(26, 20, 17, 0.96);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.4);
+}
+.irori-mock__panel[data-folded] { width: auto; }
+.irori-mock__panel[data-folded] > :not(.irori-mock__head) { display: none; }
+.irori-mock__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  background: var(--m-bg);
+}
+.irori-mock__head h2 { flex: 1; margin: 0; font-size: 14px; }
+.irori-mock__keys { margin: 0 8px 8px; color: var(--m-dim); font-size: 12px; }
+.irori-mock__seat {
+  margin: 8px;
+  border: 2px solid var(--seat, var(--m-line));
+  border-radius: 12px;
+  background: var(--m-bg);
+}
+.irori-mock__seat[data-offline] { opacity: 0.5; }
+.irori-mock__seat[data-buzz] { animation: irori-mock-buzz 0.1s linear infinite; }
+@keyframes irori-mock-buzz { 50% { transform: translateX(2px); } }
+.irori-mock__who { display: flex; align-items: center; gap: 6px; padding: 6px 8px; }
+.irori-mock__name { flex: 1; font-weight: 700; }
+.irori-mock__pad { height: 190px; }
+.irori-mock__pad .irori-pad { min-height: 0; padding: 8px; gap: 8px; --pad-size: clamp(96px, 38cqi, 136px); }
+.irori-mock__pad .irori-pad__btns .irori-pad__btn { min-width: 56px; min-height: 48px; }
+.irori-mock__pad .irori-pad__buzzer { width: 120px; }
+.irori-mock__pad .irori-pad__touch { min-height: 0; }
+.irori-mock__pad .irori-pad__choice { min-height: 48px; font-size: 16px; }
+.irori-mock__pad [data-cursor] { outline: 3px solid var(--m-glow); outline-offset: 2px; }
+.irori-mock__results {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483001;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+.irori-mock__card {
+  min-width: min(360px, 90vw);
+  padding: 20px;
+  border: 1px solid var(--m-dim);
+  border-radius: 14px;
+  background: var(--m-card);
+}
+.irori-mock__card h2 { margin: 0 0 12px; font-size: 20px; }
+.irori-mock__card ol { display: grid; gap: 6px; margin: 0 0 16px; padding: 0; list-style: none; }
+.irori-mock__card li { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.irori-mock__rank { min-width: 2em; font-weight: 700; }
+.irori-mock__score { margin-left: auto; font-variant-numeric: tabular-nums; }
+.irori-mock__again { min-height: 44px; padding: 8px 20px; border-color: var(--m-glow); background: var(--m-glow); color: var(--m-bg); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) {
+  .irori-mock__seat[data-buzz] { animation: none; outline: 2px solid var(--m-glow); }
+}

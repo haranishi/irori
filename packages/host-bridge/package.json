@@ -1,0 +1,21 @@
+{
+  "name": "@irori/host-bridge",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "description": "隔離枠の作成、握手、枠とのやり取り、登録情報の検証。",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@irori/protocol": "*"
+  },
+  "devDependencies": {
+    "happy-dom": "21.0.1"
+  }
+}

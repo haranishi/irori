@@ -1,0 +1,22 @@
+{
+  "name": "@irori/pad-ui",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "description": "コントローラー画面の描画と入力の取り出し。席の色と形もここが持つ。",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pad.css": "./src/pad.css"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@irori/protocol": "*"
+  },
+  "devDependencies": {
+    "happy-dom": "21.0.1"
+  }
+}

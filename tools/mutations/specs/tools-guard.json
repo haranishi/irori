@@ -1,0 +1,20 @@
+[
+  {
+    "id": "tools-guard-no-reap",
+    "note": "コマンドが終わったあとに残った孫のプロセスを止めない（孤児が残る）",
+    "file": "tools/mutations/guard.mjs",
+    "find": "killGroup();\n  process.exit(timedOut",
+    "replace": "process.exit(timedOut",
+    "command": ["node", "--test", "tools/tests/mutations-runner.test.mjs"],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-guard-timeout-code",
+    "note": "時間切れを成功（終了コード0）として返す",
+    "file": "tools/mutations/guard.mjs",
+    "find": "process.exit(timedOut ? 124 :",
+    "replace": "process.exit(timedOut ? 0 :",
+    "command": ["node", "--test", "tools/tests/mutations-runner.test.mjs"],
+    "timeoutMs": 120000
+  }
+]

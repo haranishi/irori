@@ -1,0 +1,15 @@
+[
+  {
+    "id": "tools-dev-no-prepare",
+    "note": "npm run dev が、配るファイル（ゲーム・登録の一覧・SDK）を先に作らない（まっさらな clone で棚が空になる）",
+    "file": "tools/dev.mjs",
+    "find": "async function main() {\n  prepare();",
+    "replace": "async function main() {",
+    "command": [
+      "sh",
+      "-c",
+      "rm -rf apps/web/public/games apps/web/public/registry apps/web/public/sdk apps/web/public/licenses.txt && node tools/smoke-dev.mjs"
+    ],
+    "timeoutMs": 400000
+  }
+]

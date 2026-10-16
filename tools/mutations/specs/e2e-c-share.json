@@ -1,0 +1,19 @@
+[
+  {
+    "id": "e2e-c-share-room-url",
+    "note": "(c) 共有するURLを、サイトのURLでなく部屋のURL（/pad#CODE）にする",
+    "file": "apps/web/src/host/share.ts",
+    "find": "  const url = new URL('/', origin).href;",
+    "replace": "  const url = `${new URL('/pad', origin).href}#XN7Q`;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "share.spec.ts"
+    ],
+    "timeoutMs": 600000
+  }
+]

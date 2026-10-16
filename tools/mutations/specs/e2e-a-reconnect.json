@@ -1,0 +1,36 @@
+[
+  {
+    "id": "e2e-a1-host-ignores-pad-request",
+    "note": "(a) 再接続後に画面を戻さない（ホスト側）：入り直した席の送り直しの依頼（pad?）に応えない",
+    "file": "apps/web/src/host/console.ts",
+    "find": "        if (spec) this.pads.resend(f.p, spec);",
+    "replace": "        void spec;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=phone-chromium",
+      "midgame.spec.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "e2e-a2-pad-drops-first-spec",
+    "note": "(a) 再接続後に画面を戻さない（スマホ側）：つなぎ直した直後に届いた画面（ホストの送り直し）を当てない",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "        this.play?.applySpec(f.spec, this.fresh);",
+    "replace": "        if (!this.fresh) this.play?.applySpec(f.spec, false);",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=phone-chromium",
+      "midgame.spec.ts"
+    ],
+    "timeoutMs": 600000
+  }
+]

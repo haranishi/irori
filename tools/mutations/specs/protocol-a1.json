@@ -1,0 +1,114 @@
+[
+  {
+    "id": "protocol-h-in-accepts-p",
+    "note": "(h) の入口側：スマホの in に席番号 p を書いても拒まない（なりすましを形の段階で止めない）",
+    "file": "packages/protocol/src/validate.ts",
+    "find": "onlyKeys(o, ['t', 'i'], 'in');",
+    "replace": "onlyKeys(o, ['t', 'i', 'p'], 'in');",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "protocol-unknown-keys-pass",
+    "note": "未知のキーを拒まない",
+    "file": "packages/protocol/src/validate.ts",
+    "find": "if (!allowed.includes(k)) reject(`${where}: unknown key ${k.slice(0, 24)}`);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "protocol-axis-not-clamped",
+    "note": "スティックの値を -1〜1・小数2桁に丸めない",
+    "file": "packages/protocol/src/validate.ts",
+    "find": "return clamp(Math.round(clamp(num(v, where), -1, 1) * 100) / 100, -1, 1);",
+    "replace": "return num(v, where);",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "protocol-name-keeps-bidi",
+    "note": "名前から向きを変える文字を除かない",
+    "file": "packages/protocol/src/names.ts",
+    "find": ".replace(BIDI_CONTROLS, '')",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "protocol-text-unbounded",
+    "note": "画面の文字（ボタン・ヒント・見出し・本文）の上限を見ない",
+    "file": "packages/protocol/src/names.ts",
+    "find": "return s.length <= max || countCodePoints(s) <= max;",
+    "replace": "return true;",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "protocol-names-by-graphemes",
+    "note": "中1：受け手が名前を書記素で縛る（環境で数え方が違い、正しい名簿を捨てる）",
+    "file": "packages/protocol/src/validate.ts",
+    "find": "if (!lenient && (countCodePoints(v) > LIMITS.NAME_MAX_CODEPOINTS || utf8Length(v) > LIMITS.NAME_MAX_BYTES)) {",
+    "replace": "if (!lenient && [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(v)].length > LIMITS.NAME_MAX_GRAPHEMES) {",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "protocol-text-by-graphemes",
+    "note": "中1：受け手が画面の文字を書記素で縛る",
+    "file": "packages/protocol/src/validate.ts",
+    "find": "if (!fitsCodePoints(v, max)) reject(",
+    "replace": "if ([...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(v)].length > max) reject(",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "protocol-name-cut-by-graphemes-only",
+    "note": "低1：中継が名前を書記素だけで切る（結合記号を積んだ名前が約430バイトまで通る）",
+    "file": "packages/protocol/src/names.ts",
+    "find": "if (g + 1 > b.graphemes || cp + segCp > b.codePoints || by + segBy > b.bytes) {",
+    "replace": "if (g + 1 > b.graphemes) {",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol"
+    ],
+    "timeoutMs": 180000
+  }
+]

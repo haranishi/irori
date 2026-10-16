@@ -1,0 +1,19 @@
+[
+  {
+    "id": "e2e-g-no-held-repeat",
+    "note": "(g) dot-grab の再送を止める：倒したままのスティックの送り直し（約1秒ごと）をやめる",
+    "file": "packages/pad-ui/src/throttle.ts",
+    "find": "    this.armRepeat(value);",
+    "replace": "    void value;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "dot-grab.spec.ts"
+    ],
+    "timeoutMs": 600000
+  }
+]

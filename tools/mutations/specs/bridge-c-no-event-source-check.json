@@ -1,0 +1,9 @@
+{
+  "id": "bridge-c-no-event-source-check",
+  "note": "(c) 握手で event.source（自分の枠か）の検査を外す＝なりすましの枠を受け入れる",
+  "file": "packages/host-bridge/src/frame.ts",
+  "find": "if (!win || ev.source !== win) return;",
+  "replace": "if (!win) return;",
+  "command": ["npx", "playwright", "test", "-c", "tests/e2e/playwright.config.ts", "tests/e2e/bridge/spoof-reject.spec.ts"],
+  "timeoutMs": 180000
+}

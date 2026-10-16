@@ -1,0 +1,9 @@
+{
+  "id": "bridge-a-sandbox-attr-removed",
+  "note": "(a) 枠から sandbox 属性を付けるのをやめる＝隔離が消える",
+  "file": "packages/host-bridge/src/frame.ts",
+  "find": "f.setAttribute('sandbox', s.sandbox);",
+  "replace": "void s.sandbox;",
+  "command": ["npx", "playwright", "test", "-c", "tests/e2e/playwright.config.ts", "tests/e2e/bridge/sandbox.spec.ts"],
+  "timeoutMs": 180000
+}

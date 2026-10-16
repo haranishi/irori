@@ -1,0 +1,9 @@
+{
+  "id": "bridge-b-bundled-allow-same-origin",
+  "note": "(b) 同梱方式の枠に allow-same-origin を付ける＝同一オリジンになり隔離が無効",
+  "file": "packages/host-bridge/src/entry.ts",
+  "find": "export const SANDBOX_BUNDLED = 'allow-scripts';",
+  "replace": "export const SANDBOX_BUNDLED = 'allow-scripts allow-same-origin';",
+  "command": ["npx", "playwright", "test", "-c", "tests/e2e/playwright.config.ts", "tests/e2e/bridge/sandbox.spec.ts"],
+  "timeoutMs": 180000
+}

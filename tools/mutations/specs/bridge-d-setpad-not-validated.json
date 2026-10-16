@@ -1,0 +1,9 @@
+{
+  "id": "bridge-d-setpad-not-validated",
+  "note": "(d) validateGameToHost の setPad を検査せず素通りにする＝不正な画面指定が通る",
+  "file": "packages/host-bridge/src/validate.ts",
+  "find": "const spec = validatePadSpec(raw.spec, false);",
+  "replace": "const spec = { ok: true, frame: raw.spec };",
+  "command": ["npm", "test", "-w", "@irori/host-bridge", "--", "tests/validate.test.ts"],
+  "timeoutMs": 120000
+}

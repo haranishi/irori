@@ -1,0 +1,9 @@
+{
+  "id": "pad-f-setspec-no-release",
+  "note": "(f) setSpec で、押したままの入力を終わらせる補い（btn の d:0・axis の 0,0）を外す＝離し忘れが残る",
+  "file": "packages/pad-ui/src/pad.ts",
+  "find": "    releaseHeld('setSpec');",
+  "replace": "    void 0;",
+  "command": ["npm", "test", "-w", "@irori/pad-ui"],
+  "timeoutMs": 120000
+}

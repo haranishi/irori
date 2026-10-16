@@ -1,0 +1,212 @@
+[
+  {
+    "id": "edge-i-no-lookup-limit",
+    "note": "(i) 存在確認の回数制限を外す（GET /api/rooms/:code と、存在しない部屋への WebSocket）",
+    "file": "apps/edge/src/limiter.ts",
+    "find": "const per = kind === 'lookup' ? limits.lookupPerMinute : limits.wsPerMinute;",
+    "replace": "const per = kind === 'lookup' ? Number.POSITIVE_INFINITY : limits.wsPerMinute;",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-i-ws-lookup-not-counted",
+    "note": "(i) の一部：存在しない部屋への WebSocket を、存在確認の枠で数えない",
+    "file": "apps/edge/src/room.ts",
+    "find": "if (!verdict.ok) return refused(verdict);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-no-create-limit",
+    "note": "同じIPからの作成の回数（毎分）を数えない",
+    "file": "apps/edge/src/limiter.ts",
+    "find": "if (inMinute >= limits.createPerMinute * k.factor) return { ok: false, status: 429, retryAfterSec: nextMinute };",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-no-daily-cap",
+    "note": "1日の総数の上限を外す",
+    "file": "apps/edge/src/limiter.ts",
+    "find": "if (day.total >= limits.maxRoomsPerDay) return { ok: false, status: 503, retryAfterSec: secondsUntil(nextUtcMidnight(now), now) };",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-overrides-without-flag",
+    "note": "ALLOW_TEST_OVERRIDES が \"1\" でなくても、時間と上限の上書きを読む",
+    "file": "apps/edge/src/config.ts",
+    "find": "const allow = vars.ALLOW_TEST_OVERRIDES === '1';",
+    "replace": "const allow = true;",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-bytes-as-chars",
+    "note": "受信の大きさを、UTF-8 のバイト数ではなく文字数で数える（多バイト文字で上限を超えられる）",
+    "file": "apps/edge/src/room.ts",
+    "find": "bytes: utf8Length(message)",
+    "replace": "bytes: message.length",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-no-html-csp",
+    "note": "HTML の応答に CSP を付けない",
+    "file": "apps/edge/src/index.ts",
+    "find": "headers.set('Content-Security-Policy', htmlCsp(url.host, env.DEV_FRAMES === '1'));",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-no-absolute-urls",
+    "note": "canonical と OGP の相対URLを、絶対URLに書き換えない",
+    "file": "apps/edge/src/index.ts",
+    "find": "if (abs !== null) el.setAttribute(attr, abs);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-ping-string-mismatch",
+    "note": "room-client が送る ping の文字列を、Worker の自動応答と1文字ずらす（契約の食い違いを、実物どうしの試験が見つけるか）",
+    "file": "packages/room-client/src/socket.ts",
+    "find": "if (!this.ws) return;\n      this.ws.send(HEARTBEAT_PING);",
+    "replace": "if (!this.ws) return;\n      this.ws.send('{\"t\":\"ping\" }');",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-dev-frames-always",
+    "note": "開発用でなくても、CSP の frame-src に http: を足す",
+    "file": "apps/edge/src/index.ts",
+    "find": "htmlCsp(url.host, env.DEV_FRAMES === '1')",
+    "replace": "htmlCsp(url.host, true)",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-daily-cap-needs-flag",
+    "note": "MAX_ROOMS_PER_DAY を、ALLOW_TEST_OVERRIDES がないと読まない（本番で運営者の値が効かない）",
+    "file": "apps/edge/src/config.ts",
+    "find": "maxRoomsPerDay: operatorInt(vars.MAX_ROOMS_PER_DAY, MAX_ROOMS_PER_DAY_CEILING, LIMITS.DEFAULT_MAX_ROOMS_PER_DAY),",
+    "replace": "maxRoomsPerDay: allow ? operatorInt(vars.MAX_ROOMS_PER_DAY, MAX_ROOMS_PER_DAY_CEILING, LIMITS.DEFAULT_MAX_ROOMS_PER_DAY) : LIMITS.DEFAULT_MAX_ROOMS_PER_DAY,",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-no-ws-limit",
+    "note": "高1：WebSocket の受け付けを IP ごとに数えない",
+    "file": "apps/edge/src/limiter.ts",
+    "find": "const per = kind === 'lookup' ? limits.lookupPerMinute : limits.wsPerMinute;",
+    "replace": "const per = kind === 'lookup' ? limits.lookupPerMinute : Number.POSITIVE_INFINITY;",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-no-origin-post",
+    "note": "高1・低3：別のサイトからの部屋の作成を断らない",
+    "file": "apps/edge/src/index.ts",
+    "find": "if (crossOrigin(request.headers.get('Origin'), url.host) || request.headers.get('Sec-Fetch-Site') === 'cross-site') {",
+    "replace": "if (false) {",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-no-origin-ws",
+    "note": "高1・低3：別のサイトからの WebSocket を断らない",
+    "file": "apps/edge/src/index.ts",
+    "find": "if (crossOrigin(request.headers.get('Origin'), url.host)) return json({ error: 'origin' }, 403);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "edge-no-ipv6-48",
+    "note": "低3：IPv6 を /64 だけで数える（/48 で6.5万人分になる）",
+    "file": "apps/edge/src/limiter.ts",
+    "find": "if (wide !== null) out.push({ id: hash(wide), factor: LIMITS.IPV6_48_FACTOR });",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/edge"
+    ],
+    "timeoutMs": 600000
+  }
+]

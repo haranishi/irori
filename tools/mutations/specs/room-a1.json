@@ -1,0 +1,212 @@
+[
+  {
+    "id": "room-a-no-rate-limit",
+    "note": "(a) レート制限（トークンバケット）を外す",
+    "file": "packages/room/src/core.ts",
+    "find": "if (!this.takeToken(c, now)) return this.violate(c, 'rate', now);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-b-no-size-check",
+    "note": "(b) フレームの大きさの検査を外す",
+    "file": "packages/room/src/core.ts",
+    "find": "if (bytes > max) return this.fail(c, 'too-large', now);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-c-no-role-check",
+    "note": "(c) 役割の検査を外す（スマホがホスト専用のフレームを通せる）",
+    "file": "packages/room/src/core.ts",
+    "find": "if (c.role === 'host') this.onHostFrame(c, raw, now);",
+    "replace": "if (c.role === 'host' || parseHostFrame(raw).ok) this.onHostFrame(c, raw, now);",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-d-key-always-ok",
+    "note": "(d) ホスト鍵の比較を常に成功にする",
+    "file": "packages/room/src/core.ts",
+    "find": "if (!this.deps.timingSafeEqual(this.deps.hash(f.key), this.keyHash)) return this.fail(c, 'auth', now);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-e-resume-not-replaced",
+    "note": "(e) 同じ再開の札が二重につながっても、古い接続を置き換えない",
+    "file": "packages/room/src/core.ts",
+    "find": "if (old) this.replace(old);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-f-grace-never-ends",
+    "note": "(f) 猶予が過ぎても席を空けない",
+    "file": "packages/room/src/core.ts",
+    "find": "if (s.conn === null && s.offAt !== null && now >= s.offAt + this.L.PAD_GRACE_MS) this.removeSeat(s, 'timeout');",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-g-entry-not-refused",
+    "note": "(g) 満員・ロック中の入室を通す",
+    "file": "packages/room/src/core.ts",
+    "find": "if (refusal) return this.fail(c, refusal, now);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-h-seat-from-frame",
+    "note": "(h) 転送時の席番号 p を、接続ではなくフレームの値から取る（なりすまし）",
+    "file": "packages/room/src/core.ts",
+    "find": "this.toHost({ t: 'in', p: seatId, i: f.i, T: now });",
+    "replace": "this.toHost({ t: 'in', p: (f as unknown as { p: number }).p, i: f.i, T: now });",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-client-replaced-retries",
+    "note": "4009（取って代わられた）でも、自動で入り直す（二重のタブが互いを追い出し続ける）",
+    "file": "packages/room-client/src/socket.ts",
+    "find": "if (code === CLOSE_CODES.replaced) {",
+    "replace": "if (false) {",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room-client"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-client-probe-ignores-silence",
+    "note": "probe が pong を待ったあと、来なくても何もしない（死んだ接続を捨てない）",
+    "file": "packages/room-client/src/socket.ts",
+    "find": "this.dropAndRetry('probe');",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room-client"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-pending-unbounded",
+    "note": "高1：hello 前の接続の数を部屋ごとに縛らない",
+    "file": "packages/room/src/core.ts",
+    "find": "if (pending >= this.L.MAX_PENDING) {",
+    "replace": "if (false) {",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-new-seats-unbounded",
+    "note": "高1：新しい席の数を1分あたりで縛らない（入退室の往復で保存が増える）",
+    "file": "packages/room/src/core.ts",
+    "find": "if (!this.withinMinute(this.newSeatTimes, this.L.NEW_SEATS_PER_MINUTE, now)) return this.fail(c, 'rate', now);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-locks-unbounded",
+    "note": "高1：ロックの切り替えを1分あたりで縛らない",
+    "file": "packages/room/src/core.ts",
+    "find": "if (!this.withinMinute(this.lockTimes, this.L.LOCKS_PER_MINUTE, now)) return this.violate(c, 'rate', now);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-seen-ignored-on-restore",
+    "note": "低2：復元のとき、付属情報の最後の操作の時刻を照らし合わせない（最大60秒早く閉じる）",
+    "file": "packages/room/src/core.ts",
+    "find": "if (c.seen > core.lastActivity) core.lastActivity = c.seen;",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "room-client-names-strict",
+    "note": "中1：room-client が名簿の名前を長さで拒む（名前1つで welcome を捨てる）",
+    "file": "packages/room-client/src/socket.ts",
+    "find": "const opts = { lenientNames: true };",
+    "replace": "const opts = { lenientNames: false };",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/room-client"
+    ],
+    "timeoutMs": 180000
+  }
+]

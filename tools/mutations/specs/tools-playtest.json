@@ -1,0 +1,20 @@
+[
+  {
+    "id": "tools-playtest-no-host-check",
+    "note": "試遊サーバーが、Host を確かめない（DNS の付け替えで、別のページから操作・読み取りができる）",
+    "file": "tools/playtest-server.mjs",
+    "find": "if (!/^(127\\.0\\.0\\.1|localhost)(:\\d+)?$/.test(",
+    "replace": "if (false && /^(127\\.0\\.0\\.1|localhost)(:\\d+)?$/.test(",
+    "command": ["node", "--test", "tools/tests/playtest-guard.test.mjs"],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-playtest-no-origin-check",
+    "note": "試遊サーバーが、Origin つき（ブラウザ経由）の要求を断らない",
+    "file": "tools/playtest-server.mjs",
+    "find": "if (req.headers.origin !== undefined) throw",
+    "replace": "if (false) throw",
+    "command": ["node", "--test", "tools/tests/playtest-guard.test.mjs"],
+    "timeoutMs": 120000
+  }
+]

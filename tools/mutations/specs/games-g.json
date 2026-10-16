@@ -1,0 +1,83 @@
+[
+  {
+    "id": "games-a-tap-race-no-finish",
+    "note": "(a) 連打レースの完走判定を外す（40回たたいても完走にならない）",
+    "file": "games/tap-race/logic.js",
+    "find": "if (r.taps < TAPS_TO_FINISH) return [];",
+    "replace": "return [];",
+    "command": ["npm", "run", "test:games", "--", "games/tap-race/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-b-quiz-timeout-no-penalty",
+    "note": "(b) 4択クイズの「時間切れは -200点」を外す（答えなかった人が0点のまま）",
+    "file": "games/quiz-4/logic.js",
+    "find": "seat.delta = TIMEOUT_POINTS;",
+    "replace": "seat.delta = 0;",
+    "command": ["npm", "run", "test:games", "--", "games/quiz-4/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-c-dot-grab-frame-steps",
+    "note": "(c) あつめて点で dt を使わず、フレーム数で動かす（端末の速さで速さが変わる）",
+    "file": "games/dot-grab/logic.js",
+    "find": "const d = Math.min(Math.max(dt, 0), MAX_DT);",
+    "replace": "const d = 1 / 60;",
+    "command": ["npm", "run", "test:games", "--", "games/dot-grab/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-d-registry-id-mismatch-unchecked",
+    "note": "(d) 登録情報の id とファイル名の不一致を見なくなる",
+    "file": "tools/check-registry.mjs",
+    "find": "if (m.id !== name) say(",
+    "replace": "if (false) say(",
+    "command": ["node", "--test", "tools/tests/registry.test.mjs"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-f-hello-pad-end-from-anyone",
+    "note": "(f) ハローパッドで、リーダー以外の「おわる」も受ける（押し間違い1回で全員のゲームが終わる）",
+    "file": "games/hello-pad/logic.js",
+    "find": "if (lead !== null && p !== lead) return [];",
+    "replace": "if (false) return [];",
+    "command": ["npm", "run", "test:games", "--", "games/hello-pad/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-g-tap-race-out-on-disconnect",
+    "note": "(g) 連打レースで、切断（online が偽）しただけで棄権にする（戻っても続けられない）",
+    "file": "games/tap-race/logic.js",
+    "find": "if (r.state === 'run' && !seat) r.state = 'out';",
+    "replace": "if (r.state === 'run' && !seat?.online) r.state = 'out';",
+    "command": ["npm", "run", "test:games", "--", "games/tap-race/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-h-tap-race-points-for-zero-taps",
+    "note": "(h) 連打レースで、1回もたたかなかった人にも順位の点を付ける",
+    "file": "games/tap-race/logic.js",
+    "find": "points: r.taps === 0 ? 0 : POINTS[rank - 1] ?? 0",
+    "replace": "points: POINTS[rank - 1] ?? 0",
+    "command": ["npm", "run", "test:games", "--", "games/tap-race/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-i-quiz-penalty-while-away",
+    "note": "(i) 4択クイズで、切れているあいだに締め切られた問題も、時間切れの -200点にする",
+    "file": "games/quiz-4/logic.js",
+    "find": "if (seat.pick === null && !seat.online) {",
+    "replace": "if (false) {",
+    "command": ["npm", "run", "test:games", "--", "games/quiz-4/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "games-e-thumb-size-unchecked",
+    "note": "(e) サムネイルの容量（120KB以下）を見なくなる",
+    "file": "tools/check-registry.mjs",
+    "find": "if (bytes > THUMB.maxBytes) out.push(",
+    "replace": "if (false) out.push(",
+    "command": ["node", "--test", "tools/tests/registry.test.mjs"],
+    "timeoutMs": 180000
+  }
+]

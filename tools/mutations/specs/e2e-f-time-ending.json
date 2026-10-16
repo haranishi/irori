@@ -1,0 +1,53 @@
+[
+  {
+    "id": "e2e-f1-tap-race-no-time-end",
+    "note": "(f) 時間切れの終わり方で結果を出さない：連打レースが締切を過ぎても終えない",
+    "file": "games/tap-race/logic.js",
+    "find": "  if (race.phase === 'race' && now >= race.goAt + RACE_MS) return finish(race, 'time');",
+    "replace": "  if (race.phase === 'race' && now >= race.goAt + RACE_MS) return [];",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "tap-race.spec.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "e2e-f2-dot-grab-no-time-end",
+    "note": "(f) 時間切れの終わり方で結果を出さない：あつめて点が45秒を過ぎても終えない",
+    "file": "games/dot-grab/logic.js",
+    "find": "  if (now >= field.endAt) return finish(field, 'time');",
+    "replace": "  if (now >= field.endAt) return [];",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "dot-grab.spec.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "e2e-f3-quiz-no-deadline",
+    "note": "(f) 時間切れの終わり方で結果を出さない：4択クイズが、誰も答えないとき締切で締めない（全員が時間切れで終われない）",
+    "file": "games/quiz-4/logic.js",
+    "find": "  if (quiz.phase === 'question' && now >= quiz.at + ANSWER_MS) return close(quiz, now);",
+    "replace": "  if (quiz.phase === 'question' && now >= quiz.at + ANSWER_MS) return [];",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "quiz.spec.ts"
+    ],
+    "timeoutMs": 600000
+  }
+]

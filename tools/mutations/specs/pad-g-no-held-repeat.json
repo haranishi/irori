@@ -1,0 +1,9 @@
+{
+  "id": "pad-g-no-held-repeat",
+  "note": "押したままの送り直し（HELD_REPEAT_MS）をやめる＝倒したまま止まると、ゲームが入力の途切れと誤認して止まる",
+  "file": "packages/pad-ui/src/throttle.ts",
+  "find": "this.armRepeat(value);",
+  "replace": "void value;",
+  "command": ["npm", "test", "-w", "@irori/pad-ui"],
+  "timeoutMs": 120000
+}

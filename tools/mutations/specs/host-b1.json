@@ -1,0 +1,559 @@
+[
+  {
+    "id": "host-a-no-grey",
+    "note": "(a) 席が足りないゲームを灰色にしない（人数の下限を見ない）",
+    "file": "apps/web/src/host/roster.ts",
+    "find": "  if (count < range.min) return { ok: false, why: 'need', n: range.min - count };",
+    "replace": "",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-b-no-external-confirm",
+    "note": "(b) 外部のゲームを開く前の「{ホスト名} のサーバーに接続します」を出さない",
+    "file": "apps/web/src/host/launch.ts",
+    "find": "  return trusted.has(source.host) ? null : source.host;",
+    "replace": "  return null;",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-c-share-room-url",
+    "note": "(c) 共有するURLを、サイトのURLでなく部屋のURL（/pad#CODE）にする",
+    "file": "apps/web/src/host/share.ts",
+    "find": "  const url = new URL('/', origin).href;",
+    "replace": "  const url = `${new URL('/pad', origin).href}#XN7Q`;",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-d-innerhtml-name",
+    "note": "(d) 名前を innerHTML で描く（スマホから来た文字列をHTMLとして解釈する）",
+    "file": "apps/web/src/host/ui.ts",
+    "find": "  return h('span', { class: cls }, name);",
+    "replace": "  const el = h('span', { class: cls });\n  el.innerHTML = name;\n  return el;",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-e-no-leader-handoff",
+    "note": "(e) リーダーの引き継ぎを外す（切れた・抜けたリーダーから、接続中の最小の席へ移さない）",
+    "file": "apps/web/src/host/roster.ts",
+    "find": "  if (heir) return heir.id;",
+    "replace": "  void heir;",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-f-replaced-auto-reconnect",
+    "note": "(f) replaced（4009）のあと、押されなくても自動で入り直す（状態が replaced に変わった直後に reconnect()）",
+    "file": "apps/web/src/host/session.ts",
+    "find": "        case 'replaced':\n          this.o.events.replaced();\n          return;",
+    "replace": "        case 'replaced':\n          this.o.events.replaced();\n          queueMicrotask(() => this.socket?.reconnect());\n          return;",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-g-no-probe-on-visible",
+    "note": "(g) 画面に戻っても（visibilitychange で visible）probe() を呼ばない",
+    "file": "apps/web/src/host/session.ts",
+    "find": "    if (this.o.doc.visibilityState === 'visible') this.socket?.probe();",
+    "replace": "    void this.o.doc;",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-b-e2e-no-external-confirm",
+    "note": "(b) を実ブラウザで：?dev= の外部ゲームが、確かめなしに枠へ入る",
+    "file": "apps/web/src/host/launch.ts",
+    "find": "  return trusted.has(source.host) ? null : source.host;",
+    "replace": "  return null;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "link.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-f-e2e-replaced-auto-reconnect",
+    "note": "(f) を実ブラウザで：同じ鍵の2つのホストが、互いを追い出し続ける",
+    "file": "apps/web/src/host/session.ts",
+    "find": "        case 'replaced':\n          this.o.events.replaced();\n          return;",
+    "replace": "        case 'replaced':\n          this.o.events.replaced();\n          queueMicrotask(() => this.socket?.reconnect());\n          return;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "link.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-g-e2e-no-probe-on-visible",
+    "note": "(g) を実ブラウザで：画面ロックのあとの死んだ接続を、30秒（pong の期限）まで捨てない",
+    "file": "apps/web/src/host/session.ts",
+    "find": "    if (this.o.doc.visibilityState === 'visible') this.socket?.probe();",
+    "replace": "    void this.o.doc;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "link.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-a-e2e-no-grey",
+    "note": "(a) を実ブラウザで：1人のとき、2人からのゲームが灰色にならない",
+    "file": "apps/web/src/host/roster.ts",
+    "find": "  if (count < range.min) return { ok: false, why: 'need', n: range.min - count };",
+    "replace": "",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-h-origin-always-location",
+    "note": "(h) 部屋の案内のオリジンを、いつも location.origin にする（127.0.0.1 で開くと、canonical の公開URLを使わない）",
+    "file": "apps/web/src/host/origin.ts",
+    "find": "  if (isLoopback(loc.hostname) && canonical) {",
+    "replace": "  if (false) {",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-h-e2e-origin-always-location",
+    "note": "(h) を実ブラウザで：PUBLIC_URL を渡した Worker を 127.0.0.1 で開くと、QRと共有の宛先が 127.0.0.1 のまま",
+    "file": "apps/web/src/host/origin.ts",
+    "find": "  if (isLoopback(loc.hostname) && canonical) {",
+    "replace": "  if (false) {",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-i-no-loopback-warning",
+    "note": "(i) 案内のアドレスがループバックのままでも、参加の板に警告を出さない",
+    "file": "apps/web/src/host/view-home.ts",
+    "find": "  if (s.loopback) parts.push(",
+    "replace": "  if (false) parts.push(",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-j-score-without-unit",
+    "note": "(j) 結果の点数に単位を付けない（「800点」でなく「800」）",
+    "file": "apps/web/src/host/view-panels.ts",
+    "find": "        h('span', { class: 'result__score' }, t('host.results.points', { n: r.score.toLocaleString() })),",
+    "replace": "        h('span', { class: 'result__score' }, r.score.toLocaleString()),",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-k-results-share-label",
+    "note": "(k) 結果の共有ボタンを「共有」に戻す（送るのはサイトの紹介なのに、結果を送るように見える）",
+    "file": "apps/web/src/host/view-panels.ts",
+    "find": "        button(t('host.results.share'), { nav: 'results:share', action: 'share', iconName: 'share', onPress: () => on.share() }),",
+    "replace": "        button(t('host.tool.share'), { nav: 'results:share', action: 'share', iconName: 'share', onPress: () => on.share() }),",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-l-lock-old-name",
+    "note": "(l) 「参加を締め切る」を、何を止めるか分からない「ロック」に戻す",
+    "file": "apps/web/src/host/messages.ts",
+    "find": "  'host.tool.lockOff': '参加を締め切る',",
+    "replace": "  'host.tool.lockOff': 'ロック',",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-m-results-title-kana",
+    "note": "(m) 結果の見出しを、ひらがなの「けっか」に戻す",
+    "file": "apps/web/src/host/messages.ts",
+    "find": "  'host.results.title': '結果',",
+    "replace": "  'host.results.title': 'けっか',",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-n-e2e-narrow-top-tall",
+    "note": "(n) 撮影の門番が生きているか：狭い幅の上の帯を高くする（上の操作群が高さの2割を超える）→ 撮影の試験が数えて赤くなる",
+    "file": "apps/web/src/styles/host.css",
+    "find": "    min-height: 48px;\n    padding: 0 1rem;",
+    "replace": "    min-height: 148px;\n    padding: 0 1rem;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-shots"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-o-no-full",
+    "note": "(o) 満員（8/8人）でも、参加の板が「スマホで参加」とQRのまま（満員と分からない）",
+    "file": "apps/web/src/host/view-home.ts",
+    "find": "    const full = count >= r.max ? { n: count, max: r.max } : null;",
+    "replace": "    const full: JoinState['full'] = null;",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-p-loopback-keeps-scan",
+    "note": "(p) ほかの端末から開けないアドレスのときも、読めないQRの下に「カメラでQRを読む」を出す（警告と食い違う）",
+    "file": "apps/web/src/host/view-home.ts",
+    "find": "  const parts: HTMLElement[] = [h('div', { class: 'join__body' }, qr, over ? null : h('p', { class: 'join__scan' }, ...tx(t('host.join.scan'))))];",
+    "replace": "  const parts: HTMLElement[] = [h('div', { class: 'join__body' }, qr, h('p', { class: 'join__scan' }, ...tx(t('host.join.scan'))))];",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-q-e2e-narrow-join-last",
+    "note": "(q) スマホの幅で、参加の板（QR・コード）を最後に回す（最初の画面に参加の入口が入らない）",
+    "file": "apps/web/src/styles/host.css",
+    "find": "  .home__join {\n    order: 1;\n  }",
+    "replace": "  .home__join {\n    order: 9;\n  }",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-r-unplayable-says-choose",
+    "note": "(r) 人数が足りないゲームにも「このゲームを選びます」と出す（あと何人かを出さない）",
+    "file": "apps/web/src/host/view-home.ts",
+    "find": "      const text = f.why === 'need' ? t('host.start.need', { n: f.n }) : t('host.start.over', { max: f.max });\n      this.prompt.replaceChildren(h('p', { class: 'start-prompt start-prompt--wait', data: { prompt: f.why } }, ...tx(text)));\n      return;",
+    "replace": "      void f;",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-s-loopback-title",
+    "note": "(s) 開発用サーバーの警告のあいだも、参加の板の見出しを「スマホで参加」のままにする",
+    "file": "apps/web/src/host/view-home.ts",
+    "find": "  const title = s.loopback ? t('host.join.loopbackTitle') : s.full",
+    "replace": "  const title = false ? t('host.join.loopbackTitle') : s.full",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-t-shots-small-caption-1366",
+    "note": "(t) 結果の「記録」の文字を小さくする（1366×768 で17px未満）→ 撮影の試験が、ブラウザで測って赤くなる",
+    "file": "apps/web/src/styles/host.css",
+    "find": ".result__caption {\n  font-size: 1rem;",
+    "replace": ".result__caption {\n  font-size: 0.85rem;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-shots"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-u-left-stays-participant",
+    "note": "(u) left のあとの席番号を、参加者のまま扱う（同じ番号に入った別の人が、そのゲームの参加者になる）",
+    "file": "apps/web/src/host/lineup.ts",
+    "find": "  if (!l.seats.has(p)) return l;\n  const seats = new Set(l.seats);",
+    "replace": "  return l;\n  const seats = new Set(l.seats);",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-u-e2e-left-stays-participant",
+    "note": "(u) を実ブラウザで：外した席・退出した席に入った別の人の入力が、ゲームに届く",
+    "file": "apps/web/src/host/lineup.ts",
+    "find": "  if (!l.seats.has(p)) return l;\n  const seats = new Set(l.seats);",
+    "replace": "  return l;\n  const seats = new Set(l.seats);",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-v-e2e-fallback-focus-stays",
+    "note": "(v) 棚が部屋より遅く出たとき、仮に上の帯に置いた選択の輪を、棚へ移さない",
+    "file": "apps/web/src/host/console.ts",
+    "find": "    if (this.fallbackFocus === scope.key) {",
+    "replace": "    if (false) {",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-w-e2e-shelf-grows-column",
+    "note": "(w) 主の列の幅を中身で広げる（棚が増えると、右の参加の板に重なる）",
+    "file": "apps/web/src/styles/host.css",
+    "find": "  grid-template-columns: minmax(0, 1fr);\n  grid-template-rows: minmax(0, 1fr);",
+    "replace": "  grid-template-rows: minmax(0, 1fr);",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-x-e2e-play-hint-every-game",
+    "note": "(x) メニューの開き方の案内を、部屋の最初のゲームだけでなく、毎回出す",
+    "file": "apps/web/src/host/console.ts",
+    "find": "      if (room !== null && this.playHintRoom !== room) {",
+    "replace": "      if (room !== null) {",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-y-e2e-header-down-geometric",
+    "note": "(y) 上の並びから下へ、棚の選択中のカードへ決まった道で下りない（画面の上の近さだけで選ぶ）",
+    "file": "apps/web/src/host/console.ts",
+    "find": "    if (scopeKey !== 'screen:home' || dir !== 'down' || !cur.closest('.home__top')) return undefined;",
+    "replace": "    return undefined;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-z-paused-pads-say-choosing",
+    "note": "(z) 一時停止中のスマホに「メニューを操作中です」を出さない（「〇〇が選んでいます」のまま）",
+    "file": "apps/web/src/host/padplan.ts",
+    "find": "    if (input.paused) {",
+    "replace": "    if (false) {",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--root",
+      "apps/web",
+      "tests/host"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "host-aa-e2e-menu-no-wrap",
+    "note": "(aa) 一時停止のメニューの上下の移動を一周させない",
+    "file": "apps/web/src/host/console.ts",
+    "find": "    if (scopeKey !== 'layer:menu' || (dir !== 'up' && dir !== 'down')) return undefined;",
+    "replace": "    return undefined;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  },
+  {
+    "id": "host-bb-e2e-lock-text-fixed-size",
+    "note": "(bb) 締め切りの札の文字を QR の幅に合わせない（低い画面で左右が切れる）",
+    "file": "apps/web/src/styles/host.css",
+    "find": "  font-size: min(1.05rem, 9cqi);",
+    "replace": "  font-size: 1.05rem;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts"
+    ],
+    "timeoutMs": 420000
+  }
+]

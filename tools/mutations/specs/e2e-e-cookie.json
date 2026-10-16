@@ -1,0 +1,19 @@
+[
+  {
+    "id": "e2e-e-set-cookie",
+    "note": "(e) Worker が HTML の応答で Cookie を1つ返す（Set-Cookie を消さずに足す）",
+    "file": "apps/edge/src/index.ts",
+    "find": "  headers.delete('Set-Cookie');",
+    "replace": "  headers.set('Set-Cookie', 'irori_mutation=1; Path=/; SameSite=Lax');",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "join.spec.ts"
+    ],
+    "timeoutMs": 600000
+  }
+]

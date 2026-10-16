@@ -1,0 +1,19 @@
+[
+  {
+    "id": "e2e-d-foreign-request",
+    "note": "(d) ホストの画面が、外部のドメインへ1件のリクエストを出す（CSP の frame-src https: を通る枠。試験の経路が止めるので、外へは出ない）",
+    "file": "apps/web/src/host/main.ts",
+    "find": "    }).start();",
+    "replace": "    }).start();\n    document.body.append(Object.assign(document.createElement('iframe'), { src: 'https://irori-mutation.invalid/' }));",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "join.spec.ts"
+    ],
+    "timeoutMs": 600000
+  }
+]

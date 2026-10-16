@@ -1,0 +1,872 @@
+[
+  {
+    "id": "padpage-a-short-tap-opens-menu",
+    "note": "(a) 左上の札を短くタップしただけでメニューが開く（指の click でも開く）",
+    "file": "apps/web/src/pad/long-press.ts",
+    "find": "if (e.detail === 0) opts.onLongPress();",
+    "replace": "opts.onLongPress();",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-a-short-tap-opens-menu-e2e",
+    "note": "(a) と同じ変異を、実ブラウザ（実 Worker）の試験で見つける",
+    "file": "apps/web/src/pad/long-press.ts",
+    "find": "if (e.detail === 0) opts.onLongPress();",
+    "replace": "opts.onLongPress();",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-b-resume-not-saved",
+    "note": "(b) welcome の再開の札を sessionStorage に置かない（切れたら別の席になる）",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "writeItem(this.deps.session, resumeKey(code), f.resume);",
+    "replace": "void f.resume;",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-b-resume-not-saved-e2e",
+    "note": "(b) と同じ変異を、実ブラウザの試験で見つける",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "writeItem(this.deps.session, resumeKey(code), f.resume);",
+    "replace": "void f.resume;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-c-name-innerhtml",
+    "note": "(c) 名前を innerHTML で描く（スマホから来た文字列が HTML として解釈される）",
+    "file": "apps/web/src/pad/play.ts",
+    "find": "this.nameEl.textContent = you.name;",
+    "replace": "this.nameEl.innerHTML = you.name;",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-c-name-innerhtml-e2e",
+    "note": "(c) と同じ変異を、実ブラウザの試験で見つける",
+    "file": "apps/web/src/pad/play.ts",
+    "find": "this.nameEl.textContent = you.name;",
+    "replace": "this.nameEl.innerHTML = you.name;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-d-reload-shows-join",
+    "note": "(d) 再接続後に画面を戻さない：再読み込みで札があっても参加の画面を出し、押すまで席にも画面にも戻らない",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "if (readItem(this.deps.session, resumeKey(code)) !== null) {",
+    "replace": "if (false) {",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-d-reload-shows-join-e2e",
+    "note": "(d) の再読み込みの経路を、実ブラウザの試験で見つける",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "if (readItem(this.deps.session, resumeKey(code)) !== null) {",
+    "replace": "if (false) {",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-d-resend-not-reapplied",
+    "note": "(d) 再接続後に画面を戻さない：ホストが送り直した同じ画面を当て直さない（死んだ接続で消えた選択が「選んだ」のまま残る）",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "this.play?.applySpec(f.spec, this.fresh);",
+    "replace": "this.play?.applySpec(f.spec, false);",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-d-resend-not-reapplied-e2e",
+    "note": "(d) の送り直しの経路を、実ブラウザの試験で見つける",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "this.play?.applySpec(f.spec, this.fresh);",
+    "replace": "this.play?.applySpec(f.spec, false);",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-e-kicked-reconnects",
+    "note": "(e) kicked のあとも入り直しを続ける（外された人が、新しい参加として戻ってくる）",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "        this.end(code, 'kicked');",
+    "replace": "        this.end(code, 'kicked');\n        this.connect(code);",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-e-kicked-reconnects-e2e",
+    "note": "(e) と同じ変異を、実ブラウザの試験で見つける",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "        this.end(code, 'kicked');",
+    "replace": "        this.end(code, 'kicked');\n        this.connect(code);",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-e-kicked-notice-ignored",
+    "note": "(e) の一部：kicked・closed の知らせを無視する（閉じるコードが途中で失われると、入り直しを続ける）",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "        this.fatal(code, f.t);",
+    "replace": "        void f;",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-f-replaced-auto-reconnect",
+    "note": "(f) replaced（4009）のあと、自動で入り直す（複製したタブどうしが追い出し合い続ける）",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "      if (s !== 'replaced' && this.phase.k === 'play') this.play?.setLost(true);",
+    "replace": "      if (s !== 'replaced' && this.phase.k === 'play') this.play?.setLost(true);\n      if (s === 'replaced') this.socket?.reconnect();",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-f-replaced-auto-reconnect-e2e",
+    "note": "(f) と同じ変異を、実ブラウザの試験で見つける",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "      if (s !== 'replaced' && this.phase.k === 'play') this.play?.setLost(true);",
+    "replace": "      if (s !== 'replaced' && this.phase.k === 'play') this.play?.setLost(true);\n      if (s === 'replaced') this.socket?.reconnect();",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-f-replaced-comeback-reconnect",
+    "note": "(f) の別の道：画面に戻ったとき（visibilitychange・online）に、replaced でも入り直してしまう",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "else if (s.state === 'reconnecting') s.reconnect();",
+    "replace": "else if (s.state === 'reconnecting' || s.state === 'replaced') s.reconnect();",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-f-replaced-comeback-reconnect-e2e",
+    "note": "(f) の別の道を、実ブラウザの試験で見つける",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "else if (s.state === 'reconnecting') s.reconnect();",
+    "replace": "else if (s.state === 'reconnecting' || s.state === 'replaced') s.reconnect();",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-g-no-probe-on-return",
+    "note": "(g) 画面に戻っても probe() を呼ばない（画面ロックのあとの死んだ接続に、30秒気づかない）",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "if (s.state === 'open') s.probe();",
+    "replace": "if (s.state === 'open') void 0;",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-g-no-probe-on-return-e2e",
+    "note": "(g) と同じ変異を、実ブラウザの試験（回線を止める・サーバー側から切る）で見つける",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "if (s.state === 'open') s.probe();",
+    "replace": "if (s.state === 'open') void 0;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-x-controls-live-while-lost",
+    "note": "追加：切れている間・ホスト待ち・メニューの間も、操作を止めない（押しても届かない操作が押せてしまう）",
+    "file": "apps/web/src/pad/play.ts",
+    "find": "this.padHost.inert = blocked;",
+    "replace": "this.padHost.inert = false;",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-x-no-wake-lock-on-join",
+    "note": "追加：参加のタップで画面の消灯の防止を取らない",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "    else removeItem(this.deps.local, NAME_KEY);\n    this.wake.hold();",
+    "replace": "    else removeItem(this.deps.local, NAME_KEY);",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-x-orient-never-shown-e2e",
+    "note": "追加：横向きが要る画面を縦で開いても、向きの案内を出さない",
+    "file": "apps/web/src/pad/play.ts",
+    "find": "const show = mismatch && this.orientDismissedFor !== need;",
+    "replace": "const show = false;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-y-menubtn-dead",
+    "note": "直し2：右上の「…」を押してもメニューが開かない（入口が長押しだけに戻る）",
+    "file": "apps/web/src/pad/play.ts",
+    "find": "data: { act: 'menu' }, on: { click: () => this.openMenu() } },",
+    "replace": "data: { act: 'menu' } },",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-y-menubtn-dead-e2e",
+    "note": "直し2：同じ変異を、実ブラウザの試験で見つける",
+    "file": "apps/web/src/pad/play.ts",
+    "find": "data: { act: 'menu' }, on: { click: () => this.openMenu() } },",
+    "replace": "data: { act: 'menu' } },",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-y-menubtn-small-e2e",
+    "note": "直し2：「…」を48pxより小さくする（指で押しにくい）",
+    "file": "apps/web/src/styles/pad.css",
+    "find": "  width: 56px;\n  height: 56px;\n  margin: 0;\n  padding: 0;\n  border: 2px solid var(--line-ui);",
+    "replace": "  width: 40px;\n  height: 40px;\n  margin: 0;\n  padding: 0;\n  border: 2px solid var(--line-ui);",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-y-menubtn-follows-name-e2e",
+    "note": "直し2：「…」が名前のすぐ右に付き、名前の長さで場所が動く",
+    "file": "apps/web/src/styles/pad.css",
+    "find": "  justify-content: space-between;\n  gap: 10px;\n  padding: 10px 10px 0;",
+    "replace": "  justify-content: flex-start;\n  gap: 10px;\n  padding: 10px 10px 0;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-y-cover-shows-controls-e2e",
+    "note": "直し3：案内・帯・メニューの下で、操作を薄く見せるだけにする（押せない部品がのぞく）",
+    "file": "apps/web/src/styles/pad.css",
+    "find": ".pp-pad[data-dim] {\n  visibility: hidden;\n}",
+    "replace": ".pp-pad[data-dim] {\n  opacity: 0.4;\n}",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-y-menu-under-badge-e2e",
+    "note": "直し3：メニューを札より下に重ねる（札がメニューの上に残る）",
+    "file": "apps/web/src/styles/pad.css",
+    "find": ".pp-menu {\n  position: absolute;\n  z-index: 6;",
+    "replace": ".pp-menu {\n  position: absolute;\n  z-index: 2;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-y-menu-see-through-e2e",
+    "note": "直し3：メニューの下地を半透明にする（札や操作が透けて見える）",
+    "file": "apps/web/src/styles/pad.css",
+    "find": "  padding: 10px;\n  background: #0e0a08;\n}",
+    "replace": "  padding: 10px;\n  background: rgba(14, 10, 8, 0.6);\n}",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-y-no-vvh",
+    "note": "直し9：見える高さ（visualViewport）を画面へ渡さない（iOS でキーボードの裏に主ボタンが隠れる）",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "    root.style.setProperty('--vvh', `${Math.round(vv.height)}px`);",
+    "replace": "",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-y-no-reveal-e2e",
+    "note": "直し9：入力欄に入っても、入力欄から主ボタンまでを見える範囲へ寄せない",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "    if (!s?.keep || !s.el.isConnected) return;",
+    "replace": "    return;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-y-no-resizes-content-e2e",
+    "note": "直し9：Android の Chrome に、キーボードで画面の高さを縮めるよう頼まない",
+    "file": "apps/web/pad.html",
+    "find": ", interactive-widget=resizes-content",
+    "replace": "",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-kicked-rejoin-back",
+    "note": "第3版：外された画面に、すぐ戻れる「もう一度入る」を戻す（本文の「声をかけてから」と食い違う）",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "return stateScreen({ kind: 'kicked', icon: 'userMinus', title: t('pad.kicked.title'), body: t('pad.kicked.body'), actions: [{ ...reenter, kind: 'primary' }] });",
+    "replace": "return stateScreen({ kind: 'kicked', icon: 'userMinus', title: t('pad.kicked.title'), body: t('pad.kicked.body'), actions: [{ ...reenter, kind: 'primary' }, { label: t('pad.left.rejoin'), kind: 'ghost', act: 'rejoin', onClick: () => void this.check(p.code, true) }] });",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-z-kicked-rejoin-back-e2e",
+    "note": "第3版：同じ変異を、実ブラウザの試験で見つける",
+    "file": "apps/web/src/pad/app.ts",
+    "find": "return stateScreen({ kind: 'kicked', icon: 'userMinus', title: t('pad.kicked.title'), body: t('pad.kicked.body'), actions: [{ ...reenter, kind: 'primary' }] });",
+    "replace": "return stateScreen({ kind: 'kicked', icon: 'userMinus', title: t('pad.kicked.title'), body: t('pad.kicked.body'), actions: [{ ...reenter, kind: 'primary' }, { label: t('pad.left.rejoin'), kind: 'ghost', act: 'rejoin', onClick: () => void this.check(p.code, true) }] });",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-reconnect-now-late",
+    "note": "第3版：「今すぐつなぎ直す」を最初は隠す（切れた直後に押せない）",
+    "file": "apps/web/src/pad/play.ts",
+    "find": "{ class: 'pp-btn pp-btn--primary', attrs: { type: 'button' }, data: { act: 'reconnect-now' }",
+    "replace": "{ class: 'pp-btn pp-btn--primary', attrs: { type: 'button', hidden: true }, data: { act: 'reconnect-now' }",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/web",
+      "--",
+      "tests/pad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "padpage-z-lost-card-top-e2e",
+    "note": "第3版：つなぎ直しの案内を、枠の真ん中でなく上に寄せる",
+    "file": "apps/web/src/styles/pad.css",
+    "find": ".pp-banner {\n  z-index: 4;\n}",
+    "replace": ".pp-banner {\n  z-index: 4;\n}\n\n.pp-cover.pp-banner {\n  place-items: start center;\n}",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-disabled-filled-e2e",
+    "note": "第3版：押せないボタンを塗りに戻す（押せない見た目が2種類になる）",
+    "file": "apps/web/src/styles/pad.css",
+    "find": ".pp-btn--primary:disabled,\n.pp-btn--ghost:disabled {\n  background: transparent;",
+    "replace": ".pp-btn--primary:disabled,\n.pp-btn--ghost:disabled {\n  background: #3a2e26;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-tilt-not-locked-e2e",
+    "note": "第3版：傾きの許可の前でも、ほかのボタンが押せる",
+    "file": "apps/web/src/pad/play.ts",
+    "find": "    btns.inert = true;",
+    "replace": "    btns.inert = false;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-tilt-look-e2e",
+    "note": "第3版：許可の前のボタンに、押せない見た目を当てない（灰色の地に暗い字に戻る）",
+    "file": "apps/web/src/styles/pad.css",
+    "find": ".pp-pad .irori-pad .irori-pad__btn:disabled,\n.pp-pad .irori-pad .irori-pad__btns[inert] .irori-pad__btn {",
+    "replace": ".pp-pad .irori-pad .irori-pad__btn:disabled {",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-btn-gap-e2e",
+    "note": "第3版：縦に並ぶ操作ボタンの間を12pxに戻す（「おわる」の押し間違い）",
+    "file": "apps/web/src/styles/pad.css",
+    "find": "  grid-auto-rows: minmax(64px, 1fr);\n  row-gap: 24px;",
+    "replace": "  grid-auto-rows: minmax(64px, 1fr);\n  row-gap: 12px;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-entry-jump-e2e",
+    "note": "第3版：入力画面で、知らせの場所を先に取らない（誤りが出るとボタンが動く）",
+    "file": "apps/web/src/styles/pad.css",
+    "find": "  min-height: calc(2 * 1.5em + 16px + 2px);",
+    "replace": "  min-height: 0;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-name-note-moves-e2e",
+    "note": "第3版：名前の欄の下の一文の場所を残さない（名前を入れると右の列が動く）",
+    "file": "apps/web/src/styles/pad.css",
+    "find": ".pp-note--field {\n  min-height: calc(2 * 1.65em);",
+    "replace": ".pp-note--field {\n  min-height: 0;",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "join.e2e.ts",
+      "menu.e2e.ts",
+      "states.e2e.ts",
+      "reconnect.e2e.ts",
+      "controllers.e2e.ts",
+      "keyboard.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-viewport-blocks-zoom-e2e",
+    "note": "第4版：viewport に user-scalable=no を戻す（拡大できない。WCAG 1.4.4）",
+    "file": "apps/web/pad.html",
+    "find": "viewport-fit=cover, interactive-widget=resizes-content",
+    "replace": "viewport-fit=cover, user-scalable=no, interactive-widget=resizes-content",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "zoom.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  },
+  {
+    "id": "padpage-z-no-licenses-link-e2e",
+    "note": "第5版：メニューから「ライセンスとクレジット」のリンクを外す（BudouX の帰属表示と全文への導線がなくなる）",
+    "file": "apps/web/src/pad/play.ts",
+    "find": "      // いちばん下に、ライセンスとクレジット（日本語の折り返しに使う BudouX の帰属表示と全文）への控えめなリンク。新しいタブで開く。\n      h(\n        'a',\n        {\n          class: 'pp-menu__licenses',\n          attrs: { href: '/licenses.txt', target: '_blank', rel: 'noopener noreferrer' },\n          data: { act: 'licenses' },\n          on: {\n            click: (e) => {\n              if (!this.armed(e)) e.preventDefault();\n            },\n          },\n        },\n        t('pad.menu.licenses'),\n      ),\n",
+    "replace": "",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.pad.config.ts",
+      "--project=phone-chromium",
+      "menu.e2e.ts",
+      "looks.e2e.ts"
+    ],
+    "timeoutMs": 600000
+  }
+]

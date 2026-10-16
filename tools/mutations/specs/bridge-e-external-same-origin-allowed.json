@@ -1,0 +1,9 @@
+{
+  "id": "bridge-e-external-same-origin-allowed",
+  "note": "(e) 外部方式で、コンソールと同じオリジンのURLの拒否を外す＝同一オリジンの外部ゲームが開ける",
+  "file": "packages/host-bridge/src/entry.ts",
+  "find": "if (url.origin === base.origin) return no('same-origin');",
+  "replace": "if (false) return no('same-origin');",
+  "command": ["npm", "test", "-w", "@irori/host-bridge", "--", "tests/entry.test.ts"],
+  "timeoutMs": 120000
+}

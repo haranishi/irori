@@ -1,0 +1,19 @@
+[
+  {
+    "id": "e2e-b-sdk-end-not-sent",
+    "note": "(b) ゲームの end を呼ばせない：連打レースが同梱する SDK の end() が、コンソールへ何も送らない（結果が出ない）",
+    "file": "games/tap-race/irori.js",
+    "find": "this.t.send(list ? {",
+    "replace": "void (list ? {",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "tap-race.spec.ts"
+    ],
+    "timeoutMs": 600000
+  }
+]

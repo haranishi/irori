@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>rogue</title></head>
+<body>
+<script>
+  // なりすまし：ホストへ握手を送り続ける別の枠。GameFrame は、自分の枠（event.source）でない握手を無視する。
+  setInterval(() => {
+    try { window.top.postMessage({ irori: 'hello', v: 1 }, '*'); } catch (e) { /* ignore */ }
+    try { window.parent.postMessage({ irori: 'hello', v: 1 }, '*'); } catch (e) { /* ignore */ }
+  }, 20);
+</script>
+</body>
+</html>

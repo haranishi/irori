@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>4択クイズ</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <div id="stage">
+    <header class="bar">
+      <p id="round" class="round"></p>
+      <div class="timer" aria-hidden="true"><div id="timer" class="timer__fill"></div></div>
+      <p id="secs" class="secs"></p>
+    </header>
+    <h1 id="question" class="question"></h1>
+    <p id="note" class="note"></p>
+    <ol id="choices" class="choices"></ol>
+    <ul id="seats" class="seats" aria-label="参加者と点数"></ul>
+    <div id="overlay" class="overlay" hidden>
+      <div class="overlay__card">
+        <p id="overlay-title" class="overlay__title"></p>
+        <p id="overlay-sub" class="overlay__sub"></p>
+      </div>
+    </div>
+  </div>
+  <p id="status" class="sr" role="status" aria-live="polite"></p>
+</body>
+</html>

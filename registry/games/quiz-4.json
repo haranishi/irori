@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "id": "quiz-4",
+  "title": {
+    "ja": "4択クイズ",
+    "en": "Four-Choice Quiz"
+  },
+  "summary": {
+    "ja": "日本と世界の名所は、どこにある？ 4つから選ぶ全8問。早く正解するほど高得点。",
+    "en": "Eight four-choice questions on landmarks. Faster right answers score more."
+  },
+  "authors": [
+    {
+      "name": "irori contributors",
+      "url": "https://github.com/haranishi/irori"
+    }
+  ],
+  "license": {
+    "code": "MIT OR Apache-2.0",
+    "assets": "original"
+  },
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "pads": [
+    "wait",
+    "choices"
+  ],
+  "entry": {
+    "bundled": "games/quiz-4/"
+  },
+  "thumbnail": "quiz-4.png",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-10-16"
+}

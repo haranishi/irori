@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "id": "hello-pad",
+  "title": {
+    "ja": "ハローパッド",
+    "en": "Hello Pad"
+  },
+  "summary": {
+    "ja": "スティックで四角を動かして、ぴょんとふくらませよう。まず試すのにちょうどいい、いちばん小さなゲーム。",
+    "en": "Move a square with the stick and make it pop. The smallest game to try first."
+  },
+  "authors": [
+    {
+      "name": "irori contributors",
+      "url": "https://github.com/haranishi/irori"
+    }
+  ],
+  "license": {
+    "code": "MIT OR Apache-2.0",
+    "assets": "original"
+  },
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "pads": [
+    "pad"
+  ],
+  "entry": {
+    "bundled": "games/hello-pad/"
+  },
+  "thumbnail": "hello-pad.png",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-10-16"
+}

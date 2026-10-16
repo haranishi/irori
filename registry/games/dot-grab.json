@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "id": "dot-grab",
+  "title": {
+    "ja": "あつめて点",
+    "en": "Dot Grab"
+  },
+  "summary": {
+    "ja": "スティックで動いて、光る点を集める。45秒で多く取った人の勝ち。",
+    "en": "Move with the stick and collect glowing dots. Most dots in 45 seconds wins."
+  },
+  "authors": [
+    {
+      "name": "irori contributors",
+      "url": "https://github.com/haranishi/irori"
+    }
+  ],
+  "license": {
+    "code": "MIT OR Apache-2.0",
+    "assets": "original"
+  },
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "pads": [
+    "wait",
+    "pad"
+  ],
+  "entry": {
+    "bundled": "games/dot-grab/"
+  },
+  "thumbnail": "dot-grab.png",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-10-16"
+}

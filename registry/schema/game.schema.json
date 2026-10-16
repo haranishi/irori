@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/haranishi/irori/registry/schema/game.schema.json",
+  "title": "irori game manifest (schema 1)",
+  "description": "registry/games/<id>.json の形。意味と審査の基準は docs/registry.md。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "summary",
+    "authors",
+    "license",
+    "players",
+    "pads",
+    "entry",
+    "thumbnail",
+    "sdk",
+    "rating",
+    "added"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "id": {
+      "description": "ファイル名（拡張子なし）と一致させる。英小文字・数字・ハイフン。",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,38}[a-z0-9]$"
+    },
+    "title": {
+      "$ref": "#/$defs/localizedTitle"
+    },
+    "summary": {
+      "$ref": "#/$defs/localizedSummary"
+    },
+    "authors": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https://[^\\s]+$",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "license": {
+      "description": "コードと素材のライセンス。SPDX の識別子、自作の素材は original、ソース非公開の無料ゲームは LicenseRef-closed。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "assets"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "assets": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        }
+      }
+    },
+    "players": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      }
+    },
+    "pads": {
+      "description": "ゲームが使うコントローラー画面の種類。棚のアイコンと、試験で使う。",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "wait",
+          "pad",
+          "buzzer",
+          "choices",
+          "touch",
+          "tilt"
+        ]
+      }
+    },
+    "entry": {
+      "oneOf": [
+        {
+          "description": "このリポジトリに同梱するゲーム。games/<id>/index.html を配信する。",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bundled"
+          ],
+          "properties": {
+            "bundled": {
+              "type": "string",
+              "pattern": "^games/[a-z0-9-]+/$"
+            }
+          }
+        },
+        {
+          "description": "制作者が自分でホストするゲーム。https のみ。開いたとき、その運営者のサーバーに接続する。",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "pattern": "^https://[^\\s@]+$",
+              "maxLength": 300
+            }
+          }
+        }
+      ]
+    },
+    "thumbnail": {
+      "description": "registry/thumbs/ に置いた画像のファイル名。640×480、120KB以下。外部の画像は読み込まない。",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+\\.(webp|png|jpg)$"
+    },
+    "sdk": {
+      "description": "使っているSDKの版（BRIDGE_VERSION）。",
+      "const": 1
+    },
+    "rating": {
+      "description": "いまは全年齢向けだけを受け付ける。",
+      "const": "all"
+    },
+    "added": {
+      "description": "登録した日（YYYY-MM-DD）。棚の並び順に使う。",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "pattern": "^https://[^\\s]+$",
+          "maxLength": 200
+        },
+        "homepage": {
+          "type": "string",
+          "pattern": "^https://[^\\s]+$",
+          "maxLength": 200
+        }
+      }
+    }
+  },
+  "$defs": {
+    "localizedTitle": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "enum": [
+          "ja",
+          "en"
+        ]
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 24
+      }
+    },
+    "localizedSummary": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "enum": [
+          "ja",
+          "en"
+        ]
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      }
+    }
+  }
+}

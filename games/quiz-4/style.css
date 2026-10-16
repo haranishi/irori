@@ -1,0 +1,268 @@
+/* 色は docs/identity.md の値。画面は 960×540 を基準に、窓の大きさに合わせて拡大・縮小する（main.js の fit）。 */
+:root {
+  --bg: #1a1411;
+  --bg-card: #2f241d;
+  --line: #4a382c;
+  --text: #f5ebe0;
+  --text-dim: #c9b8a6;
+  --glow: #ffd9a0;
+  --ember: #ff8a3d;
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-rounded, "Hiragino Maru Gothic ProN", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
+}
+
+#stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 960px;
+  height: 540px;
+  padding: 22px 32px 18px;
+  background: radial-gradient(ellipse at 50% 70%, rgba(255, 138, 61, 0.1), rgba(255, 138, 61, 0) 70%);
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 40px;
+}
+
+.round,
+.secs {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.round {
+  min-width: 150px;
+}
+
+.secs {
+  min-width: 64px;
+  text-align: right;
+}
+
+.timer {
+  flex: 1;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--bg-card);
+}
+
+.timer__fill {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--ember);
+  transform-origin: left center;
+}
+
+.question {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 108px;
+  margin: 8px 0 0;
+  font-size: 34px;
+  line-height: 1.35;
+  text-align: center;
+  /* 日本語の行を、句読点や助詞の途中で不自然に切らない。 */
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  min-height: 28px;
+  margin: 0 0 8px;
+  white-space: pre-line;
+  color: var(--text-dim);
+  font-size: 20px;
+  text-align: center;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 84px;
+  padding: 0 20px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-card);
+  font-size: 30px;
+  font-weight: 700;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.choice__num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--glow);
+  border-radius: 50%;
+  color: var(--glow);
+  font-size: 22px;
+}
+
+.choice__who {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.choice.is-answer {
+  border-color: var(--glow);
+  box-shadow: 0 0 0 3px var(--glow), 0 0 24px rgba(255, 217, 160, 0.35);
+  transform: scale(1.06);
+}
+
+.choice.is-dim {
+  opacity: 0.45;
+}
+
+.seats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 14px;
+  margin: auto 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 260px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(47, 36, 29, 0.8);
+  font-size: 16px;
+}
+
+.seat.is-off {
+  opacity: 0.45;
+}
+
+.seat__name {
+  overflow: hidden;
+  max-width: 120px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seat__score {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.seat__chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.seat__chip.is-good {
+  background: var(--glow);
+  color: var(--bg);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(26, 20, 17, 0.6);
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+.overlay__card {
+  min-width: 360px;
+  padding: 28px 40px;
+  border: 2px solid var(--glow);
+  border-radius: 14px;
+  background: rgba(47, 36, 29, 0.95);
+  text-align: center;
+}
+
+.overlay__title {
+  margin: 0 0 8px;
+  color: var(--glow);
+  font-size: 48px;
+  font-weight: 700;
+}
+
+.overlay__sub {
+  margin: 0;
+  font-size: 22px;
+}
+
+/* 読み上げにだけ出す。つながらなかったときは見える文にする。 */
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.error {
+  position: absolute;
+  inset: auto 0 45% 0;
+  margin: 0;
+  padding: 0 24px;
+  font-size: 24px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choice {
+    transition: none;
+  }
+
+  .choice.is-answer {
+    transform: none;
+  }
+}

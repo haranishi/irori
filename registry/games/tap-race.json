@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "id": "tap-race",
+  "title": {
+    "ja": "連打レース",
+    "en": "Tap Race"
+  },
+  "summary": {
+    "ja": "3・2・1の合図で、ボタンを40回たたいて完走をめざす。早くゴールした順に得点。",
+    "en": "On 3, 2, 1, tap the button 40 times to finish. Faster finishers score more."
+  },
+  "authors": [
+    {
+      "name": "irori contributors",
+      "url": "https://github.com/haranishi/irori"
+    }
+  ],
+  "license": {
+    "code": "MIT OR Apache-2.0",
+    "assets": "original"
+  },
+  "players": {
+    "min": 2,
+    "max": 8
+  },
+  "pads": [
+    "wait",
+    "buzzer"
+  ],
+  "entry": {
+    "bundled": "games/tap-race/"
+  },
+  "thumbnail": "tap-race.png",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-10-16"
+}

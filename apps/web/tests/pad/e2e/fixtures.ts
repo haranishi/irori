@@ -5,7 +5,6 @@
 //   ブラウザが出す WebSocket の失敗の知らせを許す（allowNetworkErrors）。
 import { expect, test as base, type CDPSession, type Locator, type Page } from '@playwright/test';
 import type { PlayerInfo } from '@irori/protocol';
-import { pickPorts } from '../../../../../tools/lib/edge-server.mjs';
 import { edgeUrl } from './env.mjs';
 import { TestHost } from './host';
 import { Line } from './line.mjs';
@@ -28,8 +27,20 @@ interface Fixtures {
 export const test = base.extend<Fixtures, { lineW: Line }>({
   lineW: [
     async ({}, use) => {
-      const [port] = await pickPorts(1, { from: 5240, to: 5259 });
-      const line = await Line.start(Number(new URL(edgeUrl()).port), port!);
+      // 並列のワーカーが、同じ空きポートを同時に選ぶことがある（空きを調べてから使うまでの間に取られる）。
+      // 取れなかったら（EADDRINUSE）、順番を乱した別のポートで、やり直す。
+      const target = Number(new URL(edgeUrl()).port);
+      const candidates = Array.from({ length: 20 }, (_, i) => 5240 + i).sort(() => Math.random() - 0.5);
+      let line: Line | undefined;
+      for (const port of candidates) {
+        try {
+          line = await Line.start(target, port);
+          break;
+        } catch (e) {
+          if ((e as { code?: string }).code !== 'EADDRINUSE') throw e;
+        }
+      }
+      if (!line) throw new Error('回線の模型のポート 5240〜5259 に空きがありません');
       await use(line);
       await line.close();
     },

@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  // Worker の実行環境の型だけを使う。DOM の型と workers-types は同じ名前（Request など）を別々に定義していてぶつかる。
+  // 試験は Node で動くので、別の tsconfig（tests/tsconfig.json）で見る。
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": ["src"]
+}

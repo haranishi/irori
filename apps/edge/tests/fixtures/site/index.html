@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>fixture host</title>
+  <!-- vite が vite-ignore を外したあとの形（"/" の後に空白が残る）。この形でも書き換わること -->
+  <link rel="canonical" href="/" >
+  <meta property="og:url" content="/">
+  <meta property="og:image" content="/og.png">
+  <meta name="twitter:image" content="/og.png">
+  <!-- 書き換えてはいけないもの：別ホストを指す "//"、もとから絶対のもの、"/" で始まらない相対 -->
+  <meta property="og:image:alt" content="/not-a-url">
+  <link rel="alternate" href="/feed">
+  <meta name="twitter:image:src" content="/keep">
+</head>
+<body>
+  <p id="marker">host page</p>
+</body>
+</html>

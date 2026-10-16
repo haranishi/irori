@@ -1,0 +1,8 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  // 試験は Node で動く（グローバルの WebSocket と fetch で、起動した wrangler dev に話しかける）。
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [".", "../vitest.config.ts"]
+}

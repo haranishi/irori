@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "irori",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // createHash / timingSafeEqual を使う。
+  "compatibility_flags": ["nodejs_compat"],
+  // Worker が先に受けるのは、HTML（/ と /pad）と /api だけ。ハッシュ付きのアセット・同梱ゲーム・SDK は
+  // Worker を通さずに静的配信する（Worker を通らない静的配信は、無料枠の1日10万リクエストに数えられない）。
+  // 静的配信のヘッダー（/games/* の sandbox と CORS など）は apps/web/public/_headers に書く。
+  // /index.html・/pad.html を直接開くと、html_handling（既定）が / と /pad へ転送するので、HTML は必ず Worker を通る。
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/", "/pad", "/pad/", "/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOM", "class_name": "Room" },
+      { "name": "LIMITER", "class_name": "Limiter" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room", "Limiter"] }],
+  "vars": {
+    // 空なら、リクエストのオリジンを使う。canonical と OGP の絶対URLの元になる。
+    "PUBLIC_URL": "",
+    // 運営者が決める値：1日（UTC）に作れる部屋の数。費用の暴走を止める最後の栓。正の整数（1〜1,000,000）。
+    "MAX_ROOMS_PER_DAY": "2000",
+    // 運営者が決める値：同じIPから1分に受け付ける WebSocket の接続の数。多くの端末が1つのIPの後ろにいる会場では上げる。
+    "WS_CONNECT_PER_IP_PER_MINUTE": "60",
+    // 試験でだけ "1" にして、猶予などの時間を短くする。本番では空のままにする。
+    "ALLOW_TEST_OVERRIDES": ""
+  },
+  "observability": { "enabled": false }
+}

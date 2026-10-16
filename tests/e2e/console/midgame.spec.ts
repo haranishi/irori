@@ -49,6 +49,8 @@ test('連打の最中にスマホの回線が切れても、戻れば回数を�
   await host.choose('tap-race', pads[0]);
   await host.expectPhase('race', 15_000);
   await pads[1]!.tapMany('buzzer', 3);
+  // 切る前に、3回がホストへ届いたことを確かめる（遅い環境で、送信待ちのまま回線を切ると、届かない分が出る）。
+  await expect.poll(() => host.inputs(2).filter((r) => r.f.i?.id === 'buzzer' && r.f.i.d === 1).length).toBe(3);
   pads[1]!.cut();
   await expect.poll(() => host.received.some((r) => r.f.t === 'online' && r.f.p === 2 && r.f.on === false)).toBe(true);
   await pads[1]!.expectLink('lost');

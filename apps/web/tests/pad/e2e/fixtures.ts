@@ -59,6 +59,8 @@ export const test = base.extend<Fixtures, { lineW: Line }>({
       let allowResources = false;
       const watchPage = (page: Page) => {
         page.on('console', (m) => {
+          // WebKit（Linux 版は特に）は、viewport の interactive-widget を知らず console.error に流す。無視するだけで、動作には影響しない。
+          if (/^Viewport argument key "interactive-widget" not recognized and ignored\.?$/.test(m.text())) return;
           if (m.type() === 'error' || m.type() === 'warning') list.push(`${m.type()}: ${m.text()}`);
         });
         page.on('pageerror', (e) => list.push(`pageerror: ${e.message}`));

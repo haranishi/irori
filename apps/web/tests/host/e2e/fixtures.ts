@@ -33,7 +33,9 @@ export async function watch(page: Page, origin: string, allowHosts: readonly str
   w.allowSocketErrors = () => {
     w.socketOk = true;
   };
-  const allowed = (text: string) => w.socketOk && /WebSocket|ERR_INTERNET_DISCONNECTED|net::ERR_/i.test(text);
+  // WebKit（Linux 版は特に）は、viewport の interactive-widget を知らず console.error に流す。無視するだけで、動作には影響しない。
+  const allowed = (text: string) =>
+    /^Viewport argument key "interactive-widget" not recognized and ignored\.?$/.test(text) || (w.socketOk && /WebSocket|ERR_INTERNET_DISCONNECTED|net::ERR_/i.test(text));
   page.on('console', (m) => {
     if ((m.type() === 'error' || m.type() === 'warning') && !allowed(m.text())) w.problems.push(`console.${m.type()}: ${m.text()}`);
   });

@@ -78,6 +78,9 @@ export class Watch {
       const type = m.type();
       if (type !== 'error' && type !== 'warning') return;
       const text = m.text();
+      // WebKit（Linux 版は特に）は、viewport の interactive-widget（Chrome の Android がキーボードで画面の大きさを変える指定）を
+      // 知らず、知らない鍵として console.error に流す。WebKit が無視するだけで、動作には影響しない。この1種類だけを許す。
+      if (/^Viewport argument key "interactive-widget" not recognized and ignored\.?$/.test(text)) return;
       if (this.socketErrorsOk && /WebSocket|net::ERR_|Failed to load resource|ERR_INTERNET_DISCONNECTED|ERR_CONNECTION/i.test(text)) return;
       if (this.frameConsoleOk?.(m)) return;
       this.problems.push(`${this.o.label}: console.${type} [${m.location().url}]: ${text}`);

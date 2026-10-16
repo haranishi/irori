@@ -1,0 +1,62 @@
+meta: {name: "irori-dev-workflow", version: "1.0.0", status: active, owner: "haranishi"}
+
+goal: >
+  スマホをコントローラーにして1つの大画面を囲む、オープンソースのWebゲーム機を作り、公開リポジトリに載せる。
+  完了は外部の証拠で判定する。①文書（理念・設計・UX・通信・SDK・登録・法務）が100行以内でそろう
+  ②ホスト1・スマホ3の通しE2E（実ブラウザ・実Worker）が通る ③同梱ゲーム4本が登録され、終わりまで遊べる
+  ④CIの全ジョブが緑 ⑤権利の確認記録（出どころ・規約・商標・秘密情報）がある ⑥haranishi/irori の main に載っている
+
+non_goals:
+  - アカウント・ランキング・チャット・課金・広告・解析
+  - ゲームのアップロード窓口、文字入力、自由なコントローラーHTML
+  - WebRTC（初版）、ネイティブアプリ
+  - 公開デモのデプロイ（Cloudflareの契約・費用の判断が要るため、本人の判断に残す）
+  - 参考にした既存サイトのコード・素材・文言の取り込み
+
+roles:
+  - {stage: research, runner: "Opus(read-only, web)", deliverable: "根拠付きの調査ノート（先行事例・端末の制約・Cloudflare・日本法）"}
+  - {stage: design, runner: "メインループ", deliverable: "UXの5階層とユーザーストーリー、通信・SDK・登録の契約、型、スキーマ、ADR、実装の指示書"}
+  - {stage: implement, runner: "Opus(workspace-write)", deliverable: "コード＋試験＋変更の報告。同時に動かすのは2体まで",
+     denied: ["git commit/push", "npm install（依存の追加は報告→メインループが導入）", "デプロイ", "所有する場所の外への書き込み"]}
+  - {stage: verify, runner: "決定的な試験 → 別セッションのOpus(read-only)", deliverable: "検証の記録、変異の確認、指摘の一覧"}
+  - {stage: score_ui, runner: "Opus・別セッション・スクショだけ", deliverable: "採点表（10項目×0〜2点、16点以上かつ0点なし）と改善TOP5"}
+  - {stage: score_play, runner: "Opus・別セッション・実プレイ", deliverable: "体験の採点表と、証拠のスクショ"}
+  - {stage: rights_check, runner: "Opus(read-only, web)", deliverable: "権利・規約・商標・個人情報・秘密情報の独立した確認記録"}
+  - {stage: human_gate, runner: "本人", approves: ["公開リポジトリの作成とpush（今回は明示の指示あり）", "公開デモのデプロイ", "名称の商標調査（J-PlatPat）", "スコープ変更"]}
+
+work_packages:
+  A1: {owner: "packages/protocol(validate), packages/room, packages/room-client, apps/edge, tools/dev.mjs, tools/smoke-edge.mjs"}
+  A2: {owner: "packages/pad-ui, packages/host-bridge, packages/sdk, tools/sync-sdk.mjs, tests/e2e/bridge"}
+  B1: {owner: "apps/web/src/host, apps/web/index.html, apps/web/src/shared, apps/web/public"}
+  B2: {owner: "apps/web/src/pad, apps/web/pad.html, games/*, registry/games, registry/thumbs, tools/build-registry.mjs"}
+  C1: {owner: "tests/e2e（通し）, tools/check-*.mjs, tools/mutations"}
+
+gates:   # 順番に通す。どれかが落ちたら、採点に進まず実装へ差し戻す
+  - typecheck: "npm run typecheck"
+  - unit: "npm test（実行された件数を確かめる。0件の成功は成功でない）"
+  - edge_integration: "実Worker（wrangler dev）に対する試験"
+  - e2e: "npm run test:e2e（ホスト1・スマホ3、終わり方を全部通す）"
+  - checks: "npm run check（文書の長さ・リンク・権利・登録・依存の向き・SDKの同期）"
+  - mutations: "npm run mutations（守りを外すと試験が赤くなる）"
+  - supply: "REUSE・gitleaks・npm audit・依存のライセンス"
+
+loop_control:
+  retry: "verify不合格はimplementへ差し戻し（上限3周）。同一の指摘が2周続いたらNEEDS_HUMANで止める"
+  budgets: {max_cycles: 3, max_parallel_opus: 2}
+  pace: "同時に動かすOpusは2体まで。上限に当たったら、状態をリポジトリに残して止め、再開する"
+
+terminal_states: [SUCCESS, NO_WORK, NEEDS_HUMAN, BUDGET_EXCEEDED, FAILED, UNCERTAIN]
+
+invariants:
+  - "完了判定はモデルの自己申告でなく、実行したコマンドと出力（件数）の証拠"
+  - "設計・実装・レビューを同一セッションに兼務させない"
+  - "通信の型と上限値（packages/protocol）の変更は、メインループだけが行う"
+  - "スタブだけの試験で契約を確かめない。ホストとゲーム、ホストと中継は、実物どうしをつなぐ"
+  - "押すタイミングが関わる試験は、操作の間隔を0〜500msで振り、CPUを遅くした実行も流す"
+  - "試験を足したら、わざと壊して赤くなることを確かめる"
+  - "参考にした既存サイトのコード・素材・文言を、取り込まない・見て写さない"
+  - "文書は100行以内。コードを消したら失われる情報だけを書く"
+  - "個人情報・秘密・私的なパスを、リポジトリに入れない"
+  - "完成していない機能を、READMEで ✅ にしない"
+
+receipt: "各工程の結果（何をして・何で確かめ・何が残ったか）を .agent-harness/runs/2026-10-16-bootstrap/ に残す"

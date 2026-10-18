@@ -1,0 +1,67 @@
+{
+  "feature_name": "continuous-deployment",
+  "created_at": "2026-10-18T11:29:15Z",
+  "updated_at": "2026-10-18T12:32:34Z",
+  "language": "ja",
+  "phase": "implementation",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "review": {
+    "requirements": {
+      "status": "PASS",
+      "reviewer": "main-session",
+      "criteria": 14,
+      "scope": "条件・例外・範囲とEARS形式を確認。文書の長さとリンク検査も成功。"
+    },
+    "design": {
+      "status": "PASS",
+      "reviewer": "main-session",
+      "requirements_covered": 14,
+      "scope": "既存CI・公開条件・認証・外部操作の境界・全14条件の対応を確認。"
+    },
+    "task_graph": {
+      "status": "PASS",
+      "mode": "independent",
+      "reviewer": "cd_task_review"
+    },
+    "implementation": {
+      "status": "APPROVED",
+      "mode": "independent",
+      "reviewer": "cd_code_review"
+    },
+    "documentation": {
+      "status": "APPROVED",
+      "mode": "independent",
+      "reviewer": "cd_docs_review"
+    }
+  },
+  "approval_evidence": {
+    "scope": "保守者が要件と以降の設計・タスク整理・実装・検証を承認。続いてcommit・push・PR作成・マージコミットでの取り込みを明示承認。Cloudflareの認証登録と初回公開は対象外。"
+  },
+  "validation": {
+    "status": "GO",
+    "completion": "LOCAL_VERIFIED",
+    "completed_at": "2026-10-18T11:47:04Z",
+    "requirements_covered": 14,
+    "all_tasks_complete": true,
+    "unit_and_integration_tests_passed": 1180,
+    "workflow_condition_cases_passed": 14,
+    "workflow_shell_cases_passed": 7,
+    "smoke": "npm run smoke:dev: PASS",
+    "report": "../../../.agent-harness/runs/2026-10-18-cd/validation.md",
+    "scope": "この検証記録はローカルの設定・文書・検証が対象。GitHubでの最新の検証結果はCIの実行履歴を参照。全ブラウザE2E・全変異試験のローカル再実行とCloudflareの運用設定・公開は未実施。"
+  }
+}

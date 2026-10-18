@@ -15,9 +15,10 @@
 ## 運営する人
 
 1. [operate.md](operate.md)：動かし方、費用の上限、栓、運用の注意。
-2. [security.md](security.md)：誰を信用しないか、設計上防げないもの。
-3. [legal/operator-notes.md](legal/operator-notes.md)：公開して運営するときの、法令の宿題6つ。
-4. [legal/data-handling.md](legal/data-handling.md)：扱う情報の一覧（プライバシーの説明の元）。
+2. [deploy.md](deploy.md)：Cloudflareへの公開、CDの初期設定・有効化・停止、失敗時の復旧。
+3. [security.md](security.md)：誰を信用しないか、設計上防げないもの。
+4. [legal/operator-notes.md](legal/operator-notes.md)：公開して運営するときの、法令の宿題6つ。
+5. [legal/data-handling.md](legal/data-handling.md)：扱う情報の一覧（プライバシーの説明の元）。
 
 ## 貢献する人・設計を知りたい人
 

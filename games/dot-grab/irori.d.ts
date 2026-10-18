@@ -65,7 +65,18 @@ export interface GameResult {
   score: number;
   /** 順位の横に出す短い文字（例: 「3.2秒」）。12文字まで。 */
   label?: string;
+  /** false は記録だけを残し、順位・優勝の対象にしない。省略時は true。 */
+  ranked?: boolean;
 }
+
+export interface GameEndOptions {
+  display?: 'points' | 'record';
+  outcome?: 'complete' | 'incomplete';
+  note?: string;
+}
+
+export interface HostEnvironment { connected: boolean; visible: boolean }
+export type HostCapability = 'result-options-v1' | 'host-environment-v1';
 
 export type ShapeName = 'circle' | 'square' | 'triangle' | 'diamond' | 'star' | 'cross' | 'hexagon' | 'ring';
 
@@ -90,6 +101,8 @@ export interface IroriEvents {
   /** コンソールのメニューが前面に出た。タイマーとアニメーションを止める。 */
   pause: () => void;
   resume: () => void;
+  /** 接続・表示の変化。一時停止・再開の通知とは独立して届く。 */
+  environment: (value: Readonly<HostEnvironment>) => void;
 }
 
 /** ゲーム専用の小さな保存。鍵は64文字まで、値は1つ16KB、合計64KBまで。 */
@@ -106,6 +119,8 @@ export interface Irori {
   readonly paused: boolean;
   /** コンソールの言語（例 'ja'）。 */
   readonly locale: string;
+  readonly capabilities: readonly HostCapability[];
+  readonly environment: Readonly<HostEnvironment> | null;
   /** 購読する。戻り値の関数で解除する。 */
   on<K extends keyof IroriEvents>(name: K, fn: IroriEvents[K]): () => void;
   /** 形が上限に合わなければ IroriError('bad-pad') を投げる（ホストでも同じ検査で捨てられる）。 */
@@ -116,7 +131,7 @@ export interface Irori {
   /** 最初の画面が出せたら呼ぶ。10秒以内に呼ばないと、コンソールが中断を勧める。 */
   ready(): void;
   /** 終わりを知らせる。結果画面と「もう一度」はコンソールが出す。results は8件まで。 */
-  end(results?: readonly GameResult[]): void;
+  end(results?: readonly GameResult[], options?: GameEndOptions): void;
   readonly storage: IroriStorage;
 }
 
@@ -133,6 +148,7 @@ export type IroriErrorCode =
   | 'bad-target'
   | 'bad-vibrate'
   | 'bad-results'
+  | 'unsupported-feature'
   | 'storage-key'
   | 'storage-too-large'
   | 'storage-quota'

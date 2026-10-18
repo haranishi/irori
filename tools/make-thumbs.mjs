@@ -45,6 +45,9 @@ const SCENES = {
     await phase(page, 'play');
     await hold(page, ['KeyD', 'ArrowRight', 'ArrowDown'], 600);
   },
+  'ten-seconds': async (page) => {
+    await phase(page, 'intro');
+  },
 };
 
 /** 状態の照会で待つ（画面の文字は待たない）。 */

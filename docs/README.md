@@ -8,7 +8,7 @@
 
 ## ゲームを作る人
 
-1. [sdk.md](sdk.md)：短いコード（15行）と、9個の呼び出し、作るときの決まり。
+1. [sdk.md](sdk.md)：短いコード例と呼び出し、作るときの決まり。
 2. [pad.md](pad.md)：スマホの画面の6種と、使い分け。
 3. [registry.md](registry.md)：棚に並べるためのPRと、審査の基準。
 
@@ -30,6 +30,7 @@
 7. [research/](research/)：先行例、端末とCloudflareの制約、参考にしたサイトの観察。
 8. [legal/](legal/)：権利の確認の記録、参考サイトの扱い、ライセンスの方針。
 9. [known-issues.md](known-issues.md)：実際に遊んで見つけた問題と、まだ確かめていないこと。直したい人の入口。
+10. [せーので10秒の詳細設計](../.kiro/specs/ten-seconds-party/design.md)：追加ゲームの仕様。実装済み。[検証記録](../.agent-harness/runs/2026-10-18-ten-seconds/validation.md)に全体試験・独立評価と未確認条件を記載。
 
 進め方の約束（AIと一緒に作るときの役割と完了の判定）は [HARNESS.md](../HARNESS.md)、貢献の入口は [CONTRIBUTING.md](../CONTRIBUTING.md)。
 

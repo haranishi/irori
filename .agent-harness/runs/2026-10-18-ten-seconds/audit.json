@@ -1,0 +1,682 @@
+{
+  "checkedAt": "2026-10-18T06:51:41.747Z",
+  "sourceChecks": [
+    {
+      "file": "packages/host-bridge/src/frame.ts",
+      "expected": "48c85538d43d2b406d9d7e058f6bbd68664f04b0e52af80d9bab53f5016c5b56",
+      "actual": "48c85538d43d2b406d9d7e058f6bbd68664f04b0e52af80d9bab53f5016c5b56",
+      "pass": true
+    },
+    {
+      "file": "packages/host-bridge/src/entry.ts",
+      "expected": "965c7c3b2c420ece660937b57c57ccda4487ec400c7182649109e019028246b6",
+      "actual": "965c7c3b2c420ece660937b57c57ccda4487ec400c7182649109e019028246b6",
+      "pass": true
+    },
+    {
+      "file": "packages/host-bridge/src/validate.ts",
+      "expected": "46b0fc1fc11c99e8b3613197fda69126302f766888d44901cea5c829faf3e374",
+      "actual": "46b0fc1fc11c99e8b3613197fda69126302f766888d44901cea5c829faf3e374",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/console.ts",
+      "expected": "abbf15be6aa314ce26217be5b137c795bbff94a448dc0ba58e357c024412f9d3",
+      "actual": "abbf15be6aa314ce26217be5b137c795bbff94a448dc0ba58e357c024412f9d3",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/pad/app.ts",
+      "expected": "18a53ce1f17a86fe00652a6c297d9d11b36285e60e633b1f396fc6bd9b4e9852",
+      "actual": "18a53ce1f17a86fe00652a6c297d9d11b36285e60e633b1f396fc6bd9b4e9852",
+      "pass": true
+    },
+    {
+      "file": "games/tap-race/irori.js",
+      "expected": "f028e95b403f6520d4854e3cf063ddd08961cd3b1f27793d8aa2ad8c71dacd0f",
+      "actual": "f028e95b403f6520d4854e3cf063ddd08961cd3b1f27793d8aa2ad8c71dacd0f",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/share.ts",
+      "expected": "9a4cd40ab80904d8c32d13a3076e136b1835b3ec28e700d2d0ae2a159dc7c925",
+      "actual": "9a4cd40ab80904d8c32d13a3076e136b1835b3ec28e700d2d0ae2a159dc7c925",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/main.ts",
+      "expected": "a844d6a2291540701149ff408c8355dbf812b60971143e7593c98a746986292e",
+      "actual": "a844d6a2291540701149ff408c8355dbf812b60971143e7593c98a746986292e",
+      "pass": true
+    },
+    {
+      "file": "apps/edge/src/index.ts",
+      "expected": "a1aa683f8dc950f205f070ea1c5614423397dc7d7e4779e4669e889e1b003001",
+      "actual": "a1aa683f8dc950f205f070ea1c5614423397dc7d7e4779e4669e889e1b003001",
+      "pass": true
+    },
+    {
+      "file": "games/tap-race/logic.js",
+      "expected": "52baf1e94341fab549414fde1276b94f43cdc89dcffa6d7c37273f2c91b46859",
+      "actual": "52baf1e94341fab549414fde1276b94f43cdc89dcffa6d7c37273f2c91b46859",
+      "pass": true
+    },
+    {
+      "file": "games/dot-grab/logic.js",
+      "expected": "6c7adb65b198ac33556aaf2d8535bec3c5851a31e3a260a617e86a6abe6a4abb",
+      "actual": "6c7adb65b198ac33556aaf2d8535bec3c5851a31e3a260a617e86a6abe6a4abb",
+      "pass": true
+    },
+    {
+      "file": "games/quiz-4/logic.js",
+      "expected": "c432dad464a9afce112a7b1953e34c0a331c6d2d79c6abd5f53c8688ca98e262",
+      "actual": "c432dad464a9afce112a7b1953e34c0a331c6d2d79c6abd5f53c8688ca98e262",
+      "pass": true
+    },
+    {
+      "file": "packages/pad-ui/src/throttle.ts",
+      "expected": "a80e04c29903ec6a720ffefa2217dc1e3e3c421c17801850efa74a379a7fde85",
+      "actual": "a80e04c29903ec6a720ffefa2217dc1e3e3c421c17801850efa74a379a7fde85",
+      "pass": true
+    },
+    {
+      "file": "apps/edge/src/limiter.ts",
+      "expected": "93fe6b6e8b23de840d37bb0298879bf1b40d42847bc9d438bbf67dd0c526f364",
+      "actual": "93fe6b6e8b23de840d37bb0298879bf1b40d42847bc9d438bbf67dd0c526f364",
+      "pass": true
+    },
+    {
+      "file": "apps/edge/src/room.ts",
+      "expected": "3ee106dc31a28e39f4e76c781e3d84a80b88624c07c954920223081f9a953e3a",
+      "actual": "3ee106dc31a28e39f4e76c781e3d84a80b88624c07c954920223081f9a953e3a",
+      "pass": true
+    },
+    {
+      "file": "apps/edge/src/config.ts",
+      "expected": "02ded9d1975e07cc5d778b8c430b0bb686321d9e5ca85047fd4c26654e99ba37",
+      "actual": "02ded9d1975e07cc5d778b8c430b0bb686321d9e5ca85047fd4c26654e99ba37",
+      "pass": true
+    },
+    {
+      "file": "packages/room-client/src/socket.ts",
+      "expected": "265b87668a38a19a975de1ea3443354aa14eac74d870cf3b69b0b8e5f70773fd",
+      "actual": "265b87668a38a19a975de1ea3443354aa14eac74d870cf3b69b0b8e5f70773fd",
+      "pass": true
+    },
+    {
+      "file": "tools/check-registry.mjs",
+      "expected": "5b7c8fc7caa6394e192e84134c9a74f91f92ab7e5bab6b971e0d6ecc9490f955",
+      "actual": "5b7c8fc7caa6394e192e84134c9a74f91f92ab7e5bab6b971e0d6ecc9490f955",
+      "pass": true
+    },
+    {
+      "file": "games/hello-pad/logic.js",
+      "expected": "1e519893b6730bed781371c297de677ecacfe274ff39b3c3f7810fd1b475b56c",
+      "actual": "1e519893b6730bed781371c297de677ecacfe274ff39b3c3f7810fd1b475b56c",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/roster.ts",
+      "expected": "d26da5d636745245aad2f329edb15f167ce3a61f79b7b047c3ce80368af22906",
+      "actual": "d26da5d636745245aad2f329edb15f167ce3a61f79b7b047c3ce80368af22906",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/launch.ts",
+      "expected": "5ba5eee1f6176d49cf9fc41ea2eefd2306dc79c1bceed9dd54b81bad3d5d3684",
+      "actual": "5ba5eee1f6176d49cf9fc41ea2eefd2306dc79c1bceed9dd54b81bad3d5d3684",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/ui.ts",
+      "expected": "64e295d7e0c9149a1fc3df06222c48c142f601303bf218dc2ccfbbcf6564699a",
+      "actual": "64e295d7e0c9149a1fc3df06222c48c142f601303bf218dc2ccfbbcf6564699a",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/session.ts",
+      "expected": "8560d83db57b26c8648a1b43dd5a15d8eed3cfa8e21e00faca3ce1ab72532f85",
+      "actual": "8560d83db57b26c8648a1b43dd5a15d8eed3cfa8e21e00faca3ce1ab72532f85",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/origin.ts",
+      "expected": "11a214263937c198d18c8141ad111e67b1be4a19913962bc8503e68918ab0d21",
+      "actual": "11a214263937c198d18c8141ad111e67b1be4a19913962bc8503e68918ab0d21",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/view-home.ts",
+      "expected": "2f4a2db0e0856b63859fb597e8552461e7939d2bf45fde3033e87dcb2c129df8",
+      "actual": "2f4a2db0e0856b63859fb597e8552461e7939d2bf45fde3033e87dcb2c129df8",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/view-panels.ts",
+      "expected": "e78282850ab2d0c3d77f06008c421d6a9708bdea17002dfbcafbc5dd7b0e8caf",
+      "actual": "e78282850ab2d0c3d77f06008c421d6a9708bdea17002dfbcafbc5dd7b0e8caf",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/messages.ts",
+      "expected": "5a23906b45eaa64be5c114e11dbb600b2cd882af64a5414df1328f6d002b65c3",
+      "actual": "5a23906b45eaa64be5c114e11dbb600b2cd882af64a5414df1328f6d002b65c3",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/styles/host.css",
+      "expected": "d0c1b82da06be0ce06eefe60988c18b7c6863d45674e5ba3872bba48e21aef2d",
+      "actual": "d0c1b82da06be0ce06eefe60988c18b7c6863d45674e5ba3872bba48e21aef2d",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/lineup.ts",
+      "expected": "be3604b998d4b0bd91102b2f82570175a8cd80135d6dd4c4aa74826cf6775b58",
+      "actual": "be3604b998d4b0bd91102b2f82570175a8cd80135d6dd4c4aa74826cf6775b58",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/host/padplan.ts",
+      "expected": "0f7d082b8b55345c45710c17171bf47f956846f43ace48169928f8d5b753417b",
+      "actual": "0f7d082b8b55345c45710c17171bf47f956846f43ace48169928f8d5b753417b",
+      "pass": true
+    },
+    {
+      "file": "packages/pad-ui/src/pad.ts",
+      "expected": "73cbecaaebd033d384e91771ab286f6e16cc28b190bbbeab1fc93bea75cb5a6c",
+      "actual": "73cbecaaebd033d384e91771ab286f6e16cc28b190bbbeab1fc93bea75cb5a6c",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/pad/long-press.ts",
+      "expected": "9644dc4eea551154a0c1b7c8fc3723ea9c799b33309f11f01a0d93d8edf601c9",
+      "actual": "9644dc4eea551154a0c1b7c8fc3723ea9c799b33309f11f01a0d93d8edf601c9",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/pad/play.ts",
+      "expected": "9c76631739a9a05c8f56b193283079e9005a3bee24dc61e3edfe2520cf6ba159",
+      "actual": "9c76631739a9a05c8f56b193283079e9005a3bee24dc61e3edfe2520cf6ba159",
+      "pass": true
+    },
+    {
+      "file": "apps/web/src/styles/pad.css",
+      "expected": "48073da573257b488ed4b0b981f53b66cbbb213fbe7c70ec6e394df27d71277c",
+      "actual": "48073da573257b488ed4b0b981f53b66cbbb213fbe7c70ec6e394df27d71277c",
+      "pass": true
+    },
+    {
+      "file": "apps/web/pad.html",
+      "expected": "d8a025ca4c2271d6fc545360a77c7a732052ac3368a23ac5c977f52434a4d172",
+      "actual": "d8a025ca4c2271d6fc545360a77c7a732052ac3368a23ac5c977f52434a4d172",
+      "pass": true
+    },
+    {
+      "file": "packages/protocol/src/validate.ts",
+      "expected": "61b8fcd2e2d69ac3deb585487504bc80f1f843056a829ed4c50e4ca95898d662",
+      "actual": "61b8fcd2e2d69ac3deb585487504bc80f1f843056a829ed4c50e4ca95898d662",
+      "pass": true
+    },
+    {
+      "file": "packages/protocol/src/names.ts",
+      "expected": "b319c3ba2f556ae6dfe60f76cce3069560f8692e858a9130bc55e7aa1d91f32b",
+      "actual": "b319c3ba2f556ae6dfe60f76cce3069560f8692e858a9130bc55e7aa1d91f32b",
+      "pass": true
+    },
+    {
+      "file": "packages/room/src/core.ts",
+      "expected": "af29914170256e6261381d77b05c958dfe77ed3b995a5d8835c5b8d7436b53a1",
+      "actual": "af29914170256e6261381d77b05c958dfe77ed3b995a5d8835c5b8d7436b53a1",
+      "pass": true
+    },
+    {
+      "file": "games/ten-seconds/logic.js",
+      "expected": "af40a778e141a08647dc37b7420ebcfd28d4e424e242b9930e32536f3e4de5b0",
+      "actual": "af40a778e141a08647dc37b7420ebcfd28d4e424e242b9930e32536f3e4de5b0",
+      "pass": true
+    },
+    {
+      "file": "tools/dev.mjs",
+      "expected": "1f7060380c0b8d88f3c782068d357904c5552d2e677427de161937de3dc47caf",
+      "actual": "1f7060380c0b8d88f3c782068d357904c5552d2e677427de161937de3dc47caf",
+      "pass": true
+    },
+    {
+      "file": "tools/mutations/guard.mjs",
+      "expected": "f31a902b357979e664baa6f62b6daee5308365eb8eb2eeb99a8aa88f701ca941",
+      "actual": "f31a902b357979e664baa6f62b6daee5308365eb8eb2eeb99a8aa88f701ca941",
+      "pass": true
+    },
+    {
+      "file": "tools/playtest-server.mjs",
+      "expected": "4664c69e7742b415e55e5e0f24ea1196a3322f73e7e954934ffe0d9b836bfdff",
+      "actual": "4664c69e7742b415e55e5e0f24ea1196a3322f73e7e954934ffe0d9b836bfdff",
+      "pass": true
+    },
+    {
+      "file": "tools/mutations/run.mjs",
+      "expected": "f68fa4f385a54ebe122b47373f133b9c83032074f830c4a4e438b0897359c953",
+      "actual": "f68fa4f385a54ebe122b47373f133b9c83032074f830c4a4e438b0897359c953",
+      "pass": true
+    }
+  ],
+  "mutationLogHashMatches": true,
+  "logs": [
+    {
+      "file": "final-typecheck.log",
+      "sha256": "3c220356213e31da8d251325dc3002817389b0a6f63f18b7726a2d15fc0bbfdd",
+      "mtime": "2026-10-18T04:56:11.085Z"
+    },
+    {
+      "file": "final-test.log",
+      "sha256": "a1da9bbacb23968b98f3809991fb5adb17bf27fd98c52dfe40f3a593bdace07a",
+      "mtime": "2026-10-18T04:57:06.818Z"
+    },
+    {
+      "file": "final-edge.log",
+      "sha256": "c3e2fdcd64ad6a5cea9b8a7be8162589e6fd3ac0b127f50c11f47ccaae78f566",
+      "mtime": "2026-10-18T04:57:45.077Z"
+    },
+    {
+      "file": "final-build.log",
+      "sha256": "c9619a8e3757e59053b573e48028ee6ba6af2cad70658d5158edacd95d5ad5b9",
+      "mtime": "2026-10-18T04:58:10.150Z"
+    },
+    {
+      "file": "final-e2e.log",
+      "sha256": "78e275a301de784dad2a60d7bb11a3360a0eaba104945b2646c7a3c62cce9728",
+      "mtime": "2026-10-18T05:11:22.766Z"
+    },
+    {
+      "file": "final-e2e-rerun.log",
+      "sha256": "e9623a41fc53b45c380e5b40bbc2fed7549bc6dfc304a7996da29a9c2793eeab",
+      "mtime": "2026-10-18T05:32:15.109Z"
+    },
+    {
+      "file": "final-check.log",
+      "sha256": "e6bd296545cf9730ead1a4767483f998db10782c5c8a2b55ca918ec0305c8655",
+      "mtime": "2026-10-18T05:32:45.457Z"
+    },
+    {
+      "file": "final-mutations.log",
+      "sha256": "89515a2477478c8f4e2ca88ae78dc80676cd499c024e70a91c13656490af92ba",
+      "mtime": "2026-10-18T06:34:13.827Z"
+    },
+    {
+      "file": "final-budgets.log",
+      "sha256": "aa30eb407c17a86aa3f37dd541f4aa74f5ee091ac56b5e828363ecfce680b665",
+      "mtime": "2026-10-18T06:34:53.365Z"
+    },
+    {
+      "file": "final-reuse.log",
+      "sha256": "733d08a63b5be666280fe564606414de7658fb67087c38d56ada3e93ba024f39",
+      "mtime": "2026-10-18T06:35:17.286Z"
+    },
+    {
+      "file": "final-gitleaks-source.log",
+      "sha256": "bdf1e10cb78133f929e01302f6d64b5e675e5a3edffeb8a2ec70dc2d596b7d1b",
+      "mtime": "2026-10-18T06:35:17.025Z"
+    },
+    {
+      "file": "final-gitleaks-history.log",
+      "sha256": "747dd184e5c1fc19deb16ecc8931ace6e5233548921302ec4a721c7f7dac29fd",
+      "mtime": "2026-10-18T06:35:16.026Z"
+    },
+    {
+      "file": "final-audit.log",
+      "sha256": "83dc20fca6abe8771ac8b1e433e62130e2d470b6458db58d16a906a253c12dd0",
+      "mtime": "2026-10-18T06:35:17.865Z"
+    },
+    {
+      "file": "final-licenses.log",
+      "sha256": "ac20558af6cbc7514ceffbdbcb3253fd89442db3e9a9a3e7a8b2cb820a06c75e",
+      "mtime": "2026-10-18T06:35:17.309Z"
+    }
+  ],
+  "scans": {
+    "todos": {
+      "exitCode": 1,
+      "matches": [],
+      "stderr": ""
+    },
+    "secretAssignmentNames": {
+      "exitCode": 1,
+      "matches": [],
+      "stderr": ""
+    }
+  },
+  "currentSnapshot": [
+    {
+      "file": "apps/web/src/host/console.ts",
+      "sha256": "abbf15be6aa314ce26217be5b137c795bbff94a448dc0ba58e357c024412f9d3"
+    },
+    {
+      "file": "apps/web/src/host/messages.ts",
+      "sha256": "5a23906b45eaa64be5c114e11dbb600b2cd882af64a5414df1328f6d002b65c3"
+    },
+    {
+      "file": "apps/web/src/host/results.ts",
+      "sha256": "38391e18c2f69b3423f3df033d53664121fd2b58bb6a78e274d9fff71df4943d"
+    },
+    {
+      "file": "apps/web/src/host/view-panels.ts",
+      "sha256": "e78282850ab2d0c3d77f06008c421d6a9708bdea17002dfbcafbc5dd7b0e8caf"
+    },
+    {
+      "file": "apps/web/src/styles/host.css",
+      "sha256": "d0c1b82da06be0ce06eefe60988c18b7c6863d45674e5ba3872bba48e21aef2d"
+    },
+    {
+      "file": "apps/web/tests/host/console.test.ts",
+      "sha256": "92551394a417f4eb7d06539743397ec96cba5e8cd611ca5a1383221d17681f5a"
+    },
+    {
+      "file": "apps/web/tests/host/fakes.ts",
+      "sha256": "5f01292bfa69827298a9082e6755eaeb8763599d4dcc999f3e8a1f706d4a7ef3"
+    },
+    {
+      "file": "apps/web/tests/host/host.e2e.ts",
+      "sha256": "8277dc315b1f5562d052173a586f27521ece91f47cc9a69192072ea6653a74ec"
+    },
+    {
+      "file": "apps/web/tests/host/play-layout.e2e.ts",
+      "sha256": "139f302dc1743bb0ea4d073f0399c9c26a1758ef2f0939653a77bdf25dd39b02"
+    },
+    {
+      "file": "apps/web/tests/host/results.test.ts",
+      "sha256": "f4562198b753bd065be5bd45c7f04aa0030d93a1177ca4c09d116a3d0e307910"
+    },
+    {
+      "file": "games/dot-grab/irori.d.ts",
+      "sha256": "04e6b9dab92d65d168b95350f51535225c2ca840040ce3b5d608153d40b42911"
+    },
+    {
+      "file": "games/dot-grab/irori.js",
+      "sha256": "f028e95b403f6520d4854e3cf063ddd08961cd3b1f27793d8aa2ad8c71dacd0f"
+    },
+    {
+      "file": "games/hello-pad/irori.d.ts",
+      "sha256": "04e6b9dab92d65d168b95350f51535225c2ca840040ce3b5d608153d40b42911"
+    },
+    {
+      "file": "games/hello-pad/irori.js",
+      "sha256": "f028e95b403f6520d4854e3cf063ddd08961cd3b1f27793d8aa2ad8c71dacd0f"
+    },
+    {
+      "file": "games/quiz-4/irori.d.ts",
+      "sha256": "04e6b9dab92d65d168b95350f51535225c2ca840040ce3b5d608153d40b42911"
+    },
+    {
+      "file": "games/quiz-4/irori.js",
+      "sha256": "f028e95b403f6520d4854e3cf063ddd08961cd3b1f27793d8aa2ad8c71dacd0f"
+    },
+    {
+      "file": "games/tap-race/irori.d.ts",
+      "sha256": "04e6b9dab92d65d168b95350f51535225c2ca840040ce3b5d608153d40b42911"
+    },
+    {
+      "file": "games/tap-race/irori.js",
+      "sha256": "f028e95b403f6520d4854e3cf063ddd08961cd3b1f27793d8aa2ad8c71dacd0f"
+    },
+    {
+      "file": "package.json",
+      "sha256": "69fc5ea39a9848a0e862817d5f5e9b54b9b56ea593ce78782c8efea128863985"
+    },
+    {
+      "file": "packages/host-bridge/src/frame.ts",
+      "sha256": "48c85538d43d2b406d9d7e058f6bbd68664f04b0e52af80d9bab53f5016c5b56"
+    },
+    {
+      "file": "packages/host-bridge/src/validate.ts",
+      "sha256": "46b0fc1fc11c99e8b3613197fda69126302f766888d44901cea5c829faf3e374"
+    },
+    {
+      "file": "packages/host-bridge/tests/timeouts.test.ts",
+      "sha256": "6fd05274f4ca5571944a823485c76ba0d955738ecb924faa0dfaf1684d5b517d"
+    },
+    {
+      "file": "packages/host-bridge/tests/validate.test.ts",
+      "sha256": "b42c25ecaed606efc01e1b9001bcfacd3827ec95aa27e47422176b04f1945275"
+    },
+    {
+      "file": "packages/protocol/src/bridge.ts",
+      "sha256": "78dd9584f5b559dc3fa2e06164352b2361b6d79e1b203f1e373e61cb021c5f21"
+    },
+    {
+      "file": "packages/protocol/src/code.ts",
+      "sha256": "0139fc13d224f1a08aeecb87569b2e10cebdad8ed097496ad00fe2f7b14e55c8"
+    },
+    {
+      "file": "packages/protocol/src/index.ts",
+      "sha256": "0c9dc4ec9e82de205cc08d0a6d8c9b1777133bcf7d3161afcc6620f5cf4038ff"
+    },
+    {
+      "file": "packages/protocol/src/validate.ts",
+      "sha256": "61b8fcd2e2d69ac3deb585487504bc80f1f843056a829ed4c50e4ca95898d662"
+    },
+    {
+      "file": "packages/sdk/irori.d.ts",
+      "sha256": "04e6b9dab92d65d168b95350f51535225c2ca840040ce3b5d608153d40b42911"
+    },
+    {
+      "file": "packages/sdk/src/checks.ts",
+      "sha256": "1e236a901ff122e6bf0c9605782475dc2d986cd3960fad7fc48c6affdb0c2cb8"
+    },
+    {
+      "file": "packages/sdk/src/core.ts",
+      "sha256": "8102923b54e0ec025853ae6233f3aea14bbae05aec94a4b76d1aa7e757464ae6"
+    },
+    {
+      "file": "packages/sdk/src/errors.ts",
+      "sha256": "7259002d0ac17037143335cdc2eb9c0bc1f6dfa8a211ba8dc3ff89ece176e231"
+    },
+    {
+      "file": "packages/sdk/src/host.ts",
+      "sha256": "76e0965d1ab115518faae4711dec0108a9abb57218021550adf98e60451cfe33"
+    },
+    {
+      "file": "packages/sdk/src/index.ts",
+      "sha256": "72e93af63267860e365ceccdece67260f4df0afdf81884e9bda2bd137b7e0131"
+    },
+    {
+      "file": "packages/sdk/src/mock.ts",
+      "sha256": "175499353fda4c5d5dfe5c063a2920cc54689f6c67a59b391f42f4791ddcc603"
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "sha256": "1125d1cf9d468c623468288ecaf40d93c8e5661bd8d9a9fce01cc7bf0f4d047a"
+    },
+    {
+      "file": "packages/sdk/tests/checks-agreement.test.ts",
+      "sha256": "5896fa8ab92442924b070ccfb0da935598237a12c6e987211fcf76f536eb6460"
+    },
+    {
+      "file": "packages/sdk/tests/host.test.ts",
+      "sha256": "f4c80fda8e32e27d9f29861f1775ce487346991afcaa1cee00ae9f432c9528f5"
+    },
+    {
+      "file": "packages/sdk/tests/mock.test.ts",
+      "sha256": "7d0bd0c08adabad8c5fb9f395d74751e2809b1b919f74a4130747aeb8b50d9bc"
+    },
+    {
+      "file": "packages/sdk/tests/types/api-match.ts",
+      "sha256": "0e1e40b5e0f145e787e8bb0d20f3cd0b992ffdd8d9f27189c7672e45292c62f7"
+    },
+    {
+      "file": "packages/sdk/tests/types/example.ts",
+      "sha256": "46897fe27853dd89535dd2c76678e0f21759170b09542df470978773c3ffc699"
+    },
+    {
+      "file": "tests/e2e/console/a11y.spec.ts",
+      "sha256": "e5cf937987a57bef5be1d93afdc34cbacb8f091936d939a5caf17ebbfbc3ca50"
+    },
+    {
+      "file": "tests/e2e/console/playtest.spec.ts",
+      "sha256": "7a38286bda9b85aadd4797552529d2588b05155f885951ede193f8ede25f7b0c"
+    },
+    {
+      "file": "tools/make-thumbs.mjs",
+      "sha256": "f87a4d7ac10ae918fc1b995bcc9672c28935b4a53cb07ab101c6b40da5606aa0"
+    },
+    {
+      "file": "tools/mutations/specs/e2e-b-no-end.json",
+      "sha256": "932f73c531c7326bf078883cb970a393971cc22429647bceffced8ade2ed6ab1"
+    },
+    {
+      "file": "tools/mutations/specs/host-b1.json",
+      "sha256": "1bf0be8287dc9ff20ab77dbdfc6dc3010474a8b8f6c5428f3406ecbcd12512c2"
+    },
+    {
+      "file": "games/ten-seconds/index.html",
+      "sha256": "aa0eff256e8c0b404ba23420af2684272bf67f8a89c952b64fdc45c703aa8c22"
+    },
+    {
+      "file": "games/ten-seconds/irori.d.ts",
+      "sha256": "04e6b9dab92d65d168b95350f51535225c2ca840040ce3b5d608153d40b42911"
+    },
+    {
+      "file": "games/ten-seconds/irori.js",
+      "sha256": "f028e95b403f6520d4854e3cf063ddd08961cd3b1f27793d8aa2ad8c71dacd0f"
+    },
+    {
+      "file": "games/ten-seconds/logic.js",
+      "sha256": "af40a778e141a08647dc37b7420ebcfd28d4e424e242b9930e32536f3e4de5b0"
+    },
+    {
+      "file": "games/ten-seconds/logic.test.js",
+      "sha256": "d2a87bd11542adb65a14acaafcc671ad68e7709e1ea673e3171951cf20a5e881"
+    },
+    {
+      "file": "games/ten-seconds/main.js",
+      "sha256": "3474d6a4f7f083820c1c2a111f7b6a67ec706de9b412ade10ff34205bf2d5ce3"
+    },
+    {
+      "file": "games/ten-seconds/style.css",
+      "sha256": "8c4efe8d13f4ace93f7bc8c6a28cec691d2e48337e832fd4597c34d7fcf8f044"
+    },
+    {
+      "file": "games/ten-seconds/view.js",
+      "sha256": "b79e24c0cb60007cc6938848c8c099ec8c51b87653a7ec5e59a8e4a2f94b88d3"
+    },
+    {
+      "file": "packages/protocol/src/end.ts",
+      "sha256": "98e6520498ac85ba6df3dc415717e994aedbb6f248cf2578bb0ab02e8d058888"
+    },
+    {
+      "file": "packages/protocol/tests/end.test.ts",
+      "sha256": "1416d8cc05cbdb2f09842a7f23cb49b69b2297247a04f8480ed1827b972d3aa7"
+    },
+    {
+      "file": "registry/games/ten-seconds.json",
+      "sha256": "993b6e964d6f9c811abe5fb375011814bec49b96f9d6b66949a69ffd177eb50b"
+    },
+    {
+      "file": "tests/e2e/console/ten-seconds.spec.ts",
+      "sha256": "73c4104dbff5a4aab2053d19dee2f7f15ab4976f7bca9a44ffa247ed3e62e7d8"
+    },
+    {
+      "file": "tools/mutations/specs/ten-seconds.json",
+      "sha256": "c8cb7e6be32630e1dff919894d62f9ae5c3f97af7316cdc966147016b73cc964"
+    },
+    {
+      "file": "tsconfig.games.json",
+      "sha256": "13e6d13f2da38830e4f1139827c8640f94fa3a2e7e064385e659e828d0c0cc40"
+    }
+  ],
+  "uiManifestChecks": [
+    {
+      "file": "01-intro-1280.png",
+      "pass": true
+    },
+    {
+      "file": "02-intro-1440.png",
+      "pass": true
+    },
+    {
+      "file": "03-countdown-1280.png",
+      "pass": true
+    },
+    {
+      "file": "04-counting-1280.png",
+      "pass": true
+    },
+    {
+      "file": "05-phone-stop-390.png",
+      "pass": true
+    },
+    {
+      "file": "06-phone-stop-768.png",
+      "pass": true
+    },
+    {
+      "file": "07-phone-focus-390.png",
+      "pass": true
+    },
+    {
+      "file": "08-phone-accepted-390.png",
+      "pass": true
+    },
+    {
+      "file": "09-reveal-two-1280.png",
+      "pass": true
+    },
+    {
+      "file": "10-recover-1280.png",
+      "pass": true
+    },
+    {
+      "file": "11-phone-retry-390.png",
+      "pass": true
+    },
+    {
+      "file": "12-final-two-1280.png",
+      "pass": true
+    },
+    {
+      "file": "13-final-two-1440.png",
+      "pass": true
+    },
+    {
+      "file": "14-intro-eight-1280.png",
+      "pass": true
+    },
+    {
+      "file": "15-reveal-eight-1280.png",
+      "pass": true
+    },
+    {
+      "file": "16-reveal-eight-1440.png",
+      "pass": true
+    },
+    {
+      "file": "17-timeout-eight-1280.png",
+      "pass": true
+    },
+    {
+      "file": "18-timeout-six-left-1280.png",
+      "pass": true
+    },
+    {
+      "file": "19-timeout-six-late-1280.png",
+      "pass": true
+    },
+    {
+      "file": "20-phone-late-390.png",
+      "pass": true
+    },
+    {
+      "file": "21-final-eight-1280.png",
+      "pass": true
+    },
+    {
+      "file": "22-replay-eight-1280.png",
+      "pass": true
+    },
+    {
+      "file": "23-phone-tab-focus-390.png",
+      "pass": true
+    }
+  ],
+  "exitEvidence": "Canonical command exit 0 values supplied by executing parent and recorded in validation.md; raw outputs audited independently. Broad suites intentionally not rerun.",
+  "smoke": "smoke.json"
+}

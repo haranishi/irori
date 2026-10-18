@@ -1,19 +1,3 @@
-//#region ../protocol/src/types.ts
-var CLOSE_CODES = {
-	"bad-frame": 4001,
-	"too-large": 4002,
-	rate: 4003,
-	"no-room": 4004,
-	full: 4005,
-	locked: 4006,
-	auth: 4007,
-	kicked: 4008,
-	replaced: 4009,
-	closed: 4010,
-	timeout: 4011,
-	version: 4012
-};
-//#endregion
 //#region ../protocol/src/limits.ts
 var LIMITS = {
 	MAX_PLAYERS: 8,
@@ -81,11 +65,6 @@ var STORAGE_LIMITS = {
 	TOTAL_MAX_BYTES: 65536
 };
 //#endregion
-//#region ../protocol/src/code.ts
-var ALPHABET = LIMITS.CODE_ALPHABET;
-256 - 256 % ALPHABET.length;
-new RegExp(`^[${ALPHABET}]{${LIMITS.CODE_LENGTH}}$`);
-//#endregion
 //#region ../protocol/src/names.ts
 var segmenter;
 function segments(s) {
@@ -143,6 +122,61 @@ function truncateGraphemes(s, max) {
 	return out;
 }
 //#endregion
+//#region ../protocol/src/end.ts
+function plain(v) {
+	if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+	const proto = Object.getPrototypeOf(v);
+	return proto === Object.prototype || proto === null;
+}
+var reject$1 = (reason) => ({
+	ok: false,
+	reason
+});
+function validateGameEnd(results, options) {
+	const out = { ok: true };
+	if (results !== void 0) {
+		if (!Array.isArray(results) || results.length > LIMITS.MAX_PLAYERS) return reject$1("results-array");
+		const rows = [];
+		const seen = new Set();
+		for (const row of results) {
+			if (!plain(row) || Object.keys(row).some((k) => ![
+				"p",
+				"score",
+				"label",
+				"ranked"
+			].includes(k))) return reject$1("result-shape");
+			const { p, score, label, ranked } = row;
+			if (!Number.isInteger(p) || p < 1 || p > LIMITS.MAX_PLAYERS || seen.has(p) || !Number.isFinite(score) || label !== void 0 && (typeof label !== "string" || !fitsGraphemes(label, LIMITS.LABEL_MAX_GRAPHEMES)) || ranked !== void 0 && typeof ranked !== "boolean") return reject$1("result-value");
+			seen.add(p);
+			const clean = {
+				p,
+				score
+			};
+			if (label !== void 0) clean.label = label;
+			if (ranked !== void 0) clean.ranked = ranked;
+			rows.push(clean);
+		}
+		out.results = rows;
+	}
+	if (options !== void 0) {
+		if (!plain(options) || Object.keys(options).some((k) => ![
+			"display",
+			"outcome",
+			"note"
+		].includes(k))) return reject$1("options-shape");
+		const { display, outcome, note } = options;
+		if (display !== void 0 && display !== "points" && display !== "record" || outcome !== void 0 && outcome !== "complete" && outcome !== "incomplete" || note !== void 0 && (typeof note !== "string" || !fitsGraphemes(note, LIMITS.BODY_MAX_GRAPHEMES))) return reject$1("options-value");
+		const clean = {};
+		if (display !== void 0) clean.display = display;
+		if (outcome !== void 0) clean.outcome = outcome;
+		if (note !== void 0) clean.note = note;
+		if (clean.display === "record" && out.results?.some((row) => row.label === void 0)) return reject$1("record-label");
+		out.options = clean;
+	}
+	return out;
+}
+LIMITS.CODE_ALPHABET;
+//#endregion
 //#region ../protocol/src/validate.ts
 var ID_RE$1 = new RegExp(`^[a-z0-9_-]{1,${LIMITS.ID_MAX_LENGTH}}$`);
 var COLORS$2 = [
@@ -163,7 +197,6 @@ var ORIENTS$1 = [
 	"portrait"
 ];
 var TOUCH_MODES = ["area", "swipe"];
-Object.keys(CLOSE_CODES);
 var Reject = class {
 	reason;
 	constructor(reason) {
@@ -1229,11 +1262,6 @@ function shapeSvg(shape, size, color) {
 }
 //#endregion
 //#region src/checks.ts
-function isPlainObject(v) {
-	if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
-	const proto = Object.getPrototypeOf(v);
-	return proto === Object.prototype || proto === null;
-}
 function checkPadSpec(spec) {
 	const r = validatePadSpec(spec, false);
 	return r.ok ? null : r.reason;
@@ -1251,28 +1279,12 @@ function checkVibrate(ms) {
 	}
 	return out;
 }
-function checkResults(v) {
-	if (!Array.isArray(v)) return "results は配列です";
-	if (v.length > LIMITS.MAX_PLAYERS) return `results は${LIMITS.MAX_PLAYERS}件までです`;
-	const out = [];
-	const seen = new Set();
-	for (const r of v) {
-		if (!isPlainObject(r) || Object.keys(r).some((k) => k !== "p" && k !== "score" && k !== "label")) return "results の要素は { p, score, label? } です";
-		if (!isSeat(r.p)) return "results の p は席番号（整数）です";
-		if (seen.has(r.p)) return "results の p が重複しています";
-		seen.add(r.p);
-		if (typeof r.score !== "number" || !Number.isFinite(r.score)) return "results の score は有限の数です";
-		if (r.label !== void 0 && (typeof r.label !== "string" || !fitsGraphemes(r.label, LIMITS.LABEL_MAX_GRAPHEMES))) return `results の label は${LIMITS.LABEL_MAX_GRAPHEMES}文字までです`;
-		out.push(r.label === void 0 ? {
-			p: r.p,
-			score: r.score
-		} : {
-			p: r.p,
-			score: r.score,
-			label: r.label
-		});
-	}
-	return out;
+function readEnv(v) {
+	if (!plain(v) || Object.keys(v).length !== 2 || typeof v.connected !== "boolean" || typeof v.visible !== "boolean") return null;
+	return Object.freeze({
+		connected: v.connected,
+		visible: v.visible
+	});
 }
 function isStoreKey(v) {
 	return typeof v === "string" && v.length >= 1 && v.length <= STORAGE_LIMITS.KEY_MAX_LENGTH;
@@ -1293,13 +1305,14 @@ var IroriError = class extends Error {
 //#endregion
 //#region src/core.ts
 var STORAGE_TIMEOUT_MS = 5e3;
+var CAPS = ["result-options-v1", "host-environment-v1"];
 function report(err) {
 	if (typeof reportError === "function") reportError(err);
 	else console.error(err);
 }
 function freezePlayers(list) {
 	const out = [];
-	for (const p of Array.isArray(list) ? list : []) if (isPlainObject(p) && isSeat(p.id) && typeof p.name === "string") out.push(Object.freeze({
+	for (const p of Array.isArray(list) ? list : []) if (plain(p) && isSeat(p.id) && typeof p.name === "string") out.push(Object.freeze({
 		id: p.id,
 		name: p.name,
 		online: p.online !== false
@@ -1311,6 +1324,8 @@ var IroriCore = class {
 	t;
 	locale;
 	storage;
+	caps;
+	env;
 	list;
 	leaderId;
 	isPaused;
@@ -1326,6 +1341,8 @@ var IroriCore = class {
 		this.list = freezePlayers(init.players);
 		this.leaderId = init.leader;
 		this.isPaused = init.paused;
+		this.caps = Object.freeze(CAPS.filter((c) => Array.isArray(init.capabilities) && init.capabilities.includes(c)));
+		this.env = this.caps.includes("host-environment-v1") ? readEnv(init.environment) : null;
 		this.storage = {
 			get: (key) => this.request("get", key),
 			set: (key, value) => this.request("set", key, value).then(() => void 0)
@@ -1339,6 +1356,12 @@ var IroriCore = class {
 	}
 	get paused() {
 		return this.isPaused;
+	}
+	get environment() {
+		return this.env;
+	}
+	get capabilities() {
+		return this.caps;
 	}
 	on(name, fn) {
 		let set = this.listeners.get(name);
@@ -1379,22 +1402,20 @@ var IroriCore = class {
 		this.readied = true;
 		this.t.send({ m: "ready" });
 	}
-	end(results) {
+	end(results, options) {
 		if (this.ended) return;
-		let list;
-		if (results !== void 0) {
-			const r = checkResults(results);
-			if (typeof r === "string") throw new IroriError("bad-results", r);
-			list = r;
-		}
+		const r = validateGameEnd(results, options);
+		if (!r.ok) throw new IroriError("bad-results", r.reason);
+		if ((r.options !== void 0 || r.results?.some((row) => row.ranked !== void 0)) && !this.caps.includes("result-options-v1")) throw new IroriError("unsupported-feature");
+		const { ok: _, ...data } = r;
 		this.ended = true;
-		this.t.send(list ? {
+		this.t.send({
 			m: "end",
-			results: list
-		} : { m: "end" });
+			...data
+		});
 	}
 	receive(msg) {
-		if (!isPlainObject(msg)) return;
+		if (!plain(msg)) return;
 		switch (msg.m) {
 			case "players":
 				this.list = freezePlayers(msg.players);
@@ -1403,7 +1424,7 @@ var IroriCore = class {
 				return;
 			case "input": {
 				const i = msg.i;
-				if (!isSeat(msg.p) || !isPlainObject(i) || i.k === "menu") return;
+				if (!isSeat(msg.p) || !plain(i) || i.k === "menu") return;
 				this.emit("input", msg.p, i, typeof msg.T === "number" ? msg.T : Date.now());
 				return;
 			}
@@ -1413,6 +1434,14 @@ var IroriCore = class {
 				if (paused === this.isPaused) return;
 				this.isPaused = paused;
 				this.emit(msg.m);
+				return;
+			}
+			case "environment": {
+				if (!this.caps.includes("host-environment-v1") || Object.keys(msg).length !== 2) return;
+				const next = readEnv(msg.environment);
+				if (!next || next.connected === this.env?.connected && next.visible === this.env?.visible) return;
+				this.env = next;
+				this.emit("environment", next);
 				return;
 			}
 			case "store.res": {
@@ -1505,13 +1534,15 @@ function connectHost(win, timeoutMs) {
 				core.receive(m);
 				return;
 			}
-			if (!isPlainObject(m) || m.m !== "init" || !port) return;
+			if (!plain(m) || m.m !== "init" || !port) return;
 			const p = port;
 			core = new IroriCore("host", {
 				players: Array.isArray(m.players) ? m.players : [],
 				leader: typeof m.leader === "number" ? m.leader : null,
 				paused: m.paused === true,
-				locale: typeof m.locale === "string" ? m.locale : "ja"
+				locale: typeof m.locale === "string" ? m.locale : "ja",
+				capabilities: m.capabilities,
+				environment: m.environment
 			}, { send: (msg) => p.postMessage(msg) });
 			finish();
 			resolve(core);
@@ -1519,7 +1550,7 @@ function connectHost(win, timeoutMs) {
 		const onWindow = (ev) => {
 			if (ev.source !== parent || port) return;
 			const d = ev.data;
-			if (!isPlainObject(d) || d.irori !== "port" || d.v !== 1 || ev.ports.length !== 1) return;
+			if (!plain(d) || d.irori !== "port" || d.v !== 1 || ev.ports.length !== 1) return;
 			port = ev.ports[0];
 			clearInterval(retry);
 			port.onmessage = onPort;
@@ -1549,6 +1580,7 @@ var TEXT = {
 		join: "つなぐ",
 		keys: "1人目: WASD・Space・E　2人目: 矢印・Enter・Shift",
 		results: "結果",
+		incomplete: "勝敗なし",
 		again: "もう一度",
 		player: (n) => `プレイヤー${n}`
 	},
@@ -1564,6 +1596,7 @@ var TEXT = {
 		join: "Connect",
 		keys: "P1: WASD, Space, E — P2: arrows, Enter, Shift",
 		results: "Results",
+		incomplete: "No contest",
 		again: "Play again",
 		player: (n) => `Player ${n}`
 	}
@@ -1608,6 +1641,10 @@ function createMock(win, opts = {}) {
 		name: tx.player(i + 1),
 		online: true
 	}));
+	const env = () => ({
+		connected: true,
+		visible: doc.visibilityState === "visible"
+	});
 	const input = (p, i) => core.receive({
 		m: "input",
 		p,
@@ -1837,18 +1874,19 @@ function createMock(win, opts = {}) {
 			return res(null, "unavailable");
 		}
 	};
-	const showResults = (results) => {
+	const showResults = (results, options = {}) => {
 		root.querySelector(".irori-mock__results")?.remove();
-		const sorted = [...results].sort((a, b) => b.score - a.score);
+		const ranked = (r) => options.outcome !== "incomplete" && r.ranked !== false;
+		const sorted = [...results].sort((a, b) => Number(ranked(b)) - Number(ranked(a)) || (ranked(a) ? b.score - a.score : 0) || a.p - b.p);
 		const list = h("ol", null);
 		sorted.forEach((r) => {
-			const rank = sorted.findIndex((o) => o.score === r.score) + 1;
+			const rank = ranked(r) ? sorted.findIndex((o) => o.score === r.score) + 1 : null;
 			const l = look(r.p, locale);
 			const name = seats.find((s) => s.info.id === r.p)?.info.name ?? tx.player(r.p);
 			list.append(h("li", {
 				"data-p": String(r.p),
-				"data-rank": String(rank)
-			}, h("span", { class: "irori-mock__rank" }, String(rank)), shapeSvg(l.shape, 20, l.color), h("span", null, name), h("span", { class: "irori-mock__score" }, r.label ? `${r.score}（${r.label}）` : String(r.score))));
+				"data-rank": String(rank ?? "")
+			}, h("span", { class: "irori-mock__rank" }, String(rank ?? "—")), shapeSvg(l.shape, 20, l.color), h("span", null, name), h("span", { class: "irori-mock__score" }, options.display === "record" ? r.label ?? "" : r.label ? `${r.score}（${r.label}）` : String(r.score))));
 		});
 		const again = h("button", {
 			type: "button",
@@ -1860,14 +1898,16 @@ function createMock(win, opts = {}) {
 			role: "dialog",
 			"aria-modal": "true",
 			"aria-label": tx.results
-		}, h("div", { class: "irori-mock__card" }, h("h2", null, tx.results), list, again)));
+		}, h("div", { class: "irori-mock__card" }, h("h2", null, options.outcome === "incomplete" ? tx.incomplete : tx.results), list, options.note === void 0 ? null : h("p", null, options.note), again)));
 		again.focus();
 	};
 	const core = new IroriCore("mock", {
 		players: infos,
 		leader: 1,
 		paused: false,
-		locale
+		locale,
+		capabilities: CAPS,
+		environment: env()
 	}, { send(msg) {
 		switch (msg.m) {
 			case "setPad":
@@ -1884,7 +1924,7 @@ function createMock(win, opts = {}) {
 				for (const s of targets(msg.to)) buzz(s, msg.ms);
 				return;
 			case "end":
-				showResults(msg.results ?? []);
+				showResults(msg.results ?? [], msg.options);
 				return;
 			case "ready":
 				root.dataset.ready = "";
@@ -1895,6 +1935,10 @@ function createMock(win, opts = {}) {
 			}
 		}
 	} });
+	doc.addEventListener("visibilitychange", () => core.receive({
+		m: "environment",
+		environment: env()
+	}));
 	for (const info of infos) {
 		const l = look(info.id, locale);
 		const box = h("div", { class: "irori-mock__pad" });

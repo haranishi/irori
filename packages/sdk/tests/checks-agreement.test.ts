@@ -1,5 +1,5 @@
 // SDK の送る前の検査と、ホスト（host-bridge）の受けたときの検査が、同じ入力で同じ判定になることを確かめる。
-// SDK はホストの部品を読めない（依存の向き）ので規則の写しを持つ。試験だけが両方を読んで突き合わせる。
+// 終了・画面の共通検証も含め、試験だけが両方を読んで境界での判定を突き合わせる。
 import { describe, expect, it } from 'vitest';
 import { validateGameToHost } from '../../host-bridge/src/validate';
 import { checkPadSpec, checkResults, checkVibrate, isStoreKey, isStoreValue } from '../src/checks';
@@ -10,6 +10,7 @@ const values: unknown[] = [
 ];
 const results: unknown[] = [
   [], [{ p: 1, score: 1 }], [{ p: 1, score: 1, label: '1位' }], [{ p: 1, score: 1, label: 'あ'.repeat(13) }], [{ p: 0, score: 1 }],
+  [{ p: 1, score: 1, ranked: false }], [{ p: 1, score: 1, ranked: true }], [{ p: 1, score: 1, ranked: 'yes' }],
   [{ p: 1.5, score: 1 }], [{ p: 1, score: Number.NaN }], [{ p: 1, score: 1 }, { p: 1, score: 2 }], [{ p: 1, score: 1, x: 1 }],
   Array.from({ length: 8 }, (_, i) => ({ p: i + 1, score: i })), Array.from({ length: 9 }, (_, i) => ({ p: (i % 8) + 1, score: i })), 'x', null,
 ];
@@ -19,6 +20,10 @@ const specs: unknown[] = [
 ];
 
 describe('SDK と host-bridge の検査の一致', () => {
+  it('checkResultsは配列を要求し、省略されたendはcore/bridgeで扱う', () => {
+    expect(typeof checkResults(undefined)).toBe('string');
+    expect(validateGameToHost({ m: 'end' }).ok).toBe(true);
+  });
   it.each(values.map((v) => [v]))('振動 %s', (ms) => {
     const host = validateGameToHost({ m: 'vibrate', to: '*', ms: typeof ms === 'number' ? [ms] : ms }).ok;
     expect(typeof checkVibrate(ms) !== 'string').toBe(host);
@@ -26,6 +31,21 @@ describe('SDK と host-bridge の検査の一致', () => {
 
   it.each(results.map((r) => [r]))('結果 %j', (r) => {
     expect(typeof checkResults(r) !== 'string').toBe(validateGameToHost({ m: 'end', results: r }).ok);
+  });
+
+  it.each([
+    [{ display: 'record' }, [{ p: 1, score: -1, label: '0.1秒', ranked: false }], true],
+    [{ display: 'record' }, [{ p: 1, score: -1 }], false],
+    [{ outcome: 'incomplete', note: '目安' }, [], true],
+    [{ note: '<b>文字のまま</b>' }, [], true],
+    [{ note: 'あ'.repeat(121) }, [], false],
+    [{ outcome: 'future' }, [], false],
+    [{ display: 'record', html: 'x' }, [], false],
+    [null, [], false],
+    [[], [], false],
+  ])('終了オプション %j', (options, rows, valid) => {
+    expect(typeof checkResults(rows, options) !== 'string').toBe(valid);
+    expect(validateGameToHost({ m: 'end', results: rows, options }).ok).toBe(valid);
   });
 
   it.each(values.map((v) => [v]))('保存の鍵と値 %s', (v) => {

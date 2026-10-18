@@ -1,5 +1,5 @@
 // 公開APIの型。手書きの irori.d.ts と同じ形にする（tests/types が tsc で突き合わせる）。
-import type { GamePadSpec, GameResult, InputEvent, PlayerId, PlayerInfo } from '@irori/protocol';
+import type { GameEndOptions, GamePadSpec, GameResult, HostCapability, HostEnvironment, InputEvent, PlayerId, PlayerInfo } from '@irori/protocol';
 import type { Look } from '@irori/pad-ui';
 
 /** ゲームに届く入力。メニューの依頼（menu）はコンソールが受け取り、ゲームには届かない。 */
@@ -13,6 +13,7 @@ export interface IroriEvents {
   input: (p: PlayerId, input: GameInput, T: number) => void;
   pause: () => void;
   resume: () => void;
+  environment: (value: Readonly<HostEnvironment>) => void;
 }
 
 export interface IroriStorage {
@@ -27,12 +28,14 @@ export interface Irori {
   readonly leader: PlayerId | null;
   readonly paused: boolean;
   readonly locale: string;
+  readonly capabilities: readonly HostCapability[];
+  readonly environment: Readonly<HostEnvironment> | null;
   on<K extends keyof IroriEvents>(name: K, fn: IroriEvents[K]): () => void;
   setPad(spec: GamePadSpec, to?: Target): void;
   vibrate(ms: number | readonly number[], to?: Target): void;
   look(id: PlayerId): Look;
   ready(): void;
-  end(results?: readonly GameResult[]): void;
+  end(results?: readonly GameResult[], options?: GameEndOptions): void;
   readonly storage: IroriStorage;
 }
 

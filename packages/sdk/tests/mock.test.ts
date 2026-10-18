@@ -6,6 +6,7 @@ import { IroriError } from '../src/errors';
 
 beforeEach(() => {
   Object.defineProperty(window.navigator, 'language', { get: () => 'ja-JP', configurable: true });
+  Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
   document.head.replaceChildren();
   document.body.replaceChildren();
   localStorage.clear();
@@ -181,6 +182,24 @@ describe('キーボード', () => {
 });
 
 describe('席・一時停止・振動・終わり・保存', () => {
+  it('両能力とconnected=trueを示し、documentの表示変化をpause/resumeと別に知らせる', () => {
+    Object.defineProperty(document, 'visibilityState', { get: () => 'hidden', configurable: true });
+    const { irori } = start(1);
+    expect(irori.capabilities).toEqual(['result-options-v1', 'host-environment-v1']);
+    expect(irori.environment).toEqual({ connected: true, visible: false });
+    const log: unknown[] = [];
+    irori.on('environment', (env) => log.push(env));
+    irori.on('pause', () => log.push('pause'));
+    irori.on('resume', () => log.push('resume'));
+    Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(log).toEqual([{ connected: true, visible: true }]);
+    expect(irori.paused).toBe(false);
+    irori.receive({ m: 'environment', environment: { connected: false, visible: true } });
+    expect(irori.environment).toEqual({ connected: false, visible: true });
+  });
+
   it('切断のボタンで players が変わり、リーダーは接続中の最小の席へ移る', () => {
     const { irori, seat, inputs, key } = start(2);
     const seen: [readonly PlayerInfo[], number | null][] = [];
@@ -235,6 +254,39 @@ describe('席・一時停止・振動・終わり・保存', () => {
     irori.end([{ p: 1, score: 1 }]);
     expect(document.querySelectorAll('.irori-mock__results')).toHaveLength(1);
     expect(() => createMock(window, { mockPlayers: 1 }).end([{ p: 1, score: Number.NaN }])).toThrow(/bad-results/);
+  });
+
+  it('recordはlabelだけを主記録にし、退出行を最後に席順・順位なしで示す', () => {
+    const { irori } = start(4);
+    irori.end([
+      { p: 4, score: 999, label: '退出4', ranked: false },
+      { p: 3, score: -12, label: 'ズレ1.2秒' },
+      { p: 2, score: 888, label: '退出2', ranked: false },
+      { p: 1, score: -12, label: 'ズレ1.2秒' },
+    ], { display: 'record', note: '<b>通信の遅れを含む目安です</b>' });
+    const rows = [...document.querySelectorAll('.irori-mock__results li')] as HTMLElement[];
+    expect(rows.map((r) => [r.dataset.p, r.dataset.rank, r.querySelector('.irori-mock__rank')?.textContent])).toEqual([
+      ['1', '1', '1'], ['3', '1', '1'], ['2', '', '—'], ['4', '', '—'],
+    ]);
+    expect(rows.map((r) => r.querySelector('.irori-mock__score')?.textContent)).toEqual(['ズレ1.2秒', 'ズレ1.2秒', '退出2', '退出4']);
+    const dialog = document.querySelector('.irori-mock__results') as HTMLElement;
+    expect(dialog.textContent).toContain('<b>通信の遅れを含む目安です</b>');
+    expect(dialog.querySelector('b')).toBeNull();
+    expect(dialog.textContent).not.toMatch(/999|888|-12|点/);
+  });
+
+  it('incompleteは全員の順位をなくし、勝敗なしと理由を示す。記録は保存しない', () => {
+    const { irori } = start(2);
+    irori.end([{ p: 2, score: -5, label: 'ズレ0.5秒' }, { p: 1, score: -2, label: 'ズレ0.2秒' }], {
+      display: 'record', outcome: 'incomplete', note: '人数が足りなくなりました',
+    });
+    const rows = [...document.querySelectorAll('.irori-mock__results li')] as HTMLElement[];
+    expect(rows.map((r) => [r.dataset.p, r.dataset.rank, r.querySelector('.irori-mock__rank')?.textContent])).toEqual([
+      ['1', '', '—'], ['2', '', '—'],
+    ]);
+    expect(document.querySelector('.irori-mock__results')?.textContent).toContain('勝敗なし');
+    expect(document.querySelector('.irori-mock__results')?.textContent).toContain('人数が足りなくなりました');
+    expect(localStorage.length).toBe(0);
   });
 
   it('保存は localStorage の irori-mock: の名前で分け、上限を守る', async () => {

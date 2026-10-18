@@ -1,0 +1,119 @@
+/* 静かな暖色の共用画面。計測中のアニメーション・音・秒数は使わない。 */
+:root {
+  --bg: #1a1411;
+  --card: #2f241d;
+  --text: #f5ebe0;
+  --dim: #c9b8a6;
+  --glow: #ffd9a0;
+  --line: #74543c;
+  color-scheme: dark;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-rounded, "Hiragino Maru Gothic ProN", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; min-width: 320px; height: 100%; margin: 0; }
+body { overflow: hidden; }
+h1, p, ul, ol { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+:focus-visible { outline: 3px solid var(--glow); outline-offset: 4px; }
+
+.game {
+  width: 100%;
+  height: 100%;
+  padding: 26px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 36px; }
+.brand, .round { font-size: 24px; font-weight: 700; line-height: 1.4; }
+.brand { color: var(--dim); }
+.round { color: var(--glow); font-variant-numeric: tabular-nums; }
+.scene { flex: 1; min-height: 0; }
+.footer { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.footer-meta { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 6px 24px; }
+.progress-guide { font-size: 24px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.precision-note, .late-join { color: var(--dim); font-size: 18px; line-height: 1.4; }
+
+.scene--intro { display: flex; flex-direction: column; justify-content: center; gap: 32px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 224px; align-items: center; gap: 36px; }
+.title { font-size: clamp(44px, 5.8vw, 76px); font-weight: 800; line-height: 1.2; letter-spacing: 0.02em; }
+.tagline { color: var(--glow); font-size: 28px; line-height: 1.4; margin-top: 16px; }
+.rule { max-width: 760px; margin-top: 20px; font-size: 26px; line-height: 1.7; }
+.target { width: 224px; height: 224px; display: flex; align-items: baseline; justify-content: center; gap: 4px; padding-top: 22px; border: 1px solid var(--line); border-radius: 32px; background: var(--card); }
+.target-number { color: var(--glow); font-size: 136px; font-weight: 800; line-height: 1.25; letter-spacing: -0.06em; font-variant-numeric: tabular-nums; }
+.target-unit { font-size: 26px; font-weight: 700; }
+.people { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.person { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.who { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 24px; font-weight: 700; line-height: 1.25; }
+.name { min-width: 0; overflow-wrap: anywhere; }
+.seat-mark { flex: 0 0 28px; width: 28px; height: 28px; }
+.seat-mark svg { display: block; width: 100%; height: 100%; }
+.seat-state { flex-shrink: 0; color: var(--dim); font-size: 18px; font-weight: 500; }
+
+.scene--countdown, .scene--counting { display: grid; place-content: center; text-align: center; }
+.cue { color: var(--glow); font-size: clamp(96px, 13vw, 176px); font-weight: 800; line-height: 1.25; letter-spacing: 0.04em; }
+.scene--reveal { display: flex; flex-direction: column; justify-content: safe center; gap: 8px; }
+.result-labels, .result-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) 145px 230px 170px; gap: 12px; align-items: center; padding-inline: 12px; }
+.result-labels { flex-shrink: 0; color: var(--dim); font-size: 18px; line-height: 1.4; }
+.result-labels > :nth-child(n+3) { text-align: right; }
+.results { flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; }
+.result-row { min-height: 48px; padding-block: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.rank { color: var(--glow); font-size: 26px; font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.record, .delta, .total { text-align: right; font-variant-numeric: tabular-nums; }
+.record { font-size: 32px; font-weight: 800; line-height: 1.1; }
+.record--timeout { font-size: 24px; }
+.delta { display: flex; flex-direction: column; color: var(--dim); font-size: 24px; line-height: 1.15; }
+.delta--timeout { flex-direction: row; align-items: baseline; justify-content: flex-end; gap: 8px; white-space: nowrap; }
+.delta-caption { font-size: 18px; }
+.total { font-size: 28px; font-weight: 700; line-height: 1.2; }
+.scene--recover, .scene--ended, .scene--message { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; }
+.eyebrow { color: var(--glow); font-size: 24px; }
+.message-title { font-size: clamp(36px, 4.6vw, 60px); line-height: 1.3; }
+.message-body { color: var(--dim); font-size: 28px; line-height: 1.5; }
+.reasons { display: flex; flex-direction: column; gap: 6px; padding: 14px 24px; border-radius: 12px; background: var(--card); font-size: 24px; line-height: 1.4; }
+.sr { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (max-width: 1000px) {
+  .game { padding: 20px 24px; gap: 12px; }
+  .hero { grid-template-columns: minmax(0, 1fr) 160px; gap: 20px; }
+  .target { width: 160px; height: 160px; padding-top: 12px; border-radius: 24px; }
+  .target-number { font-size: 100px; }
+  .target-unit { font-size: 22px; }
+  .tagline { font-size: 24px; }
+  .rule { font-size: 24px; margin-top: 14px; }
+  .people { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .person { padding: 8px 10px; }
+  .who { font-size: 22px; }
+  .result-labels, .result-row { grid-template-columns: 40px minmax(0, 1fr) 110px 180px 125px; gap: 8px; padding-inline: 8px; }
+  .result-row .who { font-size: 20px; }
+  .rank { font-size: 22px; }
+  .record { font-size: 28px; }
+  .record--timeout, .delta { font-size: 20px; }
+  .total { font-size: 24px; }
+}
+
+@media (max-width: 680px), (max-height: 520px) {
+  .game { padding: 16px 22px; gap: 10px; }
+  .topbar { min-height: 28px; }
+  .brand, .round { font-size: 18px; }
+  .scene--intro { gap: 18px; }
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .title { font-size: 44px; }
+  .target { display: none; }
+  .tagline { margin-top: 10px; font-size: 22px; }
+  .rule { margin-top: 12px; font-size: 21px; line-height: 1.6; }
+  .people { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .who { gap: 6px; font-size: 18px; }
+  .seat-mark { flex-basis: 24px; width: 24px; height: 24px; }
+  .person { padding: 8px; }
+  .progress-guide { font-size: 20px; }
+  .precision-note, .late-join { font-size: 16px; }
+  .message-body, .eyebrow, .reasons { font-size: 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

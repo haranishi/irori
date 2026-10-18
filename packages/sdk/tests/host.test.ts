@@ -32,7 +32,7 @@ afterEach(() => {
   }
 });
 
-async function connected() {
+async function connected(init: unknown = INIT) {
   const f = fakeWindow();
   const p = connectHost(f.win, 3000);
   const ch = new MessageChannel();
@@ -40,7 +40,7 @@ async function connected() {
   const fromGame: unknown[] = [];
   ch.port1.onmessage = (e) => fromGame.push(e.data);
   f.deliver({ irori: 'port', v: 1 }, f.parent, [ch.port2]);
-  ch.port1.postMessage(INIT);
+  ch.port1.postMessage(init);
   const irori = await p;
   return { ...f, irori, ch, fromGame };
 }
@@ -103,6 +103,120 @@ describe('握手', () => {
 });
 
 describe('つながったあと', () => {
+  it('旧ホストでは能力が空・環境はnull。旧endの各形式は追加キーなしで送る', async () => {
+    for (const results of [undefined, [], [{ p: 1, score: 3, label: '3秒' }]]) {
+      const { irori, fromGame } = await connected();
+      expect(irori.capabilities).toEqual([]);
+      expect(irori.environment).toBeNull();
+      irori.end(results);
+      await tick();
+      expect(fromGame).toEqual([results === undefined ? { m: 'end' } : { m: 'end', results }]);
+    }
+  });
+
+  it.each([{ capabilities: [] }, { capabilities: ['host-environment-v1'] }])('result-options-v1がないホスト($capabilities)への拡張endを送信前に拒み、拒否後も旧endを送れる', async ({ capabilities }) => {
+    const { irori, fromGame } = await connected({ ...INIT, capabilities });
+    expect(() => irori.end([], {})).toThrow(/unsupported-feature/);
+    expect(() => irori.end([{ p: 1, score: 3, ranked: false }])).toThrow(/unsupported-feature/);
+    expect(() => irori.end([{ p: 1, score: 3, ranked: true }])).toThrow(/unsupported-feature/);
+    await tick();
+    expect(fromGame).toEqual([]);
+    irori.end([{ p: 1, score: 3 }]);
+    await tick();
+    expect(fromGame).toEqual([{ m: 'end', results: [{ p: 1, score: 3 }] }]);
+  });
+
+  it('対応ホストへ結果なしのoptionsを渡してもresultsキーを補わない', async () => {
+    const { irori, fromGame } = await connected({ ...INIT, capabilities: ['result-options-v1'] });
+    irori.end(undefined, { outcome: 'incomplete' });
+    await tick();
+    expect(fromGame).toEqual([{ m: 'end', options: { outcome: 'incomplete' } }]);
+  });
+
+  it('JavaScriptから能力一覧を差し替えても非対応ホストへの拡張endを許可しない', async () => {
+    const { irori, fromGame } = await connected();
+    const capabilities = irori.capabilities;
+    expect(() => irori.end([], { outcome: 'incomplete' })).toThrow(/unsupported-feature/);
+    expect(Reflect.set(irori, 'capabilities', ['result-options-v1'])).toBe(false);
+    expect(irori.capabilities).toBe(capabilities);
+    expect(irori.capabilities).toEqual([]);
+    expect(Object.isFrozen(irori.capabilities)).toBe(true);
+    expect(() => irori.end([], { outcome: 'incomplete' })).toThrow(/unsupported-feature/);
+    await tick();
+    expect(fromGame).toEqual([]);
+    irori.end();
+    await tick();
+    expect(fromGame).toEqual([{ m: 'end' }]);
+  });
+
+  it('対応能力だけを読み取り専用で保持し、拡張endを検証・コピーして送る', async () => {
+    const { irori, fromGame } = await connected({ ...INIT, capabilities: ['result-options-v1', 'future', 'result-options-v1'] });
+    expect(irori.capabilities).toEqual(['result-options-v1']);
+    expect(Object.isFrozen(irori.capabilities)).toBe(true);
+    const rows = [{ p: 1, score: -12, label: 'ズレ1.2秒', ranked: false }];
+    const options = { display: 'record' as const, outcome: 'incomplete' as const, note: '<b>目安</b>' };
+    expect(() => irori.end(rows, { ...options, html: 'x' } as never)).toThrow(/bad-results/);
+    expect(() => irori.end([{ p: 1, score: 2 }], options)).toThrow(/bad-results/);
+    irori.end(rows, options);
+    rows[0]!.score = 999;
+    options.note = 'changed';
+    await tick();
+    expect(fromGame).toEqual([{ m: 'end', results: [{ p: 1, score: -12, label: 'ズレ1.2秒', ranked: false }], options: { display: 'record', outcome: 'incomplete', note: '<b>目安</b>' } }]);
+  });
+
+  it('初期環境を購読前にも読め、環境変化はpause/resumeと独立して一件ずつ届く', async () => {
+    const { irori, ch } = await connected({ ...INIT, capabilities: ['host-environment-v1'], environment: { connected: false, visible: false } });
+    const first = irori.environment;
+    expect(first).toEqual({ connected: false, visible: false });
+    expect(Object.isFrozen(first)).toBe(true);
+    const log: unknown[] = [];
+    const off = irori.on('environment', (value) => {
+      expect(value).toBe(irori.environment);
+      expect(Object.isFrozen(value)).toBe(true);
+      log.push(value);
+    });
+    irori.on('pause', () => log.push('pause'));
+    irori.on('resume', () => log.push('resume'));
+    for (const environment of [{ connected: true, visible: false }, { connected: false, visible: false }, { connected: true, visible: true }, { connected: true, visible: true }]) {
+      ch.port1.postMessage({ m: 'environment', environment });
+    }
+    await tick();
+    expect(log).toEqual([{ connected: true, visible: false }, { connected: false, visible: false }, { connected: true, visible: true }]);
+    expect(irori.paused).toBe(true);
+    expect(first).toEqual({ connected: false, visible: false });
+    off();
+    ch.port1.postMessage({ m: 'environment', environment: { connected: false, visible: true } });
+    await tick();
+    expect(log).toHaveLength(3);
+    expect(irori.environment).toEqual({ connected: false, visible: true });
+  });
+
+  it('未知キーや型が不正な環境通知は捨て、旧ホストの未知通知も適用しない', async () => {
+    const { irori, ch } = await connected({ ...INIT, capabilities: ['host-environment-v1'], environment: { connected: true, visible: true } });
+    const seen = vi.fn();
+    irori.on('environment', seen);
+    for (const environment of [null, [], { connected: false }, { connected: false, visible: 1 }, { connected: false, visible: false, extra: true }]) {
+      ch.port1.postMessage({ m: 'environment', environment });
+    }
+    ch.port1.postMessage({ m: 'environment', environment: { connected: false, visible: false }, extra: true });
+    ch.port1.postMessage({ m: 'future', environment: { connected: false, visible: false } });
+    await tick();
+    expect(seen).not.toHaveBeenCalled();
+    expect(irori.environment).toEqual({ connected: true, visible: true });
+    const old = await connected();
+    old.ch.port1.postMessage({ m: 'environment', environment: { connected: false, visible: false } });
+    await tick();
+    expect(old.irori.environment).toBeNull();
+  });
+
+  it('initの不正な能力・環境は無効にする', async () => {
+    const bad = await connected({ ...INIT, capabilities: 'host-environment-v1', environment: { connected: true, visible: true } });
+    expect(bad.irori.capabilities).toEqual([]);
+    expect(bad.irori.environment).toBeNull();
+    const broken = await connected({ ...INIT, capabilities: ['host-environment-v1'], environment: { connected: true, visible: true, extra: true } });
+    expect(broken.irori.environment).toBeNull();
+  });
+
   it('ホストからの players・input・pause・resume を届ける。menu の入力はゲームに渡さない', async () => {
     const { irori, ch } = await connected();
     const log: unknown[] = [];

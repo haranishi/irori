@@ -1594,6 +1594,32 @@ h2 {
   list-style: none;
 }
 
+.results--record .results__list {
+  grid-template-columns: 4.4rem auto minmax(0, 1fr) auto;
+}
+
+.results--record .result__value {
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.results__outcome,
+.results__note {
+  margin: 0;
+  text-align: center;
+}
+
+.results__outcome {
+  font-size: 1.12rem;
+  font-weight: 800;
+}
+
+.results__note {
+  color: var(--text-dim);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
 /* 行は、表の列（順位・印・名前・記録・点数）を共有する。記録と点数の位置が、行ごとにずれない。 */
 .result {
   display: grid;
@@ -1715,6 +1741,23 @@ h2 {
 
 .results--dense .results__actions {
   margin-top: 0.3rem;
+}
+
+.results--dense.results--record .results__card {
+  gap: 0.5rem;
+}
+
+.results--dense.results--record .result {
+  padding-block: 0.2rem;
+}
+
+.results--dense.results--record .result__value {
+  font-size: 1.2rem;
+}
+
+.results--dense .results__note {
+  font-size: 0.9rem;
+  line-height: 1.3;
 }
 
 /* ---- 部屋のない画面 ---- */

@@ -1,6 +1,6 @@
 // ゲームの制作者が書くコードの例。irori.d.ts だけを見て、型が通ること・誤りが誤りとして出ることを確かめる。
 import { connect, IroriError } from '../../irori.js';
-import type { Irori, Look, PadSpec, PlayerInfo } from '../../irori.js';
+import type { HostCapability, HostEnvironment, Irori, Look, PadSpec, PlayerInfo } from '../../irori.js';
 
 export async function game(): Promise<void> {
   let irori: Irori;
@@ -42,6 +42,24 @@ export async function game(): Promise<void> {
     void who;
   });
   irori.on('pause', () => {});
+  const capabilities: readonly HostCapability[] = irori.capabilities;
+  const environment: Readonly<HostEnvironment> | null = irori.environment;
+  irori.on('environment', (value) => {
+    const connected: boolean = value.connected;
+    void connected;
+    // @ts-expect-error 環境の通知は読み取り専用
+    value.visible = true;
+  });
+  // @ts-expect-error 能力一覧は読み取り専用
+  capabilities.push('result-options-v1');
+  // @ts-expect-error 能力の追加はホストだけが決める
+  irori.capabilities = [];
+  // @ts-expect-error 環境のgetterは読み取り専用
+  irori.environment = null;
+  if (environment) {
+    // @ts-expect-error 環境は読み取り専用
+    environment.connected = false;
+  }
   // @ts-expect-error 知らないイベント
   irori.on('chat', () => {});
 
@@ -55,6 +73,11 @@ export async function game(): Promise<void> {
   void shape;
   irori.ready();
   irori.end([{ p: 1, score: 10, label: '1位' }, { p: 2, score: 3 }]);
+  irori.end([{ p: 1, score: -12, label: 'ズレ1.2秒', ranked: false }], { display: 'record', outcome: 'incomplete', note: '通信の遅れを含む目安です' });
+  // @ts-expect-error 順位対象はbooleanのみ
+  irori.end([{ p: 1, score: 10, ranked: 'yes' }]);
+  // @ts-expect-error 表示の種類は固定
+  irori.end([], { display: 'html' });
   // @ts-expect-error score は数
   irori.end([{ p: 1, score: '10' }]);
 

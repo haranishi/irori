@@ -1,11 +1,11 @@
 // 単体で開いたときの仮想プレイヤー（docs/sdk.md「動かしながら作る」）。通信なしで、1台で複数人を操作する。
 // 画面脇のパネルに席ごとの pad-ui を出し、1人目は WASD・Space・E、2人目は矢印・Enter・Shift でも動かせる。
 import { HELD_REPEAT_MS, LIMITS, STORAGE_LIMITS, utf8Length } from '@irori/protocol';
-import type { GamePadSpec, GameResult, GameToHost, HostToGame, InputEvent, PlayerId, PlayerInfo } from '@irori/protocol';
+import type { GameEndOptions, GamePadSpec, GameResult, GameToHost, HostToGame, InputEvent, PlayerId, PlayerInfo } from '@irori/protocol';
 import { look, mountPad, PAD_STRINGS_EN, PAD_STRINGS_JA, shapeSvg } from '@irori/pad-ui';
 import type { PadHandle } from '@irori/pad-ui';
 import padCss from '@irori/pad-ui/pad.css?inline';
-import { IroriCore } from './core';
+import { CAPS, IroriCore } from './core';
 import mockCss from './mock.css?inline';
 
 const TEXT = {
@@ -21,6 +21,7 @@ const TEXT = {
     join: 'つなぐ',
     keys: '1人目: WASD・Space・E　2人目: 矢印・Enter・Shift',
     results: '結果',
+    incomplete: '勝敗なし',
     again: 'もう一度',
     player: (n: number) => `プレイヤー${n}`,
   },
@@ -36,6 +37,7 @@ const TEXT = {
     join: 'Connect',
     keys: 'P1: WASD, Space, E — P2: arrows, Enter, Shift',
     results: 'Results',
+    incomplete: 'No contest',
     again: 'Play again',
     player: (n: number) => `Player ${n}`,
   },
@@ -99,6 +101,7 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
   const count = mockPlayerCount(win.location.search, opts.mockPlayers);
   const seats: Seat[] = [];
   const infos: PlayerInfo[] = Array.from({ length: count }, (_, i) => ({ id: i + 1, name: tx.player(i + 1), online: true }));
+  const env = () => ({ connected: true, visible: doc.visibilityState === 'visible' });
 
   const input = (p: PlayerId, i: InputEvent) => core.receive({ m: 'input', p, i, T: Date.now() });
   const leader = () => seats.find((s) => s.info.online)?.info.id ?? null;
@@ -271,23 +274,24 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
     }
   };
 
-  const showResults = (results: GameResult[]) => {
+  const showResults = (results: GameResult[], options: GameEndOptions = {}) => {
     root.querySelector('.irori-mock__results')?.remove();
-    const sorted = [...results].sort((a, b) => b.score - a.score);
+    const ranked = (r: GameResult) => options.outcome !== 'incomplete' && r.ranked !== false;
+    const sorted = [...results].sort((a, b) => Number(ranked(b)) - Number(ranked(a)) || (ranked(a) ? b.score - a.score : 0) || a.p - b.p);
     const list = h('ol', null);
     sorted.forEach((r) => {
       // 同点は同じ順位にする。
-      const rank = sorted.findIndex((o) => o.score === r.score) + 1;
+      const rank = ranked(r) ? sorted.findIndex((o) => o.score === r.score) + 1 : null;
       const l = look(r.p, locale);
       const name = seats.find((s) => s.info.id === r.p)?.info.name ?? tx.player(r.p);
       list.append(
         h(
           'li',
-          { 'data-p': String(r.p), 'data-rank': String(rank) },
-          h('span', { class: 'irori-mock__rank' }, String(rank)),
+          { 'data-p': String(r.p), 'data-rank': String(rank ?? '') },
+          h('span', { class: 'irori-mock__rank' }, String(rank ?? '—')),
           shapeSvg(l.shape, 20, l.color),
           h('span', null, name),
-          h('span', { class: 'irori-mock__score' }, r.label ? `${r.score}（${r.label}）` : String(r.score)),
+          h('span', { class: 'irori-mock__score' }, options.display === 'record' ? r.label ?? '' : r.label ? `${r.score}（${r.label}）` : String(r.score)),
         ),
       );
     });
@@ -297,7 +301,8 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
       h(
         'div',
         { class: 'irori-mock__results', role: 'dialog', 'aria-modal': 'true', 'aria-label': tx.results },
-        h('div', { class: 'irori-mock__card' }, h('h2', null, tx.results), list, again),
+        h('div', { class: 'irori-mock__card' }, h('h2', null, options.outcome === 'incomplete' ? tx.incomplete : tx.results), list,
+          options.note === undefined ? null : h('p', null, options.note), again),
       ),
     );
     again.focus();
@@ -305,7 +310,7 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
 
   const core: IroriCore = new IroriCore(
     'mock',
-    { players: infos, leader: 1, paused: false, locale },
+    { players: infos, leader: 1, paused: false, locale, capabilities: CAPS, environment: env() },
     {
       send(msg) {
         switch (msg.m) {
@@ -323,7 +328,7 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
             for (const s of targets(msg.to)) buzz(s, msg.ms);
             return;
           case 'end':
-            showResults(msg.results ?? []);
+            showResults(msg.results ?? [], msg.options);
             return;
           case 'ready':
             root.dataset.ready = '';
@@ -337,6 +342,7 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
       },
     },
   );
+  doc.addEventListener('visibilitychange', () => core.receive({ m: 'environment', environment: env() }));
 
   for (const info of infos) {
     const l = look(info.id, locale);

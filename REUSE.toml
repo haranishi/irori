@@ -10,7 +10,7 @@ SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 # 文書、判断の記録、ハーネスの記録。
 [[annotations]]
-path = ["*.md", "docs/**", ".agent-harness/**", "games/*/README.md"]
+path = ["*.md", "docs/**", ".agent-harness/**", ".kiro/specs/**/*.md", "games/*/README.md"]
 SPDX-FileCopyrightText = "2026 Ikki Nishihara and the irori contributors"
 SPDX-License-Identifier = "CC-BY-4.0"
 
@@ -31,11 +31,13 @@ path = [
     "package.json",
     "package-lock.json",
     "tsconfig.base.json",
+    "tsconfig.games.json",
     "**/package.json",
     "**/tsconfig*.json",
     "**/wrangler.jsonc",
     "registry/games/**",
     "registry/schema/**",
+    ".kiro/specs/**/spec.json",
     ".github/ISSUE_TEMPLATE/**",
     ".github/pull_request_template.md",
     ".github/dependabot.yml",

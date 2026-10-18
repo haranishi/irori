@@ -54,6 +54,8 @@ export function connectHost(win: HostWindow, timeoutMs: number): Promise<IroriCo
           leader: typeof m.leader === 'number' ? m.leader : null,
           paused: m.paused === true,
           locale: typeof m.locale === 'string' ? m.locale : 'ja',
+          capabilities: m.capabilities,
+          environment: m.environment,
         },
         { send: (msg) => p.postMessage(msg) },
       );

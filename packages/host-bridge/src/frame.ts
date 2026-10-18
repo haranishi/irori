@@ -1,10 +1,11 @@
 // ゲームの隔離枠（ADR 0001）。握手だけ window.postMessage で受け、そのあとは渡した MessagePort の上で話す。
 // 握手は、送り主が自分の枠（event.source）で、オリジンも期待どおりのときだけ受ける。ほかの窓や枠からの握手は無視する。
 import { BRIDGE_VERSION } from '@irori/protocol';
-import type { BridgePort, GamePadSpec, GameResult, HostToGame, PlayerId, PlayerInfo } from '@irori/protocol';
+import type { BridgePort, GameEndOptions, GamePadSpec, GameResult, HostEnvironment, HostToGame, PlayerId, PlayerInfo } from '@irori/protocol';
 import type { FrameSource } from './entry';
 import type { GameStorage } from './storage';
 import { validateGameToHost } from './validate';
+import { isPlainObject, unknownKey } from './text';
 
 export const HANDSHAKE_TIMEOUT_MS = 3_000;
 /** 外部のゲームは遠いサーバーから読むので、握手まで長めに待つ。登録の検査（10秒）より短くしない。 */
@@ -22,6 +23,7 @@ export interface GameFrameInit {
   leader: PlayerId | null;
   locale: string;
   paused?: boolean;
+  environment?: HostEnvironment;
 }
 
 export interface GameFrameOptions {
@@ -51,7 +53,7 @@ export interface GameFrameEvents {
   ready: () => void;
   setPad: (e: { to: PlayerId | '*'; spec: GamePadSpec }) => void;
   vibrate: (e: { to: PlayerId | '*'; ms: number[] }) => void;
-  end: (e: { results: GameResult[] }) => void;
+  end: (e: { results: GameResult[]; options?: GameEndOptions }) => void;
   store: (e: StoreRequest) => void;
   /** 握手のあと、決めた時間内に ready が来なかった。枠は止めない（中断を勧めるかはコンソールが決める）。 */
   timeout: () => void;
@@ -64,6 +66,11 @@ export type HostMessage = Exclude<HostToGame, { m: 'init' }>;
 
 type Listener = (...args: never[]) => void;
 
+function environment(v: unknown): HostEnvironment | null {
+  if (!isPlainObject(v) || unknownKey(v, ['connected', 'visible']) || typeof v.connected !== 'boolean' || typeof v.visible !== 'boolean') return null;
+  return { connected: v.connected, visible: v.visible };
+}
+
 export class GameFrame {
   private iframe: HTMLIFrameElement | null = null;
   private port: MessagePort | null = null;
@@ -74,10 +81,13 @@ export class GameFrame {
   /** 直近に受けたメッセージの時刻（流量の検査）。 */
   private readonly stamps: number[] = [];
   private readonly listeners = new Map<keyof GameFrameEvents, Set<Listener>>();
-  private readonly init: { players: PlayerInfo[]; leader: PlayerId | null; locale: string; paused: boolean };
+  private readonly init: Extract<HostToGame, { m: 'init' }>;
 
   constructor(private readonly opts: GameFrameOptions) {
-    this.init = { players: [...opts.init.players], leader: opts.init.leader, locale: opts.init.locale, paused: opts.init.paused === true };
+    this.init = { m: 'init', sdk: BRIDGE_VERSION, players: [...opts.init.players], leader: opts.init.leader, locale: opts.init.locale, paused: opts.init.paused === true,
+      capabilities: ['result-options-v1', 'host-environment-v1'] };
+    const env = environment(opts.init.environment);
+    if (env) this.init.environment = env;
   }
 
   get state(): FrameState {
@@ -123,6 +133,11 @@ export class GameFrame {
 
   post(msg: HostMessage): void {
     if (this.current === 'stopped') return;
+    if (msg.m === 'environment') {
+      const env = environment(msg.environment);
+      if (!env || unknownKey(msg, ['m', 'environment'])) return;
+      msg = { m: 'environment', environment: env };
+    }
     if (!this.port) {
       // 握手の前は、最初に渡す init の中身を更新する。入力などは受け手がいないので捨てる。
       if (msg.m === 'players') {
@@ -130,6 +145,8 @@ export class GameFrame {
         this.init.leader = msg.leader;
       } else if (msg.m === 'pause' || msg.m === 'resume') {
         this.init.paused = msg.m === 'pause';
+      } else if (msg.m === 'environment') {
+        this.init.environment = msg.environment;
       }
       return;
     }
@@ -159,7 +176,7 @@ export class GameFrame {
     // 同梱のゲームはオリジンが空なので '*' でしか届かない。外部のゲームには、そのオリジンだけを宛先にする。
     win.postMessage(hello, this.opts.source.kind === 'bundled' ? '*' : this.opts.source.origin, [ch.port2]);
     this.current = 'connected';
-    this.port.postMessage({ m: 'init', sdk: BRIDGE_VERSION, ...this.init } satisfies HostToGame);
+    this.port.postMessage(this.init);
     this.readyTimer = setTimeout(() => {
       if (this.current === 'connected') this.emit('timeout');
     }, this.opts.readyTimeoutMs ?? READY_TIMEOUT_MS);
@@ -192,7 +209,7 @@ export class GameFrame {
         if (ended) return;
         this.current = 'ended';
         clearTimeout(this.readyTimer);
-        this.emit('end', { results: m.results ?? [] });
+        this.emit('end', m.options === undefined ? { results: m.results ?? [] } : { results: m.results ?? [], options: m.options });
         return;
       case 'store.get':
       case 'store.set':

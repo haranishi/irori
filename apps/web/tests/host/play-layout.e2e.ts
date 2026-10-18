@@ -1,5 +1,5 @@
 // 遊んでいるときの画面の重なりと、結果の画面の収まり（実 Worker・実ブラウザ。重いので host.e2e.ts から分けた）。
-// - ゲームの最中、ホストは案内をゲームの画面に重ねない（8人・4本のゲーム・3つの大きさで、始めの10秒を数える）
+// - ゲームの最中、ホストは案内をゲームの画面に重ねない（8人・5本のゲーム・3つの大きさで、始めの10秒を数える）
 // - 結果のボタンは、1〜8人のどの人数でも、3つの大きさの画面に収まり、選んでいるボタンが見える
 import { expect, test } from '@playwright/test';
 import { env, openHost, ScriptPad } from './e2e/fixtures';
@@ -11,7 +11,7 @@ const SIZES3 = [
   { width: 1280, height: 720 },
 ] as const;
 
-test('8人で4本のゲームを始めても、始めの10秒、ホストの案内はゲームの中身（点・回数の札・問題文・絵）に重ならない（3つの大きさ）', async ({ browser }) => {
+test('8人で5本のゲームを始めても、始めの10秒、ホストの案内はゲームの中身（点・回数の札・問題文・絵）に重ならない（3つの大きさ）', async ({ browser }) => {
   test.setTimeout(300_000);
   const host = await openHost(browser, base(), { viewport: SIZES3[0] });
   await host.expectState('home');
@@ -24,7 +24,7 @@ test('8人で4本のゲームを始めても、始めの10秒、ホストの案�
   }
   await expect(host.page.locator('.seat')).toHaveCount(8);
   const order = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game') ?? ''));
-  expect(order).toEqual(['dot-grab', 'hello-pad', 'quiz-4', 'tap-race']);
+  expect(order).toEqual(['ten-seconds', 'dot-grab', 'hello-pad', 'quiz-4', 'tap-race']);
   const k = host.page.keyboard;
   const focused = host.page.locator('#app [data-focused]').first();
   /** ホストが重ねている案内と、ゲームの枠の中の中身（文字の葉・絵）が交わる数。 */

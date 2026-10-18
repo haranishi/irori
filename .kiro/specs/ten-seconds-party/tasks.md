@@ -83,3 +83,4 @@
 - 勝負nonceは英小文字・数字・`_`・`-`で10文字以内。実行側は8文字を生成し、試行・操作の連番はbase36にする。
 - 最新SDKと宣言型は同期済み。SDKは既存の60,000B上限ちょうどなので、ゲーム都合の追加APIを増やさない。
 - 新ゲームのJSDoc検査は `npm run typecheck:games`。単体試験は `npm run test:games -- games/ten-seconds/`。
+- CIの低速CPUで発生した試験用時計の競合は、公開Clock APIによる停止準備だけを補正。31実行の再成功と独立承認を[補正記録](../../../.agent-harness/runs/2026-10-18-ten-seconds/ci-clock-fix.md)に残した。

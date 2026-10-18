@@ -37,3 +37,8 @@
 文書追記後の漏洩検査で、監査JSONの `api-match.ts` をキーにしたSHA-256値がgeneric-api-keyへ1件誤検出された。
 実ファイルの再計算でハッシュ一致を確認。59件の照合値をfile/sha256の配列へ表現し直した。検査の除外・規則緩和は追加していない。
 再実行は全exit 0。`npm run check`成功、REUSEは507/507、現514ファイルのgitleaksは漏洩0。LANのホーム・2人プレビュー・healthもHTTP 200を確認した。
+
+## PRのLinux CIで判明した時計停止競合
+初回CIはroot 125成功・1失敗。CPU6倍の試験準備が、過去の時刻を`pauseAt`へ渡した。
+試験用ヘルパーだけを補正し、全31実行・独立CPU再実行とレビューが成功。[原因・再現・照合](ci-clock-fix.md)を残した。
+Linuxでの最終結果は[PR #3のチェック](https://github.com/haranishi/irori/pull/3/checks)で別途確認する。

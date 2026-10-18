@@ -14,7 +14,11 @@ interface RoundRow { seat: number; rank: string; name: string; record: string; d
 
 async function pause(host: Host): Promise<void> {
   const now = await host.page.evaluate(() => Date.now());
-  await host.page.clock.pauseAt(now + 1);
+  // APIの往復中に停止先が過去にならないよう、Dateだけを一時固定する。
+  // 停止後はDateもfastForwardに沿って進む設定へ戻し、既存のタイマーは保つ。
+  await host.page.clock.setFixedTime(now);
+  await host.page.clock.pauseAt(now);
+  await host.page.clock.setSystemTime(now);
 }
 
 // コンソールの PadSender は setTimeout(0) でまとめて送る。止めた時計でもその送信を動かす。

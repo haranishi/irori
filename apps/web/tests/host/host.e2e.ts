@@ -73,6 +73,8 @@ test('ホーム・参加者の帯・灰色・リーダーのリモコン（実�
   await expect(p2.page.locator('.irori-pad')).toContainText('たろうが選んでいます');
 
   // リーダーのリモコンで、棚の選択が動き、主役のカードが替わる。
+  await expect(focused(host)).toHaveAttribute('data-nav', 'game:ten-seconds');
+  await p1.press('right');
   await expect(focused(host)).toHaveAttribute('data-nav', 'game:dot-grab');
   await p1.press('right');
   await expect(focused(host)).toHaveAttribute('data-nav', 'game:hello-pad');
@@ -108,7 +110,8 @@ test('ゲームの起動・メニュー・終了・結果・「もう一度」�
   const p3 = await PagePad.join(browser, base(), code, 'じろう');
   await p1.expectKind('remote');
 
-  // hello-pad（棚の2番め）を選んで、決定 → 詳細 → 決定（はじめる）。
+  // hello-pad（棚の3番め）を選んで、決定 → 詳細 → 決定（はじめる）。
+  await p1.press('right');
   await p1.press('right');
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   await p1.press('ok');
@@ -175,6 +178,7 @@ test('キーボードでも同じ操作：矢印・Enter・Esc（ゲーム中は
   const k = host.page.keyboard;
   const focused = host.page.locator('#app [data-focused]').first();
   await k.press('ArrowRight');
+  await k.press('ArrowRight');
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   // 上の並び（音・締め切り・共有）へ上がり、下へ戻ると、棚の選択中のカードに戻る（参加者の札へ飛ばない）。
   await k.press('ArrowUp');
@@ -189,7 +193,7 @@ test('キーボードでも同じ操作：矢印・Enter・Esc（ゲーム中は
   await expect(focused).toHaveAttribute('data-nav', /^game:/);
   await expect(host.page.locator('.people__hint')).toBeHidden();
   // 札から上がった先は、真上のカード（左端のゲームのこともある）。棚の中で、ハローパッドへ戻る。
-  for (let i = 0; i < 4 && (await focused.getAttribute('data-nav')) !== 'game:hello-pad'; i++) await k.press('ArrowRight');
+  for (let i = 0; i < 5 && (await focused.getAttribute('data-nav')) !== 'game:hello-pad'; i++) await k.press('ArrowRight');
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   await k.press('Enter');
   await host.expectState('detail');
@@ -241,6 +245,7 @@ test('途中から来た人は、ゲーム中は「次のゲームから参加�
   const code = await host.code();
   const a = new ScriptPad(base(), code, 'たろう');
   await a.join();
+  await host.page.keyboard.press('ArrowRight');
   await host.page.keyboard.press('ArrowRight');
   await host.page.keyboard.press('Enter');
   await host.page.keyboard.press('Enter');
@@ -374,6 +379,7 @@ test('ゲームパッドでも同じ操作（十字・A・B）', async ({ browse
       await new Promise((r) => setTimeout(r, 80));
     }, i);
   await host.page.evaluate(() => window.dispatchEvent(new Event('gamepadconnected')));
+  await tap(15);
   await tap(15);
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   await tap(0);

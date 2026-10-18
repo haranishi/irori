@@ -22,14 +22,25 @@ export interface GameResult {
   score: number;
   /** 順位の横に出す短い文字（例: 「3.2秒」）。 */
   label?: string;
+  /** false は記録だけを残し、順位・優勝の対象にしない。省略時は true。 */
+  ranked?: boolean;
 }
+
+export interface GameEndOptions {
+  display?: 'points' | 'record';
+  outcome?: 'complete' | 'incomplete';
+  note?: string;
+}
+
+export interface HostEnvironment { connected: boolean; visible: boolean }
+export type HostCapability = 'result-options-v1' | 'host-environment-v1';
 
 /** ゲーム → ホスト（MessagePort 上） */
 export type GameToHost =
   | { m: 'ready' }
   | { m: 'setPad'; to: PlayerId | '*'; spec: GamePadSpec }
   | { m: 'vibrate'; to: PlayerId | '*'; ms: number[] }
-  | { m: 'end'; results?: GameResult[] }
+  | { m: 'end'; results?: GameResult[]; options?: GameEndOptions }
   | { m: 'store.get'; id: number; key: string }
   | { m: 'store.set'; id: number; key: string; value: string };
 
@@ -42,11 +53,14 @@ export type HostToGame =
       leader: PlayerId | null;
       locale: string;
       paused: boolean;
+      capabilities?: HostCapability[];
+      environment?: HostEnvironment;
     }
   | { m: 'players'; players: PlayerInfo[]; leader: PlayerId | null }
   | { m: 'input'; p: PlayerId; i: InputEvent; T: number }
   | { m: 'pause' }
   | { m: 'resume' }
+  | { m: 'environment'; environment: HostEnvironment }
   | { m: 'store.res'; id: number; value: string | null; error?: string };
 
 /** ゲームごとの保存量の上限。ホストの localStorage を使うので小さく切る。 */

@@ -15,7 +15,9 @@ npm install
 npm run dev
 ```
 
-表示された「大画面で開くURL」を、PCやTVのブラウザで開きます。スマホは同じWi-Fiにつなぎ、画面のQRコードを読んで「参加する」を押します。同梱のゲーム4本（`hello-pad` `tap-race` `quiz-4` `dot-grab`）が遊べます。Node 24 以上が要ります。
+表示された「大画面で開くURL」を、PCやTVのブラウザで開きます。スマホは同じWi-Fiにつなぎ、画面のQRコードを読んで「参加する」を押します。同梱のゲーム5本（`hello-pad` `tap-race` `quiz-4` `dot-grab` `ten-seconds`）が遊べます。Node 24 以上が要ります。
+
+「せーので10秒」をPC1台で試すには、開発サーバーの `/games/ten-seconds/?mock=2` を開きます。1人目はSpace、2人目はEnterで操作します。3回の進め方や中断後の再開は[遊び方](games/ten-seconds/README.md)にあります。
 
 傾きのセンサーを使うゲームは、スマホ側がHTTPSでないと動きません。手順は [docs/operate.md](docs/operate.md) にあります。
 
@@ -37,7 +39,7 @@ npm run dev
 | コントローラー6種（十字・スティック・ボタン、早押し、選択、タッチ、傾き、待機） | アルファ |
 | 隔離枠でのゲームの実行、登録情報のPR、CIでの検査 | アルファ |
 | 共有（X・LINE・共有シート・リンクのコピー）、OGP | アルファ |
-| 同梱のゲーム4本（`hello-pad` `tap-race` `quiz-4` `dot-grab`）。終わり方をすべて試験している | アルファ |
+| 同梱のゲーム5本（`hello-pad` `tap-race` `quiz-4` `dot-grab` `ten-seconds`）。終わり方をすべて試験している | アルファ |
 | 実機（iPhone・Android）での長い試験、TVの内蔵ブラウザ | まだ。実機の報告を歓迎します。自動の試験は、Chromium と、Safari と同じ系統のエンジン（Playwright の WebKit）だけ |
 | ホストの画面を、スマホの幅で開く使い方 | 正式な対応の外（崩れはしないが、見た目の採点が合格線の前後） |
 | 実際に遊んで見つけた問題と、まだ確かめていないこと | [docs/known-issues.md](docs/known-issues.md)。報告も修正も歓迎します |
@@ -68,7 +70,7 @@ flowchart LR
 
 ## AIと一緒に作っています
 
-設計と実装は、AI（Claude）と一緒に進め、人が判断しています。AIが書いた部分も、試験・権利の確認・独立した読み取りのレビューを通しています。記録は [`.agent-harness/`](.agent-harness/) にあります。
+設計と実装は、AI（Claude・Codex）と一緒に進め、人が判断しています。AIが書いた部分も、試験・権利の確認・独立した読み取りのレビューを通しています。記録は [`.agent-harness/`](.agent-harness/) にあります。
 
 ## ライセンス
 

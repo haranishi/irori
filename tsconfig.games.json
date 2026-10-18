@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": [
+    "games/ten-seconds/logic.js",
+    "games/ten-seconds/main.js",
+    "games/ten-seconds/view.js"
+  ]
+}

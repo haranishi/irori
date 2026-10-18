@@ -1,0 +1,122 @@
+[
+  {
+    "id": "ten-seconds-go-clock-backdated",
+    "note": "GOを描く最初のフレームではなく、カウントダウンの予定時刻から計測する",
+    "file": "games/ten-seconds/logic.js",
+    "find": "participants: state.trial.participants, goAtMs: nowMs, stops: []",
+    "replace": "participants: state.trial.participants, goAtMs: state.trial.startedAtMs + COUNTDOWN_MS, stops: []",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/ten-seconds/"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "ten-seconds-deadline-exclusive",
+    "note": "20,000msちょうどの停止を受け付け、未回答の時間切れとの境界を1msずらす",
+    "file": "games/ten-seconds/logic.js",
+    "find": "if (state.phase === 'counting' && event.nowMs - state.trial.goAtMs >= DEADLINE_MS)",
+    "replace": "if (state.phase === 'counting' && event.nowMs - state.trial.goAtMs > DEADLINE_MS)",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/ten-seconds/"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "ten-seconds-rounding-floor",
+    "note": "記録秒数を0.1秒単位で四捨五入せず、切り捨てて採点する",
+    "file": "games/ten-seconds/logic.js",
+    "find": "const tenths = Math.floor((elapsedMs + 50) / 100);",
+    "replace": "const tenths = Math.floor(elapsedMs / 100);",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/ten-seconds/"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "ten-seconds-old-stop-accepted",
+    "note": "試行IDの照合を外し、前の試行や案内ボタンの停止入力を受け付ける",
+    "file": "games/ten-seconds/logic.js",
+    "find": "if (event.id !== trial.stopId || !seat?.online || seat.left || !trial.participants.includes(event.p)",
+    "replace": "if (!seat?.online || seat.left || !trial.participants.includes(event.p)",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/ten-seconds/"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "ten-seconds-old-control-accepted",
+    "note": "進行操作IDの照合を外し、過去の「次へ」「やり直す」で現在の回を進める",
+    "file": "games/ten-seconds/logic.js",
+    "find": "if (!control || control.p !== state.leader || event.p !== control.p || event.id !== control.id)",
+    "replace": "if (!control || control.p !== state.leader || event.p !== control.p)",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/ten-seconds/"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "ten-seconds-answered-count-public",
+    "note": "計測中の公開モデルへ回答人数を含め、他人の停止を知る手掛かりを漏らす",
+    "file": "games/ten-seconds/logic.js",
+    "find": "return { ...common, phase: 'counting', cue: 'せーの' };",
+    "replace": "return { ...common, phase: 'counting', cue: 'せーの', answeredCount: state.trial.stops.length };",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/ten-seconds/"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "ten-seconds-ties-counted-ahead",
+    "note": "同じズレの人も先行人数に数えて順位をずらし、1・1・3の同順位を壊す",
+    "file": "games/ten-seconds/logic.js",
+    "find": "1 + eligible.filter((row) => row.record.errorTenths < record.errorTenths).length;",
+    "replace": "1 + eligible.filter((row) => row.record.errorTenths <= record.errorTenths).length;",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/ten-seconds/"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "ten-seconds-departed-ranked",
+    "note": "勝負が成立しただけで全席を順位対象にし、退出した人の小さい途中累計も優勝候補にする",
+    "file": "games/ten-seconds/logic.js",
+    "find": "ranked: state.outcome === 'complete' && !seat.left && roundsCompleted === 3",
+    "replace": "ranked: state.outcome === 'complete'",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/ten-seconds/"
+    ],
+    "timeoutMs": 180000
+  }
+]

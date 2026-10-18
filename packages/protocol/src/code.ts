@@ -6,18 +6,18 @@ import { LIMITS } from './limits';
 export type RandomBytes = (n: number) => Uint8Array;
 
 const ALPHABET = LIMITS.CODE_ALPHABET;
-// 256 を文字数で割り切れる範囲だけを使い、偏りを出さない（棄却法）。
-const ACCEPT_BELOW = 256 - (256 % ALPHABET.length);
-const CODE_RE = new RegExp(`^[${ALPHABET}]{${LIMITS.CODE_LENGTH}}$`);
+let codePattern: RegExp | undefined;
 // 区切りとして打たれやすい横棒。全角の長音記号も、コードを読み上げて打つと入りやすい。
 const SEPARATORS = /[\s\-\u{2010}-\u{2015}\u{2212}\u{30fc}\u{ff0d}\u{ff70}]+/gu;
 
 export function generateCode(rand: RandomBytes): string {
+  // 256を文字数で割り切れる範囲だけを使う。生成しないSDKでは、この計算も不要。
+  const acceptBelow = 256 - (256 % ALPHABET.length);
   let out = '';
   // 乱数源が壊れて棄却が続いても、止まらずに失敗するようにする。
   for (let round = 0; round < 64; round++) {
     for (const b of rand(LIMITS.CODE_LENGTH * 2)) {
-      if (b >= ACCEPT_BELOW) continue;
+      if (b >= acceptBelow) continue;
       out += ALPHABET[b % ALPHABET.length];
       if (out.length === LIMITS.CODE_LENGTH) return out;
     }
@@ -32,5 +32,7 @@ export function normalizeCode(raw: unknown): string {
 }
 
 export function isValidCode(code: unknown): code is string {
-  return typeof code === 'string' && CODE_RE.test(code);
+  // SDKが使わないときは、部屋コード用の正規表現も初期化しない。
+  codePattern ??= new RegExp(`^[${ALPHABET}]{${LIMITS.CODE_LENGTH}}$`);
+  return typeof code === 'string' && codePattern.test(code);
 }

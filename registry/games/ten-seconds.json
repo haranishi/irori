@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "id": "ten-seconds",
+  "title": {
+    "ja": "せーので10秒",
+    "en": "Ten Seconds Together"
+  },
+  "summary": {
+    "ja": "10秒だと思ったら1回押す。3回の合計のズレが小さい人の勝ち。",
+    "en": "Press when you feel 10 seconds pass. Least total error over 3 rounds wins."
+  },
+  "authors": [
+    {
+      "name": "irori contributors",
+      "url": "https://github.com/haranishi/irori"
+    }
+  ],
+  "license": {
+    "code": "MIT OR Apache-2.0",
+    "assets": "original"
+  },
+  "players": {
+    "min": 2,
+    "max": 8
+  },
+  "pads": [
+    "wait",
+    "pad"
+  ],
+  "entry": {
+    "bundled": "games/ten-seconds/"
+  },
+  "thumbnail": "ten-seconds.png",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-10-18"
+}

@@ -15,7 +15,9 @@ npm install
 npm run dev
 ```
 
-Open the printed URL on the big screen, join the same Wi-Fi with a phone, scan the QR code on the screen, and tap "Join". Four sample games are included: `hello-pad`, `tap-race`, `quiz-4`, `dot-grab`. Node 24 or later is required.
+Open the printed URL on the big screen, join the same Wi-Fi with a phone, scan the QR code on the screen, and tap "Join". Five sample games are included: `hello-pad`, `tap-race`, `quiz-4`, `dot-grab`, `ten-seconds`. Node 24 or later is required.
+
+To try Ten Seconds Together on one computer, open `/games/ten-seconds/?mock=2` on the development server. Space controls player 1; Enter controls player 2. The [game guide](games/ten-seconds/README.md) explains the three rounds and how to resume after an interruption.
 
 Games that use the phone's tilt sensor need HTTPS on the phone side. See [docs/operate.md](docs/operate.md).
 
@@ -37,7 +39,7 @@ The reasoning, and the things deliberately left out (accounts, analytics, ads, p
 | Six controller kinds (pad, buzzer, choices, touch, tilt, wait) | Alpha |
 | Sandboxed games, registry by pull request, CI checks | Alpha |
 | Sharing (X, LINE, share sheet, copy link) and OGP | Alpha |
-| Four sample games (`hello-pad`, `tap-race`, `quiz-4`, `dot-grab`), every way of ending them is tested | Alpha |
+| Five sample games (`hello-pad`, `tap-race`, `quiz-4`, `dot-grab`, `ten-seconds`), every way of ending them is tested | Alpha |
 | Long sessions on real iPhones and Android phones, TV browsers | Not tested yet. Reports are very welcome. Automated tests run Chromium and WebKit (Safari's engine, via Playwright) only |
 | Opening the host screen at phone width | Not officially supported (it does not break, but its visual score is around the pass line) |
 | Problems found by playing, and what is not verified yet | Listed in [docs/known-issues.md](docs/known-issues.md) (Japanese). Reports and fixes are welcome |
@@ -68,7 +70,7 @@ Real-device reports, new games and translations are the most useful. There is on
 
 ## Built with AI
 
-Design and implementation were done together with an AI assistant (Claude) under human direction. Tests, independent read-only reviews and rights checks were run on the AI-written parts. Records are in [`.agent-harness/`](.agent-harness/).
+Design and implementation were done together with AI assistants (Claude and Codex) under human direction. Tests, independent read-only reviews and rights checks were run on the AI-written parts. Records are in [`.agent-harness/`](.agent-harness/).
 
 ## License
 

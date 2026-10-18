@@ -1,0 +1,426 @@
+{
+  "images": [
+    {
+      "file": "01-intro-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "intro",
+      "bytes": 81335,
+      "sha256": "c55fa30143e5731fdc1c50606b0d1acec60ea5b97a0074f0e7c04610acc354dd"
+    },
+    {
+      "file": "02-intro-1440.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "intro",
+      "bytes": 85090,
+      "sha256": "0149488157d8cd14aff9247ada173a828071a9e60e8a7152b5803b28f697fcd0"
+    },
+    {
+      "file": "03-countdown-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "countdown",
+      "bytes": 35711,
+      "sha256": "f15db058812b817a70e2da04ee3eca6ea86d936447611962160f2e94839870b3"
+    },
+    {
+      "file": "04-counting-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "counting",
+      "bytes": 43850,
+      "sha256": "46e470baacef308c114f53763af8bbf07bd7cb54b282c5b05546388455763000"
+    },
+    {
+      "file": "05-phone-stop-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "target": 1,
+      "state": "playing",
+      "phase": "counting",
+      "bytes": 381045,
+      "sha256": "23962fbd80860da98ee6898f66287ee5c6a292cb0a82891c2bab530b8da414dc"
+    },
+    {
+      "file": "06-phone-stop-768.png",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "target": 1,
+      "state": "playing",
+      "phase": "counting",
+      "bytes": 641311,
+      "sha256": "a33cdcab81624884050f727d3d23853c621c236cbda0e6b91f5a6fc1ac5e3439"
+    },
+    {
+      "file": "07-phone-focus-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "target": 1,
+      "state": "playing",
+      "phase": "counting",
+      "bytes": 381045,
+      "sha256": "23962fbd80860da98ee6898f66287ee5c6a292cb0a82891c2bab530b8da414dc"
+    },
+    {
+      "file": "08-phone-accepted-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "target": 1,
+      "state": "playing",
+      "phase": "counting",
+      "bytes": 398198,
+      "sha256": "300522fc44f00acb4b82fa89f846f0676fa75d112f2ca54771f6271ecfa6c1fe"
+    },
+    {
+      "file": "09-reveal-two-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "reveal",
+      "bytes": 67150,
+      "sha256": "ef8cb868941bdc406c5da4fb186c9fb098d9dafebd46dfb51d91cfffdebe9eba"
+    },
+    {
+      "file": "10-recover-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "recover",
+      "bytes": 56931,
+      "sha256": "bb24fdfc744bee232356ef201ee193a385425aacd91f814655d1a07a8c9454c0"
+    },
+    {
+      "file": "11-phone-retry-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "target": 1,
+      "state": "playing",
+      "phase": "recover",
+      "bytes": 386134,
+      "sha256": "17ba0ae66ea87be2bf8562fcac04b2b3b84813f214e3911d24afa9e3cd87baf2"
+    },
+    {
+      "file": "12-final-two-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "results",
+      "phase": null,
+      "bytes": 210400,
+      "sha256": "15e7919ec07fc5ff1aaffc653723136085abb79c116571d84ffdeb7c3b8b2cd0"
+    },
+    {
+      "file": "13-final-two-1440.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "target": "host",
+      "state": "results",
+      "phase": null,
+      "bytes": 273405,
+      "sha256": "209ac12f78bfe2a81a610d68481a820ed42648a83af8c729e61a60fc919e6cbd"
+    },
+    {
+      "file": "14-intro-eight-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "intro",
+      "bytes": 124590,
+      "sha256": "6b2488e7d835868110c7f7fd213e22a809b764e997b2ad2320b0c3d1742c1724"
+    },
+    {
+      "file": "15-reveal-eight-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "reveal",
+      "bytes": 214012,
+      "sha256": "5e97354c99b87c4d59ce3461ffecfcec569ded2050909675f80b47625f53cd14"
+    },
+    {
+      "file": "16-reveal-eight-1440.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "reveal",
+      "bytes": 219950,
+      "sha256": "9ae08bafbd0e73097c61e4a4bc5da5348542dff836ae0168b06ff194a0f441ec"
+    },
+    {
+      "file": "17-timeout-eight-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "reveal",
+      "bytes": 214967,
+      "sha256": "518e58d03f872dc71e9aac994bf89676adc7b084805e05e9f0fb061a0720c598"
+    },
+    {
+      "file": "18-timeout-six-left-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "reveal",
+      "bytes": 213243,
+      "sha256": "ca226f1598da690cccf1000d04d04e1c1fd2c1f68cfb75eaa4a49bc532d250c8"
+    },
+    {
+      "file": "19-timeout-six-late-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "reveal",
+      "bytes": 213243,
+      "sha256": "ca226f1598da690cccf1000d04d04e1c1fd2c1f68cfb75eaa4a49bc532d250c8"
+    },
+    {
+      "file": "20-phone-late-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "target": 3,
+      "state": "playing",
+      "phase": "reveal",
+      "bytes": 408871,
+      "sha256": "3412b7836f4bc03265dd84b9c8b316fc92542d5e9e312bc9e9c38538cea0c91f"
+    },
+    {
+      "file": "21-final-eight-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "results",
+      "phase": null,
+      "bytes": 262717,
+      "sha256": "2e45ffb2f06578a4d9c33993a46647c10f0fe0ee95308df779bec3a06e293ded"
+    },
+    {
+      "file": "22-replay-eight-1280.png",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "target": "host",
+      "state": "playing",
+      "phase": "intro",
+      "bytes": 135762,
+      "sha256": "8d5d07625e3908bad805b25f6eba6ae640144b01125ab88ae4b92728cddebc03"
+    },
+    {
+      "file": "23-phone-tab-focus-390.png",
+      "viewport": { "width": 390, "height": 844 },
+      "target": 1,
+      "state": "playing",
+      "phase": "counting",
+      "bytes": 382389,
+      "sha256": "1e623c8a33039305c6892013ad167def802af6be9076636fef7a0911aee0a734"
+    }
+  ],
+  "operations": [
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "はじめる",
+      "phase": "countdown"
+    },
+    {
+      "action": "keyboard Space",
+      "focus": true,
+      "received": true
+    },
+    {
+      "action": "tap",
+      "pad": 2,
+      "label": "10秒！",
+      "phase": "reveal"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "次へ",
+      "phase": "countdown"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "やり直す",
+      "phase": "countdown"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "10秒！",
+      "phase": "counting"
+    },
+    {
+      "action": "tap",
+      "pad": 2,
+      "label": "10秒！",
+      "phase": "reveal"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "次へ",
+      "phase": "countdown"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "10秒！",
+      "phase": "counting"
+    },
+    {
+      "action": "tap",
+      "pad": 2,
+      "label": "10秒！",
+      "phase": "reveal"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "総合結果へ"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "はじめる",
+      "phase": "countdown"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "10秒！",
+      "phase": "counting"
+    },
+    {
+      "action": "tap",
+      "pad": 2,
+      "label": "10秒！",
+      "phase": "counting"
+    },
+    {
+      "action": "tap",
+      "pad": 3,
+      "label": "10秒！",
+      "phase": "counting"
+    },
+    {
+      "action": "tap",
+      "pad": 4,
+      "label": "10秒！",
+      "phase": "counting"
+    },
+    {
+      "action": "tap",
+      "pad": 5,
+      "label": "10秒！",
+      "phase": "counting"
+    },
+    {
+      "action": "tap",
+      "pad": 6,
+      "label": "10秒！",
+      "phase": "counting"
+    },
+    {
+      "action": "tap",
+      "pad": 7,
+      "label": "10秒！",
+      "phase": "counting"
+    },
+    {
+      "action": "tap",
+      "pad": 8,
+      "label": "10秒！",
+      "phase": "reveal"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "次へ",
+      "phase": "countdown"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "次へ",
+      "phase": "countdown"
+    },
+    {
+      "action": "tap",
+      "pad": 1,
+      "label": "総合結果へ"
+    }
+  ],
+  "pageerrors": [],
+  "keyboardProof": {
+    "operation": "Tab then Space",
+    "tabs": 3,
+    "active": true,
+    "focusVisible": true,
+    "outline": "solid 3px rgb(255, 217, 160)",
+    "received": true,
+    "receivedMs": 190,
+    "measurementScope": "one local observation including tooling overhead",
+    "pageerrors": []
+  }
+}

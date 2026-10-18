@@ -1,9 +1,9 @@
 // ゲームから見た irori。送り先（本物のコンソールか、仮想プレイヤー）は Transport で差し替える。
-import { LIMITS } from '@irori/protocol';
-import type { GamePadSpec, GameResult, GameToHost, PlayerId, PlayerInfo } from '@irori/protocol';
+import { LIMITS, validateGameEnd } from '@irori/protocol';
+import type { GameEndOptions, GamePadSpec, GameResult, GameToHost, HostCapability, HostEnvironment, PlayerId, PlayerInfo } from '@irori/protocol';
 import { look } from '@irori/pad-ui';
 import type { Look } from '@irori/pad-ui';
-import { checkPadSpec, checkResults, checkVibrate, isPlainObject, isSeat, isStoreKey, isStoreValue } from './checks';
+import { checkPadSpec, checkVibrate, isPlainObject, isSeat, isStoreKey, isStoreValue, readEnv } from './checks';
 import { IroriError } from './errors';
 import type { IroriErrorCode } from './errors';
 import type { GameInput, Irori, IroriEvents, IroriStorage, Target } from './types';
@@ -17,10 +17,13 @@ export interface CoreInit {
   leader: PlayerId | null;
   paused: boolean;
   locale: string;
+  capabilities?: unknown;
+  environment?: unknown;
 }
 
 /** 保存の応答を待つ時間。ホストが答えないときに、約束を宙に浮かせない。 */
 export const STORAGE_TIMEOUT_MS = 5_000;
+export const CAPS: readonly HostCapability[] = ['result-options-v1', 'host-environment-v1'];
 
 type Listener = (...args: never[]) => void;
 type Waiter = { resolve: (v: string | null) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> };
@@ -40,6 +43,8 @@ function freezePlayers(list: unknown): readonly PlayerInfo[] {
 
 export class IroriCore implements Irori {
   readonly storage: IroriStorage;
+  private readonly caps: readonly HostCapability[];
+  private env: Readonly<HostEnvironment> | null;
   private list: readonly PlayerInfo[];
   private leaderId: PlayerId | null;
   private isPaused: boolean;
@@ -58,6 +63,9 @@ export class IroriCore implements Irori {
     this.list = freezePlayers(init.players);
     this.leaderId = init.leader;
     this.isPaused = init.paused;
+    this.caps = Object.freeze(CAPS
+      .filter((c) => Array.isArray(init.capabilities) && init.capabilities.includes(c)));
+    this.env = this.caps.includes('host-environment-v1') ? readEnv(init.environment) : null;
     this.storage = {
       get: (key) => this.request('get', key),
       set: (key, value) => this.request('set', key, value).then(() => undefined),
@@ -74,6 +82,14 @@ export class IroriCore implements Irori {
 
   get paused(): boolean {
     return this.isPaused;
+  }
+
+  get environment(): Readonly<HostEnvironment> | null {
+    return this.env;
+  }
+
+  get capabilities(): readonly HostCapability[] {
+    return this.caps;
   }
 
   on<K extends keyof IroriEvents>(name: K, fn: IroriEvents[K]): () => void {
@@ -112,16 +128,14 @@ export class IroriCore implements Irori {
     this.t.send({ m: 'ready' });
   }
 
-  end(results?: readonly GameResult[]): void {
+  end(results?: readonly GameResult[], options?: GameEndOptions): void {
     if (this.ended) return;
-    let list: GameResult[] | undefined;
-    if (results !== undefined) {
-      const r = checkResults(results);
-      if (typeof r === 'string') throw new IroriError('bad-results', r);
-      list = r;
-    }
+    const r = validateGameEnd(results, options);
+    if (!r.ok) throw new IroriError('bad-results', r.reason);
+    if ((r.options !== undefined || r.results?.some((row) => row.ranked !== undefined)) && !this.caps.includes('result-options-v1')) throw new IroriError('unsupported-feature');
+    const { ok: _, ...data } = r;
     this.ended = true;
-    this.t.send(list ? { m: 'end', results: list } : { m: 'end' });
+    this.t.send({ m: 'end', ...data });
   }
 
   /** ホスト（または仮想プレイヤー）からのメッセージ。 */
@@ -145,6 +159,14 @@ export class IroriCore implements Irori {
         if (paused === this.isPaused) return;
         this.isPaused = paused;
         this.emit(msg.m);
+        return;
+      }
+      case 'environment': {
+        if (!this.caps.includes('host-environment-v1') || Object.keys(msg).length !== 2) return;
+        const next = readEnv(msg.environment);
+        if (!next || (next.connected === this.env?.connected && next.visible === this.env?.visible)) return;
+        this.env = next;
+        this.emit('environment', next);
         return;
       }
       case 'store.res': {

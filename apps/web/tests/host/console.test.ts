@@ -1,11 +1,12 @@
+// @vitest-environment-options {"settings":{"enableIframePageLoading":true}}
 // 司令塔の配線を、作り物の部屋の WebSocket で確かめる（画面の配置を測れないので、移動はクリックで代える）。
 // 実物の Worker・実ブラウザでの通しは host.e2e.ts。
-import type { PadSpec, PlayerInfo } from '@irori/protocol';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { HostToGame, PadSpec, PlayerInfo } from '@irori/protocol';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Console } from '../../src/host/console';
 import { registerHostMessages } from '../../src/host/messages';
 import registry from '../fixtures/host/registry.json';
-import { busy, created, FakeSocket, memoryStorage, SocketFactory, useJapanese } from './fakes';
+import { busy, connectGameFrame, created, FakeSocket, memoryStorage, SocketFactory, useJapanese } from './fakes';
 
 beforeAll(() => {
   useJapanese();
@@ -21,6 +22,7 @@ interface Setup {
   rooms?: Array<() => Response>;
   share?: (data: ShareData) => Promise<void>;
   writeText?: (text: string) => Promise<void>;
+  session?: Storage;
 }
 
 async function setup(o: Setup = {}) {
@@ -48,9 +50,10 @@ async function setup(o: Setup = {}) {
     location: { search: '', hostname: new URL(origin).hostname, reload: vi.fn() },
     requestAnimationFrame: (fn: FrameRequestCallback) => setTimeout(() => fn(performance.now()), 16) as unknown as number,
   }) as unknown as Window;
-  new Console({ root, win, doc: document, fetch: fetchFn, session: memoryStorage(), local: memoryStorage(), origin, makeSocket: sockets.make }).start();
+  const session = o.session ?? memoryStorage();
+  new Console({ root, win, doc: document, fetch: fetchFn, session, local: memoryStorage(), origin, makeSocket: sockets.make }).start();
   await flush();
-  return { root, sockets, calls, nav, win, state: () => root.dataset.state };
+  return { root, sockets, calls, nav, win, session, state: () => root.dataset.state };
 }
 
 async function welcomed(o: Setup = {}, players: PlayerInfo[] = []) {
@@ -313,5 +316,184 @@ describe('部屋の案内のアドレス（QR・手入力・共有）', () => {
     await flush();
     expect(document.querySelector('.join__qr')?.getAttribute('data-url')).toBe('http://127.0.0.1:8787/pad#XN7Q');
     expect(document.querySelector('[data-loopback]')).not.toBeNull();
+  });
+});
+
+describe('実物のGameFrameへの結果と環境の連携', () => {
+  const sockets: FakeSocket[] = [];
+  const peers: Awaited<ReturnType<typeof connectGameFrame>>[] = [];
+  const iframeSrc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'src')?.set;
+
+  beforeEach(() => {
+    // ゲームの文書の取得は通し試験の担当。ここでは実物の窓とMessagePortをabout:blankで用意する。
+    vi.spyOn(HTMLIFrameElement.prototype, 'src', 'set').mockImplementation(function (this: HTMLIFrameElement) { iframeSrc?.call(this, 'about:blank'); });
+  });
+
+  afterEach(() => {
+    for (const socket of sockets.splice(0)) socket.fail('closed');
+    for (const peer of peers.splice(0)) peer.close();
+    vi.restoreAllMocks();
+  });
+
+  async function launched(players = [p(1, 'たろう'), p(2, 'はなこ')], options: Setup = {}) {
+    const s = await welcomed(options, players);
+    sockets.push(s.sock);
+    click('.card[data-game="fixture-race"]');
+    click('[data-nav="detail:start"]');
+    return s;
+  }
+
+  async function connect(root: HTMLElement) {
+    const peer = await connectGameFrame(root);
+    peers.push(peer);
+    peer.send({ m: 'ready' });
+    await flush();
+    return peer;
+  }
+
+  const updates = (messages: HostToGame[]) => messages.filter((m) => m.m !== 'init');
+
+  it('非表示で開いた初期値と両capabilityを握手時に渡す', async () => {
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    const { root } = await launched();
+    const game = await connect(root);
+    expect(game.messages[0]).toMatchObject({ m: 'init', paused: false, capabilities: ['result-options-v1', 'host-environment-v1'], environment: { connected: true, visible: false } });
+  });
+
+  it('握手前の切断と非表示を最新initへ保持する', async () => {
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const { root, sock } = await launched();
+    sock.fail('network', false);
+    visibility.mockReturnValue('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    const game = await connect(root);
+    expect(game.messages[0]).toMatchObject({ m: 'init', paused: false, environment: { connected: false, visible: false } });
+  });
+
+  it.each([false, true])('切断→同じ処理内で復帰してもfalseを失わず、照合済み名簿→trueの順にする（名簿変化:%s）', async (changed) => {
+    const { root, sock } = await launched([p(1, 'たろう'), p(2, 'はなこ'), p(3, 'じろう')]);
+    const game = await connect(root);
+    sock.fail('network', false);
+    const players = changed ? [p(1, '別の人'), p(2, 'はなこ'), p(3, 'じろう')] : [p(1, 'たろう'), p(2, 'はなこ'), p(3, 'じろう')];
+    sock.welcome('XN7Q', players);
+    await flush();
+    expect(updates(game.messages)).toEqual([
+      { m: 'environment', environment: { connected: false, visible: true } },
+      { m: 'players', players: changed ? players.slice(1) : players, leader: changed ? 2 : 1 },
+      { m: 'environment', environment: { connected: true, visible: true } },
+    ]);
+    expect(root.dataset.phase).toBe('playing');
+  });
+
+  it.each(['replaced', 'offline'] as const)('%sを直ちに通知し、onlineやソケットのopenだけでは接続済みにしない', async (reason) => {
+    const { root, sock, win } = await launched();
+    const game = await connect(root);
+    if (reason === 'replaced') sock.fail('replaced');
+    else win.dispatchEvent(new Event('offline'));
+    sock.setState('connecting');
+    sock.setState('open');
+    win.dispatchEvent(new Event('online'));
+    await flush();
+    expect(updates(game.messages)).toEqual([{ m: 'environment', environment: { connected: false, visible: true } }]);
+    sock.welcome('XN7Q', [p(1, 'たろう'), p(2, 'はなこ')]);
+    await flush();
+    expect(updates(game.messages).at(-1)).toEqual({ m: 'environment', environment: { connected: true, visible: true } });
+    expect(updates(game.messages).some((m) => m.m === 'resume')).toBe(false);
+  });
+
+  it.each([false, true])('メニュー・切断・非表示が重なり、解除順を変えても再開を合成しない（表示が先:%s）', async (showFirst) => {
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const { root, sock, win } = await launched();
+    const game = await connect(root);
+    win.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    sock.fail('network', false);
+    visibility.mockReturnValue('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    const show = () => {
+      visibility.mockReturnValue('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+    };
+    if (showFirst) show();
+    sock.welcome('XN7Q', [p(1, 'たろう'), p(2, 'はなこ')]);
+    if (!showFirst) show();
+    await flush();
+    expect(root.dataset.phase).toBe('paused');
+    const log = updates(game.messages);
+    expect(log.slice(0, 3)).toEqual([
+      { m: 'pause' },
+      { m: 'environment', environment: { connected: false, visible: true } },
+      { m: 'environment', environment: { connected: false, visible: false } },
+    ]);
+    expect(log.some((m) => m.m === 'resume')).toBe(false);
+    expect(padsTo(sock, 1).at(-1)).toMatchObject({ k: 'remote' });
+    sock.frame({ t: 'in', p: 1, i: { k: 'btn', id: 'stop', d: 1 }, T: 1 });
+    await flush();
+    expect(updates(game.messages).some((m) => m.m === 'input')).toBe(false);
+    click('[data-nav="menu:continue"]');
+    await flush();
+    expect(updates(game.messages).filter((m) => m.m === 'resume')).toEqual([{ m: 'resume' }]);
+    expect(root.dataset.phase).toBe('playing');
+  });
+
+  it('endの記録・同順位・退出・注記を結果画面へ渡し、共有には行データを含めない', async () => {
+    const share = vi.fn(async () => undefined);
+    const { root, sock } = await launched([p(1, 'たろう'), p(2, 'はなこ'), p(3, 'じろう'), p(4, '元の名前')], { share });
+    const game = await connect(root);
+    sock.frame({ t: 'left', p: 4, why: 'bye' });
+    sock.frame({ t: 'joined', p: p(4, '別の人') });
+    game.send({ m: 'end', results: [
+      { p: 4, score: 0, label: 'ズレ1.0秒', ranked: false },
+      { p: 3, score: -8, label: 'ズレ0.8秒' },
+      { p: 2, score: -2, label: 'ズレ0.2秒' },
+      { p: 1, score: -2, label: 'ズレ0.2秒' },
+    ], options: { display: 'record', note: '通信の遅れを含む目安です' } });
+    await flush();
+    expect(root.dataset.state).toBe('results');
+    expect([...root.querySelectorAll('.result__rank')].map((r) => r.textContent)).toEqual(['1位', '1位', '3位', '—']);
+    expect(root.querySelector('[data-seat="4"] .result__name')?.textContent).toBe('元の名前');
+    expect(root.querySelector('[data-seat="4"] .result__gone')?.textContent).toBe('（退出）');
+    expect(root.querySelector('.result__score')).toBeNull();
+    expect(root.querySelector('.results__note')?.textContent).toBe('通信の遅れを含む目安です');
+    click('[data-nav="results:share"]');
+    const panel = root.querySelector('[data-layer="share"]');
+    expect(panel?.textContent).not.toMatch(/たろう|はなこ|じろう|名前|0\.2|目安|XN7Q/);
+    for (const a of panel?.querySelectorAll<HTMLAnchorElement>('[data-share]') ?? []) expect(decodeURIComponent(a.href)).not.toMatch(/たろう|はなこ|じろう|名前|0\.2|目安|XN7Q/);
+    click('[data-nav="share:native"]');
+    await flush();
+    expect(share).toHaveBeenCalledWith({ title: 'irori', text: expect.any(String), url: `${ORIGIN}/` });
+    expect(JSON.stringify(share.mock.calls)).not.toMatch(/たろう|はなこ|じろう|名前|0\.2|目安|XN7Q/);
+  });
+
+  it('勝敗なしから再戦・ホームへ進め、新しい旧形式の結果へ設定を持ち越さない', async () => {
+    const { root } = await launched();
+    const first = await connect(root);
+    first.send({ m: 'end', results: [{ p: 1, score: -2, label: 'ズレ0.2秒' }, { p: 2, score: -3, label: 'ズレ0.3秒' }], options: { display: 'record', outcome: 'incomplete', note: '人数が足りません' } });
+    await flush();
+    expect(root.querySelector('.results__outcome')?.textContent).toBe('勝敗なし');
+    expect(root.querySelector('.result--top')).toBeNull();
+    click('[data-nav="results:again"]');
+    const second = await connect(root);
+    expect(root.dataset.state).toBe('playing');
+    second.send({ m: 'end', results: [{ p: 1, score: 42 }, { p: 2, score: 0 }] });
+    await flush();
+    expect(root.querySelector('.result__score')?.textContent).toBe('42点');
+    expect(root.querySelector('.results__outcome, .results__note')).toBeNull();
+    expect(root.querySelector('.result--top .result__rank')?.textContent).toBe('1位');
+    click('[data-nav="results:home"]');
+    expect(root.dataset.state).toBe('home');
+    expect(root.querySelector('.results, iframe')).toBeNull();
+  });
+
+  it('同じ部屋の保存情報で再読込しても、一勝負は復元せずホームへ戻る', async () => {
+    const original = await launched();
+    await connect(original.root);
+    original.sock.setState('closed');
+    const reload = await setup({ session: original.session });
+    sockets.push(reload.sockets.last);
+    reload.sockets.last.welcome('XN7Q', [p(1, 'たろう'), p(2, 'はなこ')]);
+    await flush();
+    expect(reload.state()).toBe('home');
+    expect(reload.calls).not.toContain('POST /api/rooms');
+    expect(reload.root.querySelector('iframe, .results')).toBeNull();
   });
 });

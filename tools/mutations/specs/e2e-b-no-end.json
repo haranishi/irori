@@ -3,8 +3,8 @@
     "id": "e2e-b-sdk-end-not-sent",
     "note": "(b) ゲームの end を呼ばせない：連打レースが同梱する SDK の end() が、コンソールへ何も送らない（結果が出ない）",
     "file": "games/tap-race/irori.js",
-    "find": "this.t.send(list ? {",
-    "replace": "void (list ? {",
+    "find": "\t\tthis.t.send({\n\t\t\tm: \"end\",\n\t\t\t...data\n\t\t});",
+    "replace": "\t\tvoid ({\n\t\t\tm: \"end\",\n\t\t\t...data\n\t\t});",
     "command": [
       "npx",
       "playwright",

@@ -1,6 +1,6 @@
 // ホームの上に重ねる板（詳細・外部の確かめ・共有・外す・メニュー・覆い）と、結果・起動中・部屋のない画面。
 // 文言は文節のあいだでだけ折り返す（tx）。スマホやゲームから来た文字列は textContent で入れる（nameEl・withName）。
-import type { PlayerId, PlayerInfo } from '@irori/protocol';
+import type { GameEndOptions, PlayerId, PlayerInfo } from '@irori/protocol';
 import { h, type Child } from '../shared/dom';
 import { getLocale, t } from '../shared/i18n';
 import type { GameEntry } from './catalog';
@@ -280,31 +280,37 @@ export function launchOverlay(
   return h('div', { class: `launch launch--${issue}`, data: { issue } }, h('div', { class: 'launch__card' }, ...body));
 }
 
-export function resultsScreen(g: GameEntry | null, rows: readonly ResultRow[], on: { again(): void; home(): void; share(): void }): HTMLElement {
+export function resultsScreen(g: GameEntry | null, rows: readonly ResultRow[], on: { again(): void; home(): void; share(): void }, options?: GameEndOptions): HTMLElement {
+  const record = options?.display === 'record';
   const list = h('ol', { class: 'results__list' });
   for (const r of rows) {
     list.append(
       h(
         'li',
         { class: `result${r.rank === 1 ? ' result--top' : ''}`, data: { seat: String(r.p), rank: String(r.rank) } },
-        h('span', { class: 'result__rank' }, t('host.results.rank', { n: r.rank })),
+        h('span', { class: 'result__rank' }, r.rank === null ? t('host.results.unranked') : t('host.results.rank', { n: r.rank })),
         seatMark(r.p, 36),
         h('span', { class: 'result__who' }, nameEl(r.name, 'result__name'), r.gone ? h('span', { class: 'result__gone' }, t('host.results.left')) : null),
         // ラベルはゲームが付ける記録（「3.2秒」など）。何の値かが分かるよう、見出しを添える。
         r.label !== undefined ? h('span', { class: 'result__label' }, h('span', { class: 'result__caption' }, t('host.results.record')), nameEl(r.label, 'result__value')) : h('span', { class: 'result__label' }),
-        h('span', { class: 'result__score' }, t('host.results.points', { n: r.score.toLocaleString() })),
+        record ? null : h('span', { class: 'result__score' }, t('host.results.points', { n: r.score.toLocaleString() })),
       ),
     );
   }
   // 5人以上は、行を詰めて見出しを小さくし、1280×720 でもボタンまで画面に収める（host.css の .results--dense）。
   return h(
     'main',
-    { class: `screen results${rows.length >= 5 ? ' results--dense' : ''}` },
+    { class: `screen results${rows.length >= 5 ? ' results--dense' : ''}${record ? ' results--record' : ''}` },
     h(
       'div',
       { class: 'results__card' },
-      h('header', { class: 'results__head' }, h('h1', { class: 'results__title' }, t('host.results.title')), g ? h('p', { class: 'results__game' }, g.title) : null),
+      h('header', { class: 'results__head' },
+        h('h1', { class: 'results__title' }, t('host.results.title')),
+        g ? h('p', { class: 'results__game' }, g.title) : null,
+        options?.outcome === 'incomplete' ? h('p', { class: 'results__outcome', attrs: { role: 'status' } }, t('host.results.incomplete')) : null,
+      ),
       rows.length > 0 ? list : h('p', { class: 'results__none' }, t('host.results.none')),
+      options?.note ? h('p', { class: 'results__note' }, options.note) : null,
       h(
         'div',
         { class: 'dialog__actions results__actions' },

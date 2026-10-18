@@ -1,6 +1,6 @@
 // 単体試験の小さな作り物：部屋の WebSocket（RoomSocket と同じ形）と、POST /api/rooms。
 // 実物との結合（本物の Worker）は *.e2e.ts で確かめる。ここでは、画面の側の決まり（入り直さない・probe を呼ぶ）を見る。
-import type { PlayerInfo, ToHostFrame } from '@irori/protocol';
+import type { GameToHost, HostToGame, PlayerInfo, ToHostFrame } from '@irori/protocol';
 import type { RoomSocketError, SocketState } from '@irori/room-client';
 import type { HostSocket } from '../../src/host/session';
 
@@ -90,6 +90,36 @@ export class SocketFactory {
     if (!s) throw new Error('まだ接続を作っていない');
     return s;
   }
+}
+
+/** 実物のGameFrameへ握手するゲーム役。窓に届く転送を受け止め、MessagePortは実物を使う。 */
+export async function connectGameFrame(root: HTMLElement) {
+  const iframe = root.querySelector('iframe');
+  const child = iframe?.contentWindow;
+  if (!child) throw new Error('ゲームの窓がありません');
+  const messages: HostToGame[] = [];
+  let port: MessagePort | undefined;
+  let receiveInit: () => void = () => undefined;
+  const initialized = new Promise<void>((resolve) => { receiveInit = resolve; });
+  const postMessage = child.postMessage;
+  child.postMessage = ((_data: unknown, _origin: string, transfer: Transferable[]) => {
+    port = transfer[0] as MessagePort;
+    port.onmessage = (e: MessageEvent<HostToGame>) => {
+      messages.push(e.data);
+      if (e.data.m === 'init') receiveInit();
+    };
+    port.start();
+  }) as Window['postMessage'];
+  window.dispatchEvent(new MessageEvent('message', { data: { irori: 'hello', v: 1 }, origin: 'null', source: child }));
+  await initialized;
+  return {
+    messages,
+    send: (message: GameToHost) => port?.postMessage(message),
+    close: () => {
+      port?.close();
+      child.postMessage = postMessage;
+    },
+  };
 }
 
 /** POST /api/rooms の作り物。応答を順に返し、呼ばれた回数を数える。 */

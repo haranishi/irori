@@ -232,8 +232,8 @@
     "id": "host-j-score-without-unit",
     "note": "(j) 結果の点数に単位を付けない（「800点」でなく「800」）",
     "file": "apps/web/src/host/view-panels.ts",
-    "find": "        h('span', { class: 'result__score' }, t('host.results.points', { n: r.score.toLocaleString() })),",
-    "replace": "        h('span', { class: 'result__score' }, r.score.toLocaleString()),",
+    "find": "        record ? null : h('span', { class: 'result__score' }, t('host.results.points', { n: r.score.toLocaleString() })),",
+    "replace": "        record ? null : h('span', { class: 'result__score' }, r.score.toLocaleString()),",
     "command": [
       "npx",
       "vitest",
@@ -560,8 +560,8 @@
     "id": "host-cc-e2e-results-not-dense",
     "note": "(cc) 5人以上の結果を詰めない（1280×720 で8人だと、ボタンが画面の下に切れる）",
     "file": "apps/web/src/host/view-panels.ts",
-    "find": "    { class: `screen results${rows.length >= 5 ? ' results--dense' : ''}` },",
-    "replace": "    { class: 'screen results' },",
+    "find": "    { class: `screen results${rows.length >= 5 ? ' results--dense' : ''}${record ? ' results--record' : ''}` },",
+    "replace": "    { class: `screen results${record ? ' results--record' : ''}` },",
     "command": [
       "npx",
       "playwright",

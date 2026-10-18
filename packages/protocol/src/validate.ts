@@ -46,7 +46,7 @@ const ORIENTS = ['any', 'landscape', 'portrait'] as const;
 const TOUCH_MODES = ['area', 'swipe'] as const;
 const PHASES = ['s', 'm', 'e'] as const;
 const LEFT_WHY = ['bye', 'timeout', 'kick'] as const;
-const ERROR_CODES = Object.keys(CLOSE_CODES) as ErrorCode[];
+const ERROR_CODES = /* @__PURE__ */ Object.keys(CLOSE_CODES) as ErrorCode[];
 
 type Obj = Record<string, unknown>;
 

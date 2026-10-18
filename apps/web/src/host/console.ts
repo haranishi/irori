@@ -1,7 +1,7 @@
 // ホストの画面の司令塔。状態の変化は signal → render の1本の道で画面へ流す（ADR 0005）。
 // 状態遷移は machine.ts、名簿は roster.ts、スマホへの画面は padplan.ts（どれも純粋な関数）で決め、ここは配線だけを持つ。
 import { createGameStorage, GameFrame, parseDevParam, READY_TIMEOUT_MS } from '@irori/host-bridge';
-import type { GamePadSpec, GameResult, PadSpec, PlayerId, PlayerInfo, ToHostFrame } from '@irori/protocol';
+import type { GameEndOptions, GamePadSpec, GameResult, HostEnvironment, PadSpec, PlayerId, PlayerInfo, ToHostFrame } from '@irori/protocol';
 import { RoomSocket } from '@irori/room-client';
 import { h } from '../shared/dom';
 import { getLocale, t } from '../shared/i18n';
@@ -62,6 +62,8 @@ export class Console {
   private running: Running | null = null;
   private lastGame: GameEntry | null = null;
   private resultRows: ResultRow[] = [];
+  private resultOptions: GameEndOptions | undefined;
+  private environment: HostEnvironment;
   private busy: Busy | null = null;
   private stale = false;
   private joining = false;
@@ -100,6 +102,7 @@ export class Console {
   private stageKey = '';
 
   constructor(private readonly d: ConsoleDeps) {
+    this.environment = { connected: false, visible: d.doc.visibilityState === 'visible' };
     this.trusted = loadTrusted(d.session);
     this.where = publicOrigin({ origin: d.origin, hostname: new URL(d.origin).hostname }, canonicalHref(d.doc));
     this.link = new RoomLink({
@@ -112,14 +115,15 @@ export class Console {
       events: {
         welcome: (f) => this.onWelcome(f),
         frame: (f) => this.onFrame(f),
-        lost: () => this.signal('lost'),
+        lost: () => this.onLost(),
         replaced: () => {
+          this.updateEnvironment(false);
           this.joining = false;
           this.signal('replaced');
         },
         closed: () => this.onClosed(),
         busy: (b) => this.onBusy(b.reason, b.retryAfterSec),
-        offline: () => this.signal('lost'),
+        offline: () => this.onLost(),
         version: () => {
           this.stale = true;
           this.render();
@@ -162,7 +166,9 @@ export class Console {
     d.win.addEventListener('keydown', this.onKey);
     d.win.addEventListener('pointerdown', this.onGesture, { capture: true });
     d.win.addEventListener('gamepadconnected', this.startPads);
+    d.win.addEventListener('offline', this.onOffline);
     d.doc.addEventListener('focusin', this.onFocusIn);
+    d.doc.addEventListener('visibilitychange', this.onVisibility);
     this.sounds.onChange(() => this.render());
   }
 
@@ -190,7 +196,26 @@ export class Console {
     this.busy = null;
     this.stopBusyTimer();
     this.link.rememberLeader(this.roster.leader);
+    // 同じ名簿でも復帰の通知を先に渡す。接続が戻ったとき、ゲームが古い参加席で進まないため。
+    this.syncGamePlayers(true);
+    this.updateEnvironment(true);
     this.signal('welcome');
+  }
+
+  private onLost(): void {
+    this.updateEnvironment(false);
+    this.signal('lost');
+  }
+
+  private readonly onVisibility = (): void => this.updateEnvironment(this.environment.connected);
+  private readonly onOffline = (): void => this.updateEnvironment(false);
+
+  /** 描画を待たずに各変化を渡す。切断→復帰が続いても、途中のfalseを落とさない。 */
+  private updateEnvironment(connected: boolean): void {
+    const environment = { connected, visible: this.d.doc.visibilityState === 'visible' };
+    if (environment.connected === this.environment.connected && environment.visible === this.environment.visible) return;
+    this.environment = environment;
+    this.running?.frame?.post({ m: 'environment', environment });
   }
 
   private onFrame(f: Exclude<ToHostFrame, { t: 'welcome' }>): void {
@@ -253,6 +278,7 @@ export class Console {
   }
 
   private onClosed(): void {
+    this.updateEnvironment(false);
     this.destroyFrame();
     this.running = null;
     this.roster = EMPTY_ROSTER;
@@ -345,13 +371,14 @@ export class Console {
     };
     this.lastGame = g;
     this.resultRows = [];
+    this.resultOptions = undefined;
     this.signal('launch');
     const src = frameSource(g, this.d.origin);
     if (!src.ok) {
       this.signal('failed');
       return;
     }
-    const init = { players: this.gamePlayers(), leader: this.gameLeader(), locale: getLocale(), paused: false };
+    const init = { players: this.gamePlayers(), leader: this.gameLeader(), locale: getLocale(), paused: false, environment: this.environment };
     const storage = this.gameStorage(g.id);
     const frame = new GameFrame({ container: this.stageFrame, source: src.source, init, title: g.title, ...(storage ? { storage } : {}) });
     const run = this.running;
@@ -376,8 +403,8 @@ export class Console {
         ms,
       );
     });
-    frame.on('end', ({ results }) => {
-      if (this.running === run) this.endGame(results);
+    frame.on('end', ({ results, options }) => {
+      if (this.running === run) this.endGame(results, options);
     });
     frame.on('timeout', () => {
       if (this.running === run) this.signal('slow');
@@ -412,11 +439,12 @@ export class Console {
     return nextLeader(this.gamePlayers(), null);
   }
 
-  private endGame(results: GameResult[]): void {
+  private endGame(results: GameResult[], options?: GameEndOptions): void {
     const run = this.running;
     if (!run) return;
     // 元の参加者は、元の名前で載る。途中で空いた席に入った別の人の名前は使わない（lineup.ts）。
-    this.resultRows = rankResults(results, (p) => resultName(run.lineup, this.roster.players, p, t('host.results.player', { n: p })));
+    this.resultRows = rankResults(results, (p) => resultName(run.lineup, this.roster.players, p, t('host.results.player', { n: p })), options);
+    this.resultOptions = options;
     this.destroyFrame();
     this.running = null;
     this.play('result');
@@ -458,6 +486,7 @@ export class Console {
   private goHome(): void {
     this.destroyFrame();
     this.running = null;
+    this.resultOptions = undefined;
     this.modal = null;
     this.play('back');
     this.signal('home');
@@ -812,13 +841,13 @@ export class Console {
       key = 'home';
       build = () => this.home.el;
     } else if (p === 'results') {
-      key = `results|${JSON.stringify(this.resultRows)}|${this.lastGame?.id ?? ''}`;
+      key = `results|${JSON.stringify(this.resultRows)}|${JSON.stringify(this.resultOptions)}|${this.lastGame?.id ?? ''}`;
       build = () =>
         resultsScreen(this.lastGame, this.resultRows, {
           again: () => this.again(),
           home: () => this.goHome(),
           share: () => this.openShare(),
-        });
+        }, this.resultOptions);
     } else {
       key = 'stage';
       build = () => h('div', { class: 'screen screen--empty' });
@@ -1074,13 +1103,13 @@ export class Console {
     this.pads.sync(this.plan, new Set(this.roster.players.filter((p) => p.online).map((p) => p.id)));
   }
 
-  private syncGamePlayers(): void {
+  private syncGamePlayers(force = false): void {
     const run = this.running;
     if (!run?.frame) return;
     const players = this.gamePlayers();
     const leader = this.gameLeader();
     const json = JSON.stringify([players, leader]);
-    if (json === run.sentPlayers) return;
+    if (!force && json === run.sentPlayers) return;
     run.sentPlayers = json;
     run.frame.post({ m: 'players', players, leader });
   }

@@ -4,6 +4,7 @@ export type IroriErrorCode =
   | 'bad-target'
   | 'bad-vibrate'
   | 'bad-results'
+  | 'unsupported-feature'
   | 'storage-key'
   | 'storage-too-large'
   | 'storage-quota'

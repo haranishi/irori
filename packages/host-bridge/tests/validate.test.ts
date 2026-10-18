@@ -11,6 +11,20 @@ const rejected = (msg: unknown) => validateGameToHost(msg).ok === false;
 const b = (id: string, label = 'ボタン') => ({ id, label });
 
 describe('validateGameToHost：通すもの', () => {
+  it('終了optionsとrankedを検証してコピーし、省略されたキーは補わない', () => {
+    const results = [{ p: 1, score: -12, label: 'ズレ1.2秒', ranked: false }];
+    const options = { display: 'record', outcome: 'incomplete', note: '<b>目安</b>' };
+    const msg = ok({ m: 'end', results, options });
+    expect(msg).toEqual({ m: 'end', results, options });
+    if (msg.m !== 'end') throw new Error('end expected');
+    expect(msg.results).not.toBe(results);
+    expect(msg.results?.[0]).not.toBe(results[0]);
+    expect(msg.options).not.toBe(options);
+    expect(ok({ m: 'end', options: {} })).toEqual({ m: 'end', options: {} });
+    expect(ok({ m: 'end', results: [] })).toEqual({ m: 'end', results: [] });
+    expect(ok({ m: 'end' })).toEqual({ m: 'end' });
+  });
+
   it('ready・6種の setPad・vibrate・end・store を通し、検証したキーだけで組み直す', () => {
     expect(ok({ m: 'ready' })).toEqual({ m: 'ready' });
     const specs = [
@@ -79,6 +93,15 @@ describe('validateGameToHost：捨てるもの', () => {
     ['結果の点が無限', { m: 'end', results: [{ p: 1, score: Number.POSITIVE_INFINITY }] }],
     ['結果の点が文字', { m: 'end', results: [{ p: 1, score: '10' }] }],
     ['結果の文字13', { m: 'end', results: [{ p: 1, score: 1, label: long(13) }] }],
+    ['結果の未知キー', { m: 'end', results: [{ p: 1, score: 1, html: 'x' }] }],
+    ['rankedの型', { m: 'end', results: [{ p: 1, score: 1, ranked: 0 }] }],
+    ['recordにlabelがない', { m: 'end', results: [{ p: 1, score: 1 }], options: { display: 'record' } }],
+    ['optionsの未知キー', { m: 'end', options: { note: 'x', html: 'x' } }],
+    ['optionsがnull', { m: 'end', options: null }],
+    ['optionsが配列', { m: 'end', options: [] }],
+    ['displayの型', { m: 'end', options: { display: 'html' } }],
+    ['outcomeの型', { m: 'end', options: { outcome: false } }],
+    ['note121文字', { m: 'end', options: { note: long(121) } }],
     ['保存の鍵が空', { m: 'store.get', id: 1, key: '' }],
     ['保存の鍵65', { m: 'store.get', id: 1, key: 'k'.repeat(65) }],
     ['保存の id が負', { m: 'store.get', id: -1, key: 'k' }],

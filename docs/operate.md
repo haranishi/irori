@@ -6,7 +6,7 @@
 |---|---|---|
 | 手元のLAN | `npm run dev`。表示されたURLを大画面で開き、スマホは同じWi-Fiから読む | 試す、ボタン操作のゲーム |
 | 手元のHTTPS | mkcert の証明書で `wrangler dev --local-protocol https`、またはcloudflaredのQuick Tunnel | 傾きを使うゲームの試験 |
-| Cloudflareに置く | `npm run build` のあと `npm run deploy -w @irori/edge`（`wrangler login` が先に要る） | 公開、家族や学校で使う |
+| Cloudflareに置く | [deploy.md](deploy.md) の手動公開、またはCI成功後の自動公開 | 公開、家族や学校で使う |
 
 ## 傾きのセンサーはHTTPSが要る
 

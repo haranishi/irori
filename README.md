@@ -21,6 +21,8 @@ To try Ten Seconds Together on one computer, open `/games/ten-seconds/?mock=2` o
 
 Games that use the phone's tilt sensor need HTTPS on the phone side. See [docs/operate.md](docs/operate.md).
 
+To host your own instance on Cloudflare, follow the [deployment guide](docs/deploy.md) (Japanese) for setup, automatic deployment after CI passes, and rollback. Costs and operating limits are in [docs/operate.md](docs/operate.md).
+
 ## What it is built around
 
 1. **Zero setup.** The goal: from opening the host screen to the first game in 15 seconds.

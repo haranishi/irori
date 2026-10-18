@@ -21,6 +21,8 @@ npm run dev
 
 傾きのセンサーを使うゲームは、スマホ側がHTTPSでないと動きません。手順は [docs/operate.md](docs/operate.md) にあります。
 
+自分でCloudflareへ公開する場合は、[公開手順](docs/deploy.md)で初期設定、CI成功後の自動公開、停止・復旧を確認できます。費用と運用の上限は [docs/operate.md](docs/operate.md) にあります。
+
 ## 設計で大切にしていること
 
 1. **準備ゼロで入れる。** 基準は、ホストの画面を開いてから15秒で最初のゲーム。

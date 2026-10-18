@@ -16,6 +16,8 @@
     "dev": "node tools/dev.mjs",
     "prepare:web": "npm run build -w @irori/sdk && node tools/sync-sdk.mjs && node tools/build-registry.mjs && node tools/build-notices.mjs",
     "build": "npm run prepare:web && npm run build -w @irori/web",
+    "deploy": "npm run build && npm run deploy -w @irori/edge",
+    "deploy:dry-run": "npm run build && npm run deploy -w @irori/edge -- --dry-run",
     "typecheck": "npm run typecheck --workspaces --if-present && npm run typecheck:games",
     "typecheck:games": "tsc -p tsconfig.games.json",
     "test": "npm run test --workspaces --if-present && npm run test:tools && npm run test:games",

@@ -31,7 +31,7 @@
     "test:games": "vitest run --config vitest.games.config.ts"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
     "@types/node": "24.x",
     "ajv": "8.20.0",

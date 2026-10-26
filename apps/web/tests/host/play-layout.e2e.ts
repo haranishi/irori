@@ -24,7 +24,8 @@ test('8人で5本のゲームを始めても、始めの10秒、ホストの案�
   }
   await expect(host.page.locator('.seat')).toHaveCount(8);
   const order = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game') ?? ''));
-  expect(order).toEqual(['ten-seconds', 'dot-grab', 'hello-pad', 'quiz-4', 'tap-race']);
+  expect(order).toEqual(['blade-duel', 'lantern-market', 'ten-seconds', 'dot-grab', 'hello-pad', 'quiz-4', 'tap-race']);
+  const playable = await host.page.locator('.card[data-game][data-playable="true"]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game') ?? ''));
   const k = host.page.keyboard;
   const focused = host.page.locator('#app [data-focused]').first();
   /** ホストが重ねている案内と、ゲームの枠の中の中身（文字の葉・絵）が交わる数。 */
@@ -56,6 +57,7 @@ test('8人で5本のゲームを始めても、始めの10秒、ホストの案�
   for (const size of SIZES3) {
     await host.page.setViewportSize(size);
     for (const [index, id] of order.entries()) {
+      if (!playable.includes(id)) continue;
       await host.expectState('home');
       // 棚のこのゲームを選んで始める（輪を棚の先頭から右へ）。
       for (let i = 0; i < 6 && (await focused.getAttribute('data-nav')) !== `game:${order[0]}`; i++) await k.press('ArrowLeft');

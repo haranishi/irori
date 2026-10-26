@@ -63,8 +63,8 @@ test('ホストの主要な画面（ホーム・詳細・メニュー・結果�
   await hostScreen(host, 'ホーム（誰もいない）');
   const pads = await rig.join(host, ['たろう', 'はなこ', 'じろう']);
   await expect(host.page.locator('.seat[data-seat]')).toHaveCount(3);
-  await pads[0]!.tap('right');
-  await pads[0]!.tap('right');
+  const shelf = await host.shelf();
+  for (let i = 0; i < shelf.indexOf('hello-pad'); i++) await pads[0]!.tap('right');
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   await hostScreen(host, 'ホーム（3人）');
   await pads[0]!.tap('ok');
@@ -144,10 +144,10 @@ test('スマホの画面の viewport は拡大を止めない（WCAG 1.4.4）', 
   expect(content).not.toMatch(/maximum-scale/);
 });
 
-test('棚に7本並んでも、カードの見えている部分は参加の板（QR とコード）と重ならない。右端まで送ると、棚の中に流れてくる（元は既知の不具合4）', HOST, async ({ rig }) => {
+test('棚に7本以上並んでも、カードの見えている部分は参加の板（QR とコード）と重ならない。右端まで送ると、棚の中に流れてくる（元は既知の不具合4）', HOST, async ({ rig }) => {
   const host = await rig.openHost({ base: env('extra') });
   await rig.join(host, ['たろう', 'はなこ', 'じろう']);
-  await expect(host.page.locator('.card[data-game]')).toHaveCount(7);
+  await expect.poll(async () => (await host.shelf()).length).toBeGreaterThanOrEqual(7);
   await expect(host.page.locator('.seat[data-seat]')).toHaveCount(3);
   // 棚は自分の列の中で横に送る。カードのうち棚の箱で切られずに見えている部分が、参加の板と重ならないこと。
   // あわせて、QR の真ん中に見えているのは QR（カードが上に重なっていない）。

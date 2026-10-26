@@ -1,4 +1,4 @@
-// 棚のサムネイル registry/thumbs/<id>.png（640×480）を、ゲームを実際に動かした画面から作る。外部の画像や手作業の加工は混ぜない。
+// 棚のサムネイル registry/thumbs/（640×480）を、ゲームを実際に動かした画面から作る。外部の画像や手作業の加工は混ぜない。
 //
 // 再生成の手順：
 //   1. npm run build -w @irori/sdk && npm run sync:sdk   … 各ゲームの irori.js を最新にする
@@ -24,6 +24,12 @@ const CSP = "sandbox allow-scripts; default-src 'self'; style-src 'self' 'unsafe
 
 /** ゲームごとの撮る前の手順。page は Playwright のページ。 */
 const SCENES = {
+  'blade-duel': async (page) => {
+    await phase(page, 'intro');
+  },
+  'lantern-market': async (page) => {
+    await phase(page, 'intro');
+  },
   'hello-pad': async (page) => {
     await hold(page, ['KeyW', 'KeyA'], 450);
     await hold(page, ['ArrowDown'], 400);
@@ -113,7 +119,7 @@ export async function makeThumbs(root, ids, env = process.env) {
       page.on('pageerror', (e) => errors.push(e.message));
       // canvas に描く文字（hello-pad・tap-race・dot-grab）は、CSS では替わらない。ctx.font への代入を、ページの最初から差し替える。
       await page.addInitScript(canvasFontPatchScript());
-      await page.goto(`http://127.0.0.1:${srv.port}/${id}/?mock=3`);
+      await page.goto(`http://127.0.0.1:${srv.port}/${id}/?mock=${id === 'blade-duel' ? 2 : 3}`);
       await page.waitForSelector('.irori-mock[data-ready]', { state: 'attached', timeout: 15_000 });
       await scene(page);
       await page.addStyleTag({
@@ -138,9 +144,11 @@ export async function makeThumbs(root, ids, env = process.env) {
       });
       if (bad) throw new Error(`make-thumbs: ${id} の canvas の書体が差し替わっていません（${bad}）`);
       if (errors.length) throw new Error(`make-thumbs: ${id} でエラー：${errors.join(' / ')}`);
-      const path = join(root, 'registry/thumbs', `${id}.png`);
-      await page.screenshot({ path, type: 'png' });
-      made.push({ id, bytes: statSync(path).size });
+      const manifest = JSON.parse(readFileSync(join(root, 'registry/games', `${id}.json`), 'utf8'));
+      const path = join(root, 'registry/thumbs', manifest.thumbnail);
+      const jpeg = /\.jpe?g$/.test(manifest.thumbnail);
+      await page.screenshot({ path, type: jpeg ? 'jpeg' : 'png', ...(jpeg ? { quality: 90 } : {}) });
+      made.push({ id, thumbnail: manifest.thumbnail, bytes: statSync(path).size });
       await page.close();
     }
   } finally {
@@ -154,5 +162,5 @@ if (isDirectRun(import.meta.url)) {
   const root = process.cwd();
   const ids = process.argv.slice(2).filter((a) => !a.startsWith('-'));
   const made = await makeThumbs(root, ids.length ? ids : Object.keys(SCENES));
-  for (const m of made) console.log(`make-thumbs: registry/thumbs/${m.id}.png（${Math.ceil(m.bytes / 1024)}KB）`);
+  for (const m of made) console.log(`make-thumbs: registry/thumbs/${m.thumbnail}（${Math.ceil(m.bytes / 1024)}KB）`);
 }

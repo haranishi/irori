@@ -15,7 +15,9 @@ npm install
 npm run dev
 ```
 
-表示された「大画面で開くURL」を、PCやTVのブラウザで開きます。スマホは同じWi-Fiにつなぎ、画面のQRコードを読んで「参加する」を押します。同梱のゲーム5本（`hello-pad` `tap-race` `quiz-4` `dot-grab` `ten-seconds`）が遊べます。Node 24 以上が要ります。
+表示された「大画面で開くURL」を、PCやTVのブラウザで開きます。スマホは同じWi-Fiにつなぎ、画面のQRコードを読んで「参加する」を押します。同梱のゲーム7本（`hello-pad` `tap-race` `quiz-4` `dot-grab` `ten-seconds` `blade-duel` `lantern-market`）が遊べます。Node 24 以上が要ります。
+
+追加した[火花の間合い](games/blade-duel/README.md)は、気力を管理し、手を秘密に選んで一斉に斬り合う2人用チャンバラ。[灯市のかけひき](games/lantern-market/README.md)は、かぶった数字を除き、最大の一意札で灯を集める2〜8人のカード対戦です。PC1台なら `/games/blade-duel/?mock=2` または `/games/lantern-market/?mock=3` を開き、画面の仮想コントローラーで試せます。
 
 「せーので10秒」をPC1台で試すには、開発サーバーの `/games/ten-seconds/?mock=2` を開きます。1人目はSpace、2人目はEnterで操作します。3回の進め方や中断後の再開は[遊び方](games/ten-seconds/README.md)にあります。
 
@@ -41,7 +43,7 @@ npm run dev
 | コントローラー6種（十字・スティック・ボタン、早押し、選択、タッチ、傾き、待機） | アルファ |
 | 隔離枠でのゲームの実行、登録情報のPR、CIでの検査 | アルファ |
 | 共有（X・LINE・共有シート・リンクのコピー）、OGP | アルファ |
-| 同梱のゲーム5本（`hello-pad` `tap-race` `quiz-4` `dot-grab` `ten-seconds`）。終わり方をすべて試験している | アルファ |
+| 同梱のゲーム7本。チャンバラとカード対戦を含み、終了状態を試験している | アルファ |
 | 実機（iPhone・Android）での長い試験、TVの内蔵ブラウザ | まだ。実機の報告を歓迎します。自動の試験は、Chromium と、Safari と同じ系統のエンジン（Playwright の WebKit）だけ |
 | ホストの画面を、スマホの幅で開く使い方 | 正式な対応の外（崩れはしないが、見た目の採点が合格線の前後） |
 | 実際に遊んで見つけた問題と、まだ確かめていないこと | [docs/known-issues.md](docs/known-issues.md)。報告も修正も歓迎します |

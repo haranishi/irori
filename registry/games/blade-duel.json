@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "blade-duel",
+  "title": { "ja": "火花の間合い", "en": "Blade and Breath" },
+  "summary": {
+    "ja": "斬る、受ける、溜める。スマホで選んで一斉勝負。気力3の大技が守りを崩す。",
+    "en": "Choose in secret, clash together. Charge a powerful strike to break the guard."
+  },
+  "authors": [{ "name": "irori contributors", "url": "https://github.com/haranishi/irori" }],
+  "license": { "code": "MIT OR Apache-2.0", "assets": "original" },
+  "players": { "min": 2, "max": 2 },
+  "pads": ["wait", "pad", "choices"],
+  "entry": { "bundled": "games/blade-duel/" },
+  "thumbnail": "blade-duel.jpg",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-10-26"
+}

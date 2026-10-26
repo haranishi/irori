@@ -71,7 +71,7 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
       await call('POST', '/pad/1/tap', { id: 'ok' });
       await expect.poll(async () => (await state()).host.state).toBe('playing');
     };
-    const order = ['ten-seconds', 'dot-grab', 'hello-pad', 'quiz-4', 'tap-race'];
+    const order = ['blade-duel', 'lantern-market', 'ten-seconds', 'dot-grab', 'hello-pad', 'quiz-4', 'tap-race'];
 
     const started = await call('POST', '/start', {});
     expect(started).toMatchObject({ clock: 'paused', code: expect.stringMatching(/^[A-Z0-9]{4}$/) });

@@ -29,6 +29,16 @@ async function readQr(host: HostPage): Promise<string | null> {
 
 const focused = (host: HostPage) => host.page.locator('#app [data-focused]').first();
 
+async function focusGame(host: HostPage, id: string): Promise<void> {
+  const order = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game')));
+  for (let i = 0; i < order.length; i++) {
+    const current = await host.page.locator('.hero').getAttribute('data-game');
+    if (current === id) return;
+    await host.page.keyboard.press(order.indexOf(current) < order.indexOf(id) ? 'ArrowRight' : 'ArrowLeft');
+  }
+  await expect(host.page.locator('.hero')).toHaveAttribute('data-game', id);
+}
+
 test('ホーム・参加者の帯・灰色・リーダーのリモコン（実際の /pad#CODE を3台）', async ({ browser }) => {
   const host = await openHost(browser, base());
   await host.expectState('home');
@@ -73,11 +83,12 @@ test('ホーム・参加者の帯・灰色・リーダーのリモコン（実�
   await expect(p2.page.locator('.irori-pad')).toContainText('たろうが選んでいます');
 
   // リーダーのリモコンで、棚の選択が動き、主役のカードが替わる。
-  await expect(focused(host)).toHaveAttribute('data-nav', 'game:ten-seconds');
-  await p1.press('right');
-  await expect(focused(host)).toHaveAttribute('data-nav', 'game:dot-grab');
-  await p1.press('right');
-  await expect(focused(host)).toHaveAttribute('data-nav', 'game:hello-pad');
+  const shelf = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game')!));
+  await expect(focused(host)).toHaveAttribute('data-nav', `game:${shelf[0]}`);
+  for (const id of shelf.slice(1, shelf.indexOf('hello-pad') + 1)) {
+    await p1.press('right');
+    await expect(focused(host)).toHaveAttribute('data-nav', `game:${id}`);
+  }
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   await p1.press('right');
   await expect(focused(host)).toHaveAttribute('data-nav', 'game:quiz-4');
@@ -110,9 +121,9 @@ test('ゲームの起動・メニュー・終了・結果・「もう一度」�
   const p3 = await PagePad.join(browser, base(), code, 'じろう');
   await p1.expectKind('remote');
 
-  // hello-pad（棚の3番め）を選んで、決定 → 詳細 → 決定（はじめる）。
-  await p1.press('right');
-  await p1.press('right');
+  // 棚の位置に依存せず選び、決定 → 詳細 → 決定（はじめる）。
+  const order = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game')));
+  for (let i = 0; i < order.indexOf('hello-pad'); i++) await p1.press('right');
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   await p1.press('ok');
   await host.expectState('detail');
@@ -177,8 +188,7 @@ test('キーボードでも同じ操作：矢印・Enter・Esc（ゲーム中は
   await pad.expectSpec((s) => s?.k === 'remote', 'リーダーにリモコン');
   const k = host.page.keyboard;
   const focused = host.page.locator('#app [data-focused]').first();
-  await k.press('ArrowRight');
-  await k.press('ArrowRight');
+  await focusGame(host, 'hello-pad');
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   // 上の並び（音・締め切り・共有）へ上がり、下へ戻ると、棚の選択中のカードに戻る（参加者の札へ飛ばない）。
   await k.press('ArrowUp');
@@ -245,8 +255,7 @@ test('途中から来た人は、ゲーム中は「次のゲームから参加�
   const code = await host.code();
   const a = new ScriptPad(base(), code, 'たろう');
   await a.join();
-  await host.page.keyboard.press('ArrowRight');
-  await host.page.keyboard.press('ArrowRight');
+  await focusGame(host, 'hello-pad');
   await host.page.keyboard.press('Enter');
   await host.page.keyboard.press('Enter');
   await host.expectState('playing');
@@ -379,8 +388,8 @@ test('ゲームパッドでも同じ操作（十字・A・B）', async ({ browse
       await new Promise((r) => setTimeout(r, 80));
     }, i);
   await host.page.evaluate(() => window.dispatchEvent(new Event('gamepadconnected')));
-  await tap(15);
-  await tap(15);
+  const order = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game')));
+  for (let i = 0; i < order.indexOf('hello-pad'); i++) await tap(15);
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   await tap(0);
   await host.expectState('detail');
@@ -447,6 +456,8 @@ test('スマホの幅（390×844）：最初の画面に、参加の入口（QR�
     pads.push(pad);
   }
   await expect(host.page.locator('.seat')).toHaveCount(3);
+  // 最初のカードが人数不適合でも、遊べるカードの開始案内で配置を確かめる。
+  await focusGame(host, 'hello-pad');
   const box = async (sel: string) => {
     const b = await host.page.locator(sel).first().boundingBox();
     if (!b) throw new Error(`${sel} が見えない`);

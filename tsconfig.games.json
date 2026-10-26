@@ -7,6 +7,12 @@
   "include": [
     "games/ten-seconds/logic.js",
     "games/ten-seconds/main.js",
-    "games/ten-seconds/view.js"
+    "games/ten-seconds/view.js",
+    "games/blade-duel/logic.js",
+    "games/blade-duel/main.js",
+    "games/blade-duel/view.js",
+    "games/lantern-market/logic.js",
+    "games/lantern-market/main.js",
+    "games/lantern-market/view.js"
   ]
 }

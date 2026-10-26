@@ -15,7 +15,9 @@ npm install
 npm run dev
 ```
 
-Open the printed URL on the big screen, join the same Wi-Fi with a phone, scan the QR code on the screen, and tap "Join". Five sample games are included: `hello-pad`, `tap-race`, `quiz-4`, `dot-grab`, `ten-seconds`. Node 24 or later is required.
+Open the printed URL on the big screen, join the same Wi-Fi with a phone, scan the QR code on the screen, and tap "Join". Seven games are included: `hello-pad`, `tap-race`, `quiz-4`, `dot-grab`, `ten-seconds`, `blade-duel`, `lantern-market`. Node 24 or later is required.
+
+The new [Blade and Breath](games/blade-duel/README.md) is a two-player sword duel: choose a move in secret, manage your energy, and clash together. [Lanterns Unclaimed](games/lantern-market/README.md) is a card battle for 2–8 players: matching bids cancel out, so the highest unique card wins the lanterns. Try them on one computer at `/games/blade-duel/?mock=2` or `/games/lantern-market/?mock=3` using the on-screen controllers.
 
 To try Ten Seconds Together on one computer, open `/games/ten-seconds/?mock=2` on the development server. Space controls player 1; Enter controls player 2. The [game guide](games/ten-seconds/README.md) explains the three rounds and how to resume after an interruption.
 
@@ -41,7 +43,7 @@ The reasoning, and the things deliberately left out (accounts, analytics, ads, p
 | Six controller kinds (pad, buzzer, choices, touch, tilt, wait) | Alpha |
 | Sandboxed games, registry by pull request, CI checks | Alpha |
 | Sharing (X, LINE, share sheet, copy link) and OGP | Alpha |
-| Five sample games (`hello-pad`, `tap-race`, `quiz-4`, `dot-grab`, `ten-seconds`), every way of ending them is tested | Alpha |
+| Seven bundled games, including a simultaneous sword duel and a competitive card game; end states are tested | Alpha |
 | Long sessions on real iPhones and Android phones, TV browsers | Not tested yet. Reports are very welcome. Automated tests run Chromium and WebKit (Safari's engine, via Playwright) only |
 | Opening the host screen at phone width | Not officially supported (it does not break, but its visual score is around the pass line) |
 | Problems found by playing, and what is not verified yet | Listed in [docs/known-issues.md](docs/known-issues.md) (Japanese). Reports and fixes are welcome |

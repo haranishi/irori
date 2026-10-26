@@ -1,0 +1,38 @@
+[
+  {
+    "id": "competitive-duel-guard-ignored",
+    "note": "斬るが受けるを貫いてしまう",
+    "file": "games/blade-duel/logic.js",
+    "find": "return move === 'slash' && defending !== 'guard' ? 1 : 0;",
+    "replace": "return move === 'slash' ? 1 : 0;",
+    "command": ["npm", "run", "test:games", "--", "games/blade-duel/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "competitive-duel-resource-bypass",
+    "note": "気力不足の技を不正入力で使えてしまう",
+    "file": "games/blade-duel/logic.js",
+    "find": "if (!move || MOVES[move].cost > seat.energy)",
+    "replace": "if (!move)",
+    "command": ["npm", "run", "test:games", "--", "games/blade-duel/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "competitive-market-duplicate-pair",
+    "note": "2枚だけ重なった札を失格にしない",
+    "file": "games/lantern-market/logic.js",
+    "find": "duplicate:counts.get(entry.card)>1",
+    "replace": "duplicate:counts.get(entry.card)>2",
+    "command": ["npm", "run", "test:games", "--", "games/lantern-market/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "competitive-market-secret-leak",
+    "note": "公開前の選択を共用画面のモデルへ漏らす",
+    "file": "games/lantern-market/logic.js",
+    "find": "phase:state.phase,roundIndex:state.roundIndex,prizes:[...PRIZES],carry:state.carry,",
+    "replace": "phase:state.phase,roundIndex:state.roundIndex,prizes:[...PRIZES],carry:state.carry,secretPicks:{...state.picks},",
+    "command": ["npm", "run", "test:games", "--", "games/lantern-market/"],
+    "timeoutMs": 180000
+  }
+]

@@ -1,7 +1,7 @@
 {
   "feature_name": "competitive-game-pack",
   "created_at": "2026-10-26T13:47:41.673606+00:00",
-  "updated_at": "2026-10-26T15:01:16.293842+00:00",
+  "updated_at": "2026-10-26T15:04:13.738518+00:00",
   "language": "ja",
   "phase": "implementation",
   "approvals": {
@@ -25,6 +25,8 @@
     "completion": "VERIFIED_LOCAL",
     "all_implementation_tasks_complete": true,
     "report": "../../../.agent-harness/runs/2026-10-26-competitive-pack/validation.md",
-    "limitations": "物理端末・人間同士の長期プレイ・商標特許の個別調査は未確認。GitHub提出は進行中。"
+    "limitations": "物理端末・人間同士の長期プレイ・商標特許の個別調査は未確認。GitHub CIはPRの最新headで確認する。",
+    "all_tasks_complete": true,
+    "pull_request": "https://github.com/haranishi/irori/pull/8"
   }
 }

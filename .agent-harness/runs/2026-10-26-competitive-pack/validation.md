@@ -20,6 +20,7 @@
 | Workerの`deploy --dry-run` | 成功。公開は実行しない |
 | `npm audit --omit=dev --audit-level=high` | 脆弱性0件 |
 | `reuse lint` | 表示漏れ・ライセンスエラー0件 |
+| `gitleaks git`（追加コミット） | 秘密情報の検出0件 |
 | 3幅18画像とaxe | JavaScriptエラー0件、axeの違反0件 |
 
 `tests/e2e/console/competitive-pack.spec.ts` は、秘密の手、通常／大技、10手、同時決着、6市、再戦、中断、退出を通す。
@@ -35,4 +36,5 @@
 ## 残る制約
 実物のiPhone・Android、TV内蔵ブラウザ、人間同士の長期プレイは未確認。
 個別の商標・特許調査と弁護士の確認は未了。公開デモとmainへのマージは行わない。
-GitHubのCI結果とPRは、提出後の記録で確認する。
+提出先は [PR8](https://github.com/haranishi/irori/pull/8)。実装コミットは `4b1f4ae`。
+GitHubのCI結果はPRの最新headに対するチェックで確認する。ローカル成功とGitHubの実行結果を混同しない。

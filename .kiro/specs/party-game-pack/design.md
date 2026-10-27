@@ -62,10 +62,10 @@ graph TB
 ## 担当の分け方（境界の名前＝タスクの `_Boundary:_`。所有する場所は重ならない）
 | 境界 | 実行者 | 所有（編集してよい場所） | 依存 |
 |---|---|---|---|
-| Protocol・統合 | メイン | `packages/protocol/src`、仕様、ADR、`tsconfig.games.json`、`tools/make-thumbs.mjs`、固定の棚順と一覧の試験、`README*`、`registry/thumbs`、`tests/e2e/console/party-pack.spec.ts` | なし |
+| Protocol・統合 | メイン | `packages/protocol/src`、仕様、ADR、SDK の容量の試験と予算の道具、`tsconfig.games.json`、`tools/make-thumbs.mjs`、固定の棚順と一覧の試験、`README*`、`registry/thumbs`、`tests/e2e/console/party-pack.spec.ts` | なし |
 | PadUi | Codex | `packages/pad-ui`、`apps/web/src/{pad,styles}`、`apps/web/tests/pad` | Protocol |
 | SdkBridge | Codex（PadUiのあと） | `packages/{sdk,host-bridge}`（`dist` を除く）、`packages/{protocol,room,room-client}/tests`、`registry/schema`、`apps/web/src/host/{icons,view-home,messages}.ts`、`docs/*`、`tools/playtest-server.mjs` | PadUi |
-| ConsoleSynth | Codex（SdkBridgeのあと） | `apps/web/src/host/{console,audio}.ts`、`apps/web/tests/host`、cue に関わる `packages/{sdk,host-bridge}` と `docs/*` | SdkBridge |
+| ConsoleSynth | Codex（SdkBridgeのあと） | `apps/web/src/host/{console,audio}.ts`、`apps/web/tests/host`（固定の棚順の試験 `play-layout.e2e.ts` を除く）、cue に関わる `packages/{sdk,host-bridge}` と `docs/*` | SdkBridge |
 | DaifugoLogic / OldMaidLogic / MoonVillageLogic | Codex ×3 | `games/<id>/{logic,cards,roles}.js` と試験、`tools/mutations/specs/party-pack-<id>.json` | Protocol |
 | StrikeAlleyCore | Opus | `games/strike-alley/{scoring,gesture,physics}.js` と試験 | Protocol |
 | StrikeAlleyGame | Opus（Coreのあと） | `games/strike-alley/{logic,main,view}.js`・`index.html`・`style.css`・`README.md`・試験、`registry/games/strike-alley.json`、変異の仕様1本 | Core |

@@ -1,9 +1,9 @@
 {
   "feature_name": "party-game-pack",
   "created_at": "2026-10-27T12:52:07Z",
-  "updated_at": "2026-10-27T13:07:11Z",
+  "updated_at": "2026-10-27T13:24:08Z",
   "language": "ja",
-  "phase": "design-generated",
+  "phase": "tasks-generated",
   "approvals": {
     "requirements": {
       "generated": true,
@@ -11,13 +11,13 @@
     },
     "design": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "tasks": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     }
   },
-  "ready_for_implementation": false,
-  "approval_evidence": "2026-10-27: 本人の「スキルとハーネスを使って実行」の指示と、許可の取り直しを求めない共通の自律実行方針に基づく（要件・設計・タスクは -y で進めた）。個別のゲーム名や設計の対面承認を得たという意味ではない。"
+  "ready_for_implementation": true,
+  "approval_evidence": "2026-10-27: 本人の「スキルとハーネスを使って実行」の指示と、許可の取り直しを求めない共通の自律実行方針に基づく。個別のゲーム名や設計の対面承認を得たという意味ではない。タスク計画の独立レビュー（読み取り専用のCodex）は4回実施し、PASSに届かなかった。1回目は要件と設計の矛盾4件を、4回目は食い違い3件を指摘し、すべて修正した。最後に残った指摘は、粒度（4.1・4.4を分ける）と所有の追加説明で、6.3の独立レビューで再確認する。スキルの規則（2回で打ち切り）より回数を重ねたのは、1〜2回目に本物の矛盾が見つかったため。"
 }

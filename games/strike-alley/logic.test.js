@@ -69,6 +69,12 @@ describe('開始', () => {
     pads.slice(1).forEach((e) => expect(e.spec.k).toBe('wait'));
     expect(pads[0].spec.options.every((o) => /^[a-z0-9_-]{1,24}$/.test(o.id) && [...o.label].length <= 12)).toBe(true);
   });
+  it('長い語がボタン内で折れていた：長さの選択肢はフレーム数だけにする', () => {
+    const {state,effects}=createGame(init());
+    const pad=effects.find((e)=>e.t==='pad'&&e.to===state.leader).spec;
+    expect(pad.options.map((o)=>o.label)).toEqual(['10フレーム','5フレーム']);
+    expect(pad.hint).toContain('長さ');
+  });
   it('ふつうは10フレーム、みじかめは5フレームで、最初の席から投げる', () => {
     const long = start();
     expect(long).toMatchObject({ phase: 'aim', frames: 10, startCount: 3, turn: { p: 1, frame: 0, ball: 0 } });

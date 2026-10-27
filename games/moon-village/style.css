@@ -162,3 +162,8 @@ html[data-phase="ended"] .role-card { font-size: clamp(18px, 3.4vmin, 38px); }
   .clock--low .clock-time, .resident--winner { animation: none !important; }
   .ballot-paper { display: none; }
 }
+
+/* 導入の勝ち方・内訳は狭い画面でも折り返し、情報が増えたぶん飾りを小さくする。 */
+.intro-details { width: min(100%, 52em); min-width: 0; display: grid; gap: .5em; font-size: clamp(16px, 2.2vmin, 24px); line-height: 1.6; overflow-wrap: anywhere; }
+.composition { color: var(--glow); }
+html[data-phase="intro"] .scene { height: clamp(64px, 12vmin, 130px); }

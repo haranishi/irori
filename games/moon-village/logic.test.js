@@ -1,5 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {createGame,publicView,updateGame} from './logic.js';
+import {rolesFor} from './roles.js';
 
 const players=(n=6,offline=[])=>Array.from({length:n},(_,i)=>({id:i+1,name:`席${i+1}`,online:!offline.includes(i+1)}));
 const init=(overrides={})=>({players:players(),leader:1,environment:{connected:true,visible:true},paused:false,nonce:'moon1234',seed:42,...overrides});
@@ -43,7 +44,10 @@ const roleWords={wolf:'人狼',seer:'占い師',knight:'騎士',madman:'狂人',
 function checkPrivacy(transition){
   const {state:s,effects}=transition;
   const view=publicView(s);
-  expect(Object.keys(view).sort()).toEqual(['phase','day','seats','announce','timer','decided','votes','reveal','leader','canBegin','outcome'].sort());
+  expect(Object.keys(view).sort()).toEqual(['phase','day','seats','announce','timer','decided','votes','reveal','leader','canBegin','outcome','roleCounts'].sort());
+  const expectedCounts=s.phase==='intro'&&s.seats.length>=4&&s.seats.length<=8
+    ? Object.fromEntries([...new Set(rolesFor(s.seats.length))].map((role)=>[role,rolesFor(s.seats.length).filter((r)=>r===role).length])) : null;
+  expect(view.roleCounts).toEqual(expectedCounts);
   expect(view.seats).toEqual(s.seats.map(({id,name,alive,left,online})=>({id,name,alive,left,online})));
   if(s.phase!=='ended'){
     expect(view.reveal).toBeNull();
@@ -60,7 +64,7 @@ function checkPrivacy(transition){
       expect(text).not.toContain(`${other.name}：${roleWords[other.role]}`);
       if(!(receiver?.role==='wolf'&&other.role==='wolf'))expect(text).not.toContain(`仲間：${other.name}`);
     }
-    if(e.spec.note?.startsWith('あなたは')){
+    if(e.spec.note?.startsWith('あなたは【')){
       const jobs={villager:'話し合いで人狼を探します。',wolf:'夜に1人を襲います。',seer:'夜に1人が人狼か占います。',knight:'自分以外を守ります。同じ人は2夜続けて守れません。',madman:'人間として数えますが、人狼の勝ちを願います。'};
       const allies=s.seats.filter((p)=>p.id!==e.to&&p.role==='wolf').map((p)=>p.name);
       expect(e.spec.note).toBe(`あなたは【${roleWords[receiver.role]}】。${receiver.role==='wolf'&&allies.length?`仲間：${allies.join('、')}。`:''}${jobs[receiver.role]}`);
@@ -69,12 +73,12 @@ function checkPrivacy(transition){
       else expect(e.spec.note).not.toContain('仲間：');
     }
     if(s.phase==='dawn'&&receiver&&!receiver.left&&!s.blockers.length&&!s.resumeRequired){
-      if(e.to===s.leader)expect(e.spec).toMatchObject({k:'tiles',tiles:[],min:0,max:0,ok:'つづける',note:[s.announce,s.reports[e.to]].filter(Boolean).join('\n')});
-      else expect(e.spec).toEqual({k:'wait',title:'夜が明けました',body:s.reports[e.to]??s.announce});
+      if(e.to===s.leader)expect(e.spec).toMatchObject({k:'tiles',tiles:[],min:0,max:0,ok:'つづける',note:[s.victim===e.to?'あなたは襲われました。':null,s.announce,s.reports[e.to]].filter(Boolean).join('\n')});
+      else expect(e.spec).toEqual({k:'wait',title:'夜が明けました',body:(s.victim===e.to?'あなたは襲われました。\n':'')+(s.reports[e.to]??s.announce)});
     }
     if(e.spec.body?.includes('さんは')||e.spec.note?.includes('さんは')){
-      expect(receiver.role).toBe('seer');expect(s.phase).toBe('dawn');
-      expect(e.spec.body??e.spec.note).toBe(e.to===s.leader?[s.announce,s.reports[e.to]].filter(Boolean).join('\n'):s.reports[e.to]);
+      expect(receiver.role).toBe('seer');expect(['dawn','day']).toContain(s.phase);
+      expect(e.spec.body??e.spec.note).toContain(s.reports[e.to]);
     }
   }
 }
@@ -88,7 +92,7 @@ describe('開始と役の確認',()=>{
     expect(tr.state).toMatchObject({phase:'ended',outcome:'incomplete',winner:null});
     expect(tr.state.seats).toEqual(s.seats.map((p)=>({...p,left:true,online:false,alive:false})));
     const ends=tr.effects.filter((e)=>e.t==='end');expect(ends).toHaveLength(1);
-    expect(ends[0]).toMatchObject({results:s.seats.map((p)=>({p:p.id,score:0,ranked:false,label:'退出'})),options:{display:'record',outcome:'incomplete'}});
+    expect(ends[0]).toMatchObject({results:s.seats.map((p)=>({p:p.id,score:0,ranked:false,label:'記録なし'})),options:{display:'record',outcome:'incomplete'}});
     expect(publicView(tr.state).reveal).toBeNull();
     expect(tr.effects.filter((e)=>e.t==='pad').every((e)=>!e.spec.body)).toBe(true);
     for(const event of [
@@ -167,7 +171,7 @@ describe('夜と夜明けの全組合せ',()=>{
     let s={...night(['wolf','wolf','seer','knight','madman','villager','villager']),day:2};
     let tr;for(const [p,target] of [[1,3],[2,3],[3,5],[4,5],[5,6],[6,7],[7,6]]){tr=choose(s,p,target);s=tr.state;}
     expect(s.seats[2].alive).toBe(false);expect(s.reports[3]).toBe('席5さんは人狼ではないです。');
-    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===3).spec.body).toBe(s.reports[3]);checkPrivacy(tr);
+    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===3).spec.body).toBe('あなたは襲われました。\n'+s.reports[3]);checkPrivacy(tr);
     s={...night(),day:2};s=decisions(s,{1:5,2:5,3:5,4:5,5:6,6:5});expect(s.seats[4].alive).toBe(true);expect(s.reports[3]).toBe('席5さんは人狼ではないです。');
   });
   it('選べない仲間と連続護衛の理由を確定前には返さず、夜明けに本人だけへ返す',()=>{
@@ -234,7 +238,7 @@ describe('昼・投票・決選・勝敗',()=>{
     let tr;for(const p of [1,2,3,4]){tr=choose(s,p,p===1?2:1);s=tr.state;}
     expect(s.phase).toBe('ended');expect(s.winner).toBe('village');
     const end=tr.effects.find((e)=>e.t==='end');expect(end.options).toMatchObject({display:'record',outcome:'complete'});
-    expect(end.results.map((r)=>[r.score,r.label,r.ranked])).toEqual([[0,'人狼・負け',true],[1,'村人・勝ち',true],[1,'村人・勝ち',true],[1,'村人・勝ち',true]]);
+    expect(end.results.map((r)=>[r.score,r.label,r.ranked])).toEqual([[0,'人狼・負け',true],[1,'占い師（村人側）・勝ち',true],[1,'村人・勝ち',true],[1,'村人・勝ち',true]]);
     expect(publicView(s).reveal).toHaveLength(4);
     for(const event of [{t:'tick',ms:1},{t:'players',players:[],leader:null},{t:'menu',paused:true}])expect(updateGame(s,event)).toEqual({state:s,effects:[]});
   });
@@ -295,7 +299,7 @@ describe('夜明け・処刑後のスマホ進行',()=>{
       for(const p of [1,2,3,4,5,6]){tr=choose(s,p,p===5?6:5);s=tr.state;}
     }
     expect(s.phase).toBe(phase);expect(s.seats[4].alive).toBe(false);expect(s.leader).toBe(5);
-    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===5).spec).toMatchObject({k:'tiles',tiles:[],ok:'つづける',note:s.announce});
+    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===5).spec).toMatchObject({k:'tiles',tiles:[],ok:'つづける',note:(phase==='dawn'?'あなたは襲われました。\n':'')+s.announce});
     checkPrivacy(tr);expect(next(s).phase).toBe(phase==='dawn'?'day':'night');
   });
   it.each(['dawn','exec'])('%sで退出したリーダーの代わりは最小番号の生存席になる',(phase)=>{
@@ -439,10 +443,10 @@ describe('秘匿・入力・中断・退出',()=>{
     const advanced=toVote(decisions(first.state,{2:5,3:1,4:3,5:6,6:5}));expect(input(advanced,3,{k:'tiles',t:token(advanced,3),ids:[id(s,3,1)]}).effects).toEqual([]);
     for(const ms of [0,-1,NaN,Infinity])expect(updateGame(s,{t:'tick',ms})).toEqual({state:s,effects:[]});
   });
-  it.each(['menu','offline','hidden','player'])('中断 %s で選択を捨て、時計・役・生死を保ち、復帰のIDを更新する',(cause)=>{
+  it.each(['menu','offline','hidden','player'])('中断 %s で決定を保持し、時計・役・生死を保ち、復帰のIDを更新する',(cause)=>{
     const original=ev(night(),{t:'tick',ms:30000});let s=choose(original,1,5).state;const old=id(s,2,5);const seats=structuredClone(s.seats);
     const event=cause==='menu'?{t:'menu',paused:true}:cause==='player'?{t:'players',players:players(6,[2]),leader:1}:{t:'environment',value:{connected:cause!=='offline',visible:cause!=='hidden'}};
-    s=ev(s,event);expect(s.blockers.length).toBeGreaterThan(0);expect(s.picks).toEqual({});
+    s=ev(s,event);expect(s.blockers.length).toBeGreaterThan(0);expect(s.picks).toEqual({1:5});
     const wait=s;expect(ev(s,{t:'tick',ms:500000})).toBe(wait);expect(choose(s,2,5).effects).toEqual([]);
     s=ev(s,{t:'menu',paused:false});s=ev(s,{t:'environment',value:{connected:true,visible:true}});s=ev(s,{t:'players',players:players(),leader:1});
     expect(s.blockers).toEqual([]);expect(s.resumeRequired).toBe(true);expect(ev(s,{t:'tick',ms:500000})).toBe(s);
@@ -450,7 +454,7 @@ describe('秘匿・入力・中断・退出',()=>{
   });
   it('複数の中断・脱落者の切断・昼の時計・投票の中断を扱う',()=>{
     let s=toVote(decisions(night(),{1:5,2:5,3:1,4:3,5:6,6:5}));s=choose(s,1,5).state;
-    s=ev(s,{t:'menu',paused:true});s=ev(s,{t:'environment',value:{connected:true,visible:false}});s=ev(s,{t:'menu',paused:false});expect(s.blockers).toEqual(['hidden']);expect(s.picks).toEqual({});
+    s=ev(s,{t:'menu',paused:true});s=ev(s,{t:'environment',value:{connected:true,visible:false}});s=ev(s,{t:'menu',paused:false});expect(s.blockers).toEqual(['hidden']);expect(s.picks).toEqual({1:5});
     s=ev(s,{t:'environment',value:{connected:true,visible:true}});expect(s.phase).toBe('vote');
     s={...s,phase:'day',remaining:11000,total:180000,seats:s.seats.map((p)=>({...p,alive:p.id!==6}))};
     s=ev(s,{t:'players',players:players(6,[6]),leader:1});expect(s.blockers).toEqual([]);
@@ -550,5 +554,82 @@ describe('秘匿・入力・中断・退出',()=>{
     for(const e of pads){checkPadContract(e.spec);expect([...e.spec.body]).toHaveLength(120);expect(e.spec.body).not.toContain('\ufffd');}
     // 全役は公開データに保持し、スマホ本文の長さに依存しない。
     expect(publicView(tr.state).reveal.map((p)=>p.role)).toEqual(seats.map((p)=>p.role));
+  });
+});
+
+// D4：実機で見つかった固まりと、確定済みの決定・本人への知らせの回帰。
+describe('追補D4の回帰',()=>{
+  it.each([false,true])('最後の棄権席は同じ候補の決選でも新しいpadを受け、投票・棄権できる %s',(abstain)=>{
+    let s=toVote(decisions(night(['wolf','seer','villager','villager']),{1:2,2:1,3:1,4:1}));
+    const old=token(s,4);
+    for(const [p,to] of [[1,2],[2,3],[3,1]])s=choose(s,p,to).state;
+    const tr=choose(s,4,null,true);s=tr.state;
+    expect(s.runoff).toBe(true);expect(s.candidates).toEqual([1,2,3]);
+    const pad=tr.effects.find((e)=>e.t==='pad'&&e.to===4)?.spec;
+    expect(pad).toMatchObject({k:'tiles',token:token(s,4)});
+    expect(pad.token).not.toBe(old);
+    expect(choose(s,4,abstain?null:1,abstain).state.picks[4]).toBe(abstain?null:1);
+  });
+  it.each(['night','vote'])('中断で%sの決定を消していた：切断中も決定を保ち再開後は残りだけ決める',(phase)=>{
+    let s=night();if(phase==='vote')s=toVote(decisions(s,{1:5,2:5,3:1,4:3,5:6,6:5}));
+    s=choose(s,2,5).state;
+    if(phase==='night')s=choose(s,3,null,true).state;
+    const stopped=updateGame(s,{t:'players',players:players(6,[2]),leader:1});
+    expect(stopped.state.picks).toEqual({2:5});expect(stopped.state.showRole).toEqual({});
+    let resumed=ev(stopped.state,{t:'players',players:players(),leader:1});
+    const tr=choose(resumed,1);resumed=tr.state;
+    expect(resumed.picks).toEqual({2:5});
+    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===2).spec).toEqual({k:'wait',title:'全員の決定を待っています'});
+    expect(decisions(resumed,{1:5,3:1,4:3,5:6,6:5}).phase).toBe(phase==='night'?'dawn':'exec');
+  });
+  it.each(['night','vote'])('再開時に%sの全決定があれば選び直しなしで解決する',(phase)=>{
+    let s=night();if(phase==='vote')s=toVote(decisions(s,{1:5,2:5,3:1,4:3,5:6,6:5}));
+    s={...s,picks:{1:5,2:5,3:1,4:3,5:6,6:5}};
+    s=ev(ev(s,{t:'menu',paused:true}),{t:'menu',paused:false});
+    expect(next(s).phase).toBe(phase==='night'?'dawn':'exec');
+  });
+  it.each([4,5,6,7,8])('導入の%i人の役内訳は人数だけで配役や種によらず、開始後はnull',(n)=>{
+    const a=createGame(init({players:players(n)}));checkPrivacy(a);
+    const b=createGame(init({players:players(n),seed:99}));
+    expect(publicView(a.state).roleCounts).toEqual(publicView(b.state).roleCounts);
+    expect(Object.values(publicView(a.state).roleCounts).reduce((a,b)=>a+b,0)).toBe(n);
+    expect(publicView(begin({players:players(n)})).roleCounts).toBeNull();
+  });
+  it('役確認の人数が出なかった：見ただけでは増やさず、かくした人数だけを公開する',()=>{
+    let s=begin({players:players(5)});expect(publicView(s).decided).toEqual({count:0,total:5});
+    s=choose(s,1).state;expect(publicView(s).decided.count).toBe(0);
+    s=choose(s,1).state;s=choose(choose(s,2).state,2).state;
+    expect(publicView(s).decided).toEqual({count:2,total:5});
+  });
+  it.each([1,3])('昼に占い結果が消えていた：占い師席%iの本人だけが昼まで見直せる',(seerId)=>{
+    const roles=seerId===1?['seer','wolf','wolf','knight','villager','villager']:['wolf','wolf','seer','knight','villager','villager'];
+    const dawn=decisions(night(roles),{1:5,2:5,3:1,4:3,5:6,6:5});
+    const tr=choose(dawn,dawn.leader);checkPrivacy(tr);
+    for(const e of tr.effects.filter((e)=>e.t==='pad')){
+      const content=e.spec.body??e.spec.note??'';
+      if(e.to===seerId)expect(content).toContain(dawn.reports[seerId]);
+      else expect(content).not.toContain('さんは');
+      if(e.to!==tr.state.leader)expect(e.spec).toEqual({k:'wait',title:'大画面を見てください',body:e.to===seerId?dawn.reports[seerId]:'大画面を見てください'});
+    }
+    const exec=decisions(next(tr.state),{1:null,2:null,3:null,4:null,5:null,6:null});
+    expect(next(exec).reports).toEqual({});
+  });
+  it.each([1,3,5])('襲われた席%iは夜明けに本人宛の本文・注記の先頭で知る（占い結果も残す）',(victim)=>{
+    const base=night(['seer','wolf','knight','madman','villager','villager']);
+    let s={...base,day:2};let tr;
+    for(const p of [1,2,3,4,5,6]){tr=choose(s,p,{1:2,2:victim,3:4,4:5,5:6,6:5}[p]);s=tr.state;}
+    expect(s.phase).toBe('dawn');checkPrivacy(tr);
+    for(const e of tr.effects.filter((e)=>e.t==='pad')){
+      const content=e.spec.body??e.spec.note??'';
+      expect(content.startsWith('あなたは襲われました。')).toBe(e.to===victim);
+      if(e.to===1)expect(content).toContain(s.reports[1]);
+    }
+  });
+  it('陣営名だけで占い師・騎士・狂人の役が消えていた：終了labelは役名と勝敗を12文字以内で残す',()=>{
+    const base=night(['wolf','wolf','seer','knight','madman','villager','villager','villager']);
+    const tr=updateGame(base,{t:'players',players:players(8).filter((p)=>p.id>2),leader:3});
+    const rows=tr.effects.find((e)=>e.t==='end').results;
+    expect(rows.map((r)=>r.label)).toEqual(['人狼・負け','人狼・負け','占い師（村人側）・勝ち','騎士（村人側）・勝ち','狂人（人狼側）・負け','村人・勝ち','村人・勝ち','村人・勝ち']);
+    for(const row of rows){expect([...row.label].length).toBeLessThanOrEqual(12);expect(row.label).toMatch(/・(勝ち|負け)$/);}
   });
 });

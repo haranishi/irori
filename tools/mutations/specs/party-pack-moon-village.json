@@ -157,8 +157,8 @@
     "id": "party-pack-moon-village-public-leak",
     "note": "公開用の型へ未確定の選択を漏らす",
     "file": "games/moon-village/logic.js",
-    "find": "return {phase:state.phase,day:state.day,seats:",
-    "replace": "return {picks:state.picks,phase:state.phase,day:state.day,seats:",
+    "find": "return {phase:state.phase,day:state.day,roleCounts,seats:",
+    "replace": "return {picks:state.picks,phase:state.phase,day:state.day,roleCounts,seats:",
     "command": [
       "npm",
       "run",
@@ -369,6 +369,174 @@
       "games/moon-village/logic.test.js",
       "-t",
       "introで全員退出"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-decision-epoch",
+    "note": "新しい場面でも画面の内容が同じならepochを進めず最後の棄権席が固まる",
+    "file": "games/moon-village/logic.js",
+    "find": "const newDecision = before && (before.phase !== next.phase || before.runoff !== next.runoff || before.day !== next.day);",
+    "replace": "const newDecision = false;",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js",
+      "-t",
+      "追補D4の回帰"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-pause-picks",
+    "note": "中断時に確定した夜の行動と投票を消す",
+    "file": "games/moon-village/logic.js",
+    "find": "next = {...next,remaining:IDLE_MS};",
+    "replace": "next = {...next,picks:{},remaining:IDLE_MS};",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-intro-assignment",
+    "note": "導入の役内訳に席ごとの配役を入れる",
+    "file": "games/moon-village/logic.js",
+    "find": "day:state.day,roleCounts,seats:",
+    "replace": "day:state.day,roleCounts:state.seats.map(({id,role})=>({id,role})),seats:",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-day-foreign-role",
+    "note": "昼のwaitに他席の役を含める",
+    "file": "games/moon-village/logic.js",
+    "find": "body:report ?? '大画面を見てください'",
+    "replace": "body:state.seats.filter((s)=>s.id!==seat.id).map((s)=>`${s.name}：${ROLE_NAMES[s.role]}`).join('、')",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-victim-note",
+    "note": "襲われた席の夜明けの本文と進行役の注記を外す",
+    "file": "games/moon-village/logic.js",
+    "find": "  if (state.phase === 'dawn') return seat.id === state.leader\n    ? emptyTiles('つづける',[state.victim === seat.id ? 'あなたは襲われました。' : null,state.announce,state.reports[seat.id]].filter(Boolean).join('\\n'))\n    : {k:'wait',title:'夜が明けました',body:(state.victim === seat.id ? 'あなたは襲われました。\\n' : '')+(state.reports[seat.id] ?? state.announce)};\n",
+    "replace": "  if (state.phase === 'dawn') return seat.id === state.leader\n    ? emptyTiles('つづける',[false ? 'あなたは襲われました。' : null,state.announce,state.reports[seat.id]].filter(Boolean).join('\\n'))\n    : {k:'wait',title:'夜が明けました',body:(false ? 'あなたは襲われました。\\n' : '')+(state.reports[seat.id] ?? state.announce)};\n",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-reveal-count",
+    "note": "役をかくしても確認の人数を増やさない",
+    "file": "games/moon-village/logic.js",
+    "find": "count:living(state).filter((s)=>state.checked[s.id] === 'done').length",
+    "replace": "count:0",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js",
+      "-t",
+      "追補D4の回帰"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-day-report",
+    "note": "夜明けから昼へ進む際に占い結果を消す",
+    "file": "games/moon-village/logic.js",
+    "find": "remaining:state.discussMs,announce:",
+    "replace": "remaining:state.discussMs,reports:{},announce:",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js",
+      "-t",
+      "追補D4の回帰"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-result-role",
+    "note": "終了結果から占い師・騎士・狂人の役名を消す",
+    "file": "games/moon-village/logic.js",
+    "find": "`${role}・${",
+    "replace": "`${side === 'wolf' ? '人狼' : '村人'}・${",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js",
+      "-t",
+      "追補D4の回帰"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-speech-period",
+    "note": "読み上げの結合で文末の句点を二重にする",
+    "file": "games/moon-village/view.js",
+    "find": ".filter(Boolean).map((part)=>part.replace(/。+$/u, '')).join('。');",
+    "replace": ".filter(Boolean).join('。');",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/view.test.js",
+      "-t",
+      "句点"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-reveal-count-view",
+    "note": "確認の人数を決定と誤表示する",
+    "file": "games/moon-village/view.js",
+    "find": "phase === 'reveal' ? '確認' : '決定'",
+    "replace": "false ? '確認' : '決定'",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/view.test.js",
+      "-t",
+      "役をかくした人数"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-intro-rules-view",
+    "note": "導入から勝ち方を取り除く",
+    "file": "games/moon-village/view.js",
+    "find": "text(victory, phase === 'intro' ? '勝ち方：人狼を全員見つければ村の勝ち。人狼が村人と同じ数になれば人狼の勝ち' : '');",
+    "replace": "text(victory, '');",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/view.test.js",
+      "-t",
+      "導入に勝ち方"
     ]
   }
 ]

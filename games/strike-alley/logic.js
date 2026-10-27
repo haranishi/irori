@@ -263,7 +263,7 @@ export function padFor(state, seat) {
     if (state.chooser !== null && seat.id === state.chooser) {
       return {
         k: 'choices', hint: '遊ぶ長さを選んでね',
-        options: [{ id: modeId(state, MODES.long), label: 'ふつう（10フレーム）' }, { id: modeId(state, MODES.short), label: 'みじかめ（5フレーム）' }],
+        options: [{ id: modeId(state, MODES.long), label: '10フレーム' }, { id: modeId(state, MODES.short), label: '5フレーム' }],
       };
     }
     const leader = state.seats.find((s) => s.id === state.leader);

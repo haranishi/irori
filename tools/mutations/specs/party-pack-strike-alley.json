@@ -202,5 +202,35 @@
       "-t",
       "introで全員退出"
     ]
+  },
+  {
+    "id": "strike-alley-length-label",
+    "note": "選択肢の文を長く戻して語の途中で折り返す",
+    "file": "games/strike-alley/logic.js",
+    "find": "label: '10フレーム'",
+    "replace": "label: 'ふつう（10フレーム）'",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/strike-alley/logic.test.js",
+      "-t",
+      "長い語"
+    ]
+  },
+  {
+    "id": "strike-alley-length-guide",
+    "note": "短くしたボタンを補う導入本文の長さ説明を消す",
+    "file": "games/strike-alley/view.js",
+    "find": "el('p', 'length-guide', '遊ぶ長さは、ふつう10フレーム・みじかめ5フレーム。進行役のスマホで選びます。')",
+    "replace": "el('p', 'length-guide', '')",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/strike-alley/view.test.js"
+    ]
   }
 ]

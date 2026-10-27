@@ -713,7 +713,7 @@ export function createView(root) {
         w.append(mark(looks.get(seat.id), 20), el('span', 'name', seat.name));
         who.append(w);
       }
-      hero.replaceChildren(el('p', 'eyebrow', '路地裏の、ちいさなレーン'), el('h2', 'title', 'ストライク横丁'), steps, who);
+      hero.replaceChildren(el('p', 'eyebrow', '路地裏の、ちいさなレーン'), el('h2', 'title', 'ストライク横丁'), el('p', 'length-guide', '遊ぶ長さは、ふつう10フレーム・みじかめ5フレーム。進行役のスマホで選びます。'), steps, who);
     } else if (m.phase === 'ended') {
       const ranked = [...m.participants].sort((a, b) => b.total - a.total);
       const list = el('ol', 'final');

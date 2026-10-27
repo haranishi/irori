@@ -53,7 +53,33 @@ describe('公開モデルだけで全段階を描く', ()=>{
     expect(()=>view.render(value)).not.toThrow();
     expect(stage.textContent).toContain(expected);
     expect(document.documentElement.dataset.phase).toBe(phase);
-    if (phase !== 'ended') noRoles();
+    if (phase !== 'ended' && phase !== 'intro') noRoles();
+  });
+
+  it('導入に勝ち方と人数別内訳がなく、読み上げで句点が重なっていた', ()=>{
+    const {stage,status,view}=mount();
+    const value=publicView(createGame(init(5)).state);
+    view.render(value);
+    expect(stage.textContent).toContain('勝ち方：人狼を全員見つければ村の勝ち。人狼が村人と同じ数になれば人狼の勝ち');
+    expect(stage.textContent).toContain('いまの人数の役：人狼1・占い師1・騎士1・村人2');
+    expect(stage.querySelectorAll('.role-card')).toHaveLength(0);
+    expect(status.textContent).not.toContain('。。');
+    view.render(model('night'));
+    expect(stage.querySelector('.intro-details').hidden).toBe(true);
+    noRoles();
+  });
+  it('役をかくした人数を大画面で確認できなかった', ()=>{
+    const {stage,view}=mount();
+    view.render(model('reveal',{checked:{1:'done',2:'done',3:'shown'}}));
+    expect(stage.querySelector('.decided').textContent).toBe('2 / 8人が確認');
+    expect(stage.querySelector('.progress').hidden).toBe(false);
+  });
+  it('段階と発表を読み上げるときに文末の句点を二重に付けない', ()=>{
+    const {status,view}=mount();
+    for(const phase of ['intro','reveal','night','dawn','day','vote','exec','ended']){
+      view.render(model(phase,{announce:'お知らせ。'}));
+      expect(status.textContent).not.toContain('。。');
+    }
   });
 
   it('公開された名前と発表はHTMLに解釈しない', ()=>{
@@ -161,12 +187,14 @@ describe('公開モデルだけで全段階を描く', ()=>{
     expect(stage.querySelectorAll('.role-card')).toHaveLength(8);
     expect(stage.querySelectorAll('.resident--winner')).toHaveLength(5);
     view.render(model('intro'));
-    noRoles();
+    expect(stage.querySelectorAll('.role-card')).toHaveLength(0);
+    expect(stage.querySelector('.composition').textContent).toBe('いまの人数の役：人狼2・占い師1・騎士1・狂人1・村人3');
     view.render(model('ended', {outcome:'incomplete'}));
     expect(stage.textContent).toContain('今回は、勝敗なし');
     expect(stage.querySelectorAll('.resident--winner')).toHaveLength(0);
     view.render(model('intro'));
-    noRoles();
+    expect(stage.querySelectorAll('.role-card')).toHaveLength(0);
+    expect(stage.querySelectorAll('.resident--winner')).toHaveLength(0);
   });
 
   it('終了時は公開された生存数から勝者を示し、退出した勝ち側を光らせない', ()=>{

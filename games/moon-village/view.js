@@ -55,6 +55,10 @@ export function createView(stage, status) {
   scene.append(element('div', 'stars'), element('div', 'orb'), element('div', 'hills'), lights);
   const rules = element('ol', 'rules');
   for (const line of ['スマホで自分の役を見て、かくす', '夜は全員、相手を1人選んで決定', '昼は話し合い、スマホで投票']) rules.append(element('li', 'rule', line));
+  const introDetails = element('section', 'intro-details');
+  const victory = element('p', 'victory');
+  const composition = element('p', 'composition');
+  introDetails.append(victory, composition);
   const clock = element('div', 'clock');
   clock.setAttribute('role', 'timer');
   clock.setAttribute('aria-live', 'off');
@@ -85,7 +89,7 @@ export function createView(stage, status) {
   // 票箱と公開票は同じ段に置き、広い画面では横に並べる。
   const board = element('div', 'board');
   board.append(progress, votes);
-  content.append(heading, scene, rules, clock, board, roster, footer, suspension);
+  content.append(heading, scene, rules, introDetails, clock, board, roster, footer, suspension);
   stage.className = 'game';
   stage.replaceChildren(top, content);
   /** @type {Map<number, {node:HTMLElement, key:string, alive:boolean}>} */
@@ -123,6 +127,9 @@ export function createView(stage, status) {
     // 襲撃・処刑・勝敗は、遠くからでも読める大きさにする。
     heading.dataset.tone = phase === 'dawn' || phase === 'exec' || phase === 'ended' ? 'news' : 'plain';
     hide(rules, phase !== 'intro');
+    hide(introDetails, phase !== 'intro');
+    text(victory, phase === 'intro' ? '勝ち方：人狼を全員見つければ村の勝ち。人狼が村人と同じ数になれば人狼の勝ち' : '');
+    text(composition, phase !== 'intro' ? '' : model.roleCounts ? `いまの人数の役：${Object.entries(model.roleCounts).map(([role,n])=>`${ROLES[/** @type {keyof typeof ROLES} */ (role)]}${n}`).join('・')}` : '4〜8人そろうと、役の内訳が決まります');
     hide(scene, !['intro', 'reveal', 'night', 'dawn'].includes(phase));
     hide(clock, phase !== 'day');
     if (phase === 'day' && model.timer) {
@@ -142,7 +149,7 @@ export function createView(stage, status) {
       const key = `${phase}:${decided.count}/${decided.total}`;
       if (key !== progressKey) {
         progressKey = key;
-        text(count, `${decided.count} / ${decided.total}人が決定`);
+        text(count, `${decided.count} / ${decided.total}人が${phase === 'reveal' ? '確認' : '決定'}`);
         // Anonymous order has no relation to seats, names, or actual completion order.
         lights.replaceChildren(...Array.from({length:decided.total}, (_, i)=>element('span', `anonymous-light${i < decided.count ? ' anonymous-light--out' : ''}`)));
         fill.style.setProperty('--fill', String(decided.count/Math.max(1, decided.total)));
@@ -223,7 +230,7 @@ export function createView(stage, status) {
       : phase === 'vote' ? '全員が決めると、投票先を公開します'
       : 'まもなく結果へ。「もう一度」で新しい村へ';
     text(guide, hint);
-    const say = [head.kicker, head.title, head.copy, hint].filter(Boolean).join('。');
+    const say = [head.kicker, head.title, head.copy, hint].filter(Boolean).map((part)=>part.replace(/。+$/u, '')).join('。');
     if (say !== announcement) {announcement = say; text(status, say);}
   }
   /** @param {string} heading @param {string} body @param {'unsupported'|'error'} phase */

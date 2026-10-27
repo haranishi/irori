@@ -108,3 +108,5 @@ p,h1,h2,ol,ul{margin:0}ol,ul{padding:0;list-style:none}
   *,*:before,*:after{animation:none!important;transition:none!important}
   .caption.show{opacity:1;transform:translate(-50%,-50%)}
 }
+
+.length-guide{font-size:clamp(16px,1.35vw,21px);line-height:1.5;overflow-wrap:anywhere}

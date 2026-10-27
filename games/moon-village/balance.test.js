@@ -2,9 +2,7 @@ import {describe,expect,it} from 'vitest';
 import {createGame,publicView,updateGame} from './logic.js';
 import {makeRng} from './roles.js';
 
-const input=(s,p,value)=>updateGame(s,{t:'input',p,input:value}).state;
 const tileId=(s,p,to)=>`w${s.nonce}_${s.epochs[p].toString(36)}_${to.toString(36)}`;
-const submit=(s,p,to=null)=>input(s,p,{k:'tiles',t:`w${s.nonce}_${s.epochs[p].toString(36)}`,ids:to===null?[]:[tileId(s,p,to)],...(to===null&&s.phase==='vote'?{pass:true}:{})});
 const simGames=Number(process.env.IRORI_SIM_GAMES??500);
 if(!Number.isSafeInteger(simGames)||simGames<1)throw new RangeError('IRORI_SIM_GAMES must be a positive safe integer');
 
@@ -14,7 +12,20 @@ function play(n,seed,informed){
   const random=makeRng(seed^0x51a1b);
   const pick=(values)=>values[Math.floor(random()*values.length)]??null;
   const players=Array.from({length:n},(_,i)=>({id:i+1,name:`席${i+1}`,online:true}));
-  let s=createGame({players,leader:1,environment:{connected:true,visible:true},paused:false,nonce:'balance',seed}).state;
+  // 送信係と同じく最後のJSONを席ごとに記録する。同じpadしか出ない受理入力はスマホを固める。
+  const sent=new Map();
+  const receive=(tr)=>{for(const e of tr.effects)if(e.t==='pad'){
+    const json=JSON.stringify(e.spec);if(sent.get(e.to)!==json)sent.set(e.to,json);
+  }return tr.state;};
+  const input=(state,p,value)=>{
+    const previous=sent.get(p);
+    const tr=updateGame(state,{t:'input',p,input:value});
+    receive(tr);
+    if(tr.state!==state&&sent.get(p)===previous)throw new Error(`Accepted input without changed pad: ${n}, ${seed}, ${state.phase}, seat ${p}`);
+    return tr.state;
+  };
+  const submit=(state,p,to=null)=>input(state,p,{k:'tiles',t:`w${state.nonce}_${state.epochs[p].toString(36)}`,ids:to===null?[]:[tileId(state,p,to)],...(to===null&&state.phase==='vote'?{pass:true}:{})});
+  let s=receive(createGame({players,leader:1,environment:{connected:true,visible:true},paused:false,nonce:'balance',seed}));
   s=input(s,1,{k:'btn',id:tileId(s,1,1),d:1});
   for(let p=1;p<=n;p++){s=submit(s,p);s=submit(s,p);}
   const known=new Map();
@@ -49,7 +60,7 @@ function play(n,seed,informed){
       if(informed&&seat.role==='knight'&&candidates.some((p)=>p.id===seerClaim))target=seerClaim;
       if(seat.role==='seer')investigation=target;
       // 行動の無い役も必ず決定する。候補が無い場合だけ、全員共通の時間切れで終える。
-      if(target===null){s=updateGame(s,{t:'tick',ms:120000}).state;continue;}
+      if(target===null){s=receive(updateGame(s,{t:'tick',ms:120000}));continue;}
       s=submit(s,seat.id,target);
     }else if(s.phase==='vote'){
       if(seat.role==='wolf'){

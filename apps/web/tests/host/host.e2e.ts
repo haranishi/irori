@@ -195,6 +195,15 @@ test('キーボードでも同じ操作：矢印・Enter・Esc（ゲーム中は
   await expect(focused).toHaveAttribute('data-nav', /^tool:/);
   await k.press('ArrowDown');
   await expect(focused).toHaveAttribute('data-nav', 'game:hello-pad');
+  // 棚が11本になり、画面の近さで選んでも偶然ハローパッドに戻るようになった。棚の両端のカードでも、同じカードへ戻ることを確かめる。
+  for (const id of ['daifugo', 'tap-race']) {
+    await focusGame(host, id);
+    await k.press('ArrowUp');
+    await expect(focused).toHaveAttribute('data-nav', /^tool:/);
+    await k.press('ArrowDown');
+    await expect(focused).toHaveAttribute('data-nav', `game:${id}`);
+  }
+  await focusGame(host, 'hello-pad');
   // 参加者の札を選ぶと、見出しの行に外し方の案内が出る。
   await k.press('ArrowDown');
   await expect(focused).toHaveAttribute('data-nav', /^seat:/);

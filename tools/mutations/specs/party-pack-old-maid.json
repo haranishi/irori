@@ -1,0 +1,240 @@
+[
+  {
+    "id": "party-pack-old-maid-deck-joker",
+    "note": "ジョーカーを重複した通常札へ置き換える",
+    "file": "games/old-maid/cards.js",
+    "find": ".concat('jk')",
+    "replace": ".concat('s3')",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "53枚"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-shuffle-bias",
+    "note": "Fisher-Yatesで末尾の交換先を除いて偏らせる",
+    "file": "games/old-maid/cards.js",
+    "find": "rng() * (i + 1)",
+    "replace": "rng() * i",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "全ての交換先"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-pair-three",
+    "note": "3枚のときペアを捨てない",
+    "file": "games/old-maid/cards.js",
+    "find": "if (index < 0) remaining.push(card);",
+    "replace": "if (index < 0 || hand.length === 3) remaining.push(card);",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "同数"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-wrong-turn",
+    "note": "引く番でない席の入力を許す",
+    "file": "games/old-maid/logic.js",
+    "find": " || p !== state.turn?.from)",
+    "replace": ")",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "番外・他席"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-multiple-selection",
+    "note": "複数選択を受け付けて最初の1枚を引く",
+    "file": "games/old-maid/logic.js",
+    "find": "input.ids.length !== 1",
+    "replace": "input.ids.length < 1",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "番外・他席"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-stale-id",
+    "note": "改訂番号を識別子から外す",
+    "file": "games/old-maid/logic.js",
+    "find": "${state.revision.toString(36)}_${index.toString(36)}",
+    "replace": "0_${index.toString(36)}",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "古い識別子は同じ席へ番が戻っても"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-pause-bypass",
+    "note": "一時停止中も入力を受け付ける",
+    "file": "games/old-maid/logic.js",
+    "find": "if (blocked(state)) return {state,effects:[]};",
+    "replace": "if (false) return {state,effects:[]};",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "で手札と順位を保って待ち"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-source-out",
+    "note": "引かれた席の上がりを記録しない",
+    "file": "games/old-maid/logic.js",
+    "find": "markOut(next,to); markOut(next,from);",
+    "replace": "markOut(next,from);",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "引かれた席の上がり"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-joker-lost",
+    "note": "退出者のジョーカーを移す処理を失う",
+    "file": "games/old-maid/logic.js",
+    "find": "recipient.hand.push('jk');",
+    "replace": "recipient.hand.push('s3');",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "席の消失は通常札"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-departure-rank",
+    "note": "退出済みの上がりを順位に残す",
+    "file": "games/old-maid/logic.js",
+    "find": "next.order = next.order.filter((id) => !next.seats.find((s) => s.id === id)?.left);",
+    "replace": "next.order = [...next.order];",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "退出済みの上がり順位"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-public-secret",
+    "note": "公開モデルに全手札を足してしまう",
+    "file": "games/old-maid/logic.js",
+    "find": "return {phase:state.phase,seats:state.seats.map",
+    "replace": "return {hands:state.seats.map((s) => s.hand),phase:state.phase,seats:state.seats.map",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "公開モデルのキー"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-pad-secret",
+    "note": "個別padへ他席の手札を含める",
+    "file": "games/old-maid/logic.js",
+    "find": "seat.hand.map(cardText).join(' ')",
+    "replace": "state.seats.flatMap((s) => s.hand).map(cardText).join(' ')",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "全席のpad"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-public-draw-card",
+    "note": "公開drawに引いた札を入れてしまう",
+    "file": "games/old-maid/logic.js",
+    "find": "emit(next,{type:'draw',from:p,to:to.id});",
+    "replace": "emit(next,{type:'draw',from:p,to:to.id,cards:[card]});",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "公開drawに札は入らず"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-end-repeat",
+    "note": "終了済みへの入力でも終了効果を再送する",
+    "file": "games/old-maid/logic.js",
+    "find": "if (state.phase === 'ended') return {state,effects:[]};",
+    "replace": "if (state.phase === 'ended') return transition(state,state);",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "配札だけで上がった席"
+    ],
+    "timeoutMs": 180000
+  }
+]

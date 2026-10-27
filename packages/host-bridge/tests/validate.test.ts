@@ -1,3 +1,4 @@
+import { CUES } from '@irori/protocol';
 import { describe, expect, it } from 'vitest';
 import { LIMITS, STORAGE_LIMITS } from '@irori/protocol';
 import { validateGameToHost } from '../src/index';
@@ -189,4 +190,20 @@ it('tilesの札数・重複・未知キー・選択数の不正を橋で拒む',
     { k: 'tiles', tiles: [], ok: '出す', max: 1 },
     { k: 'tiles', tiles: [], ok: '出す', html: 'x' },
   ]) expect(rejected({ m: 'setPad', to: 1, spec })).toBe(true);
+});
+
+
+describe('cueの境界検証', () => {
+  it('全23名・強さの両端と省略を通す', () => {
+    expect(CUES).toHaveLength(23);
+    for (const name of CUES) for (const v of [undefined, 0, 0.7, 1]) {
+      const msg = v === undefined ? { m: 'cue', name } : { m: 'cue', name, v };
+      expect(ok(msg)).toEqual(msg);
+    }
+  });
+  it.each([
+    { m: 'cue', name: 'unknown' }, { m: 'cue', name: 'Tick' }, { m: 'cue' },
+    ...[-0.01, 1.01, NaN, Infinity, -Infinity, '0.5', null].map((v) => ({ m: 'cue', name: 'tick', v })),
+    { m: 'cue', name: 'tick', to: '*' }, { m: 'cue', name: 'tick', extra: 0 },
+  ])('不正なcueを捨てる: %j', (msg) => expect(rejected(msg)).toBe(true));
 });

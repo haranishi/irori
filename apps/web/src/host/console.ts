@@ -395,6 +395,10 @@ export class Console {
       for (const p of expandTarget(to, run.lineup.seats)) run.specs.set(p, spec);
       this.render();
     });
+    frame.on('cue', ({ name, v }) => {
+      if (this.running !== run || this.m.phase !== 'playing' || this.m.cover || this.modal || !this.environment.visible || !this.sounds.on || !this.sounds.unlocked) return;
+      this.sounds.cue(name, v);
+    });
     frame.on('vibrate', ({ to, ms }) => {
       if (this.running !== run) return;
       const online = new Set(this.roster.players.filter((p) => p.online).map((p) => p.id));

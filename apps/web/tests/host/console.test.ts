@@ -3,6 +3,7 @@
 // 実物の Worker・実ブラウザでの通しは host.e2e.ts。
 import type { HostToGame, PadSpec, PlayerInfo } from '@irori/protocol';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Sounds } from '../../src/host/audio';
 import { Console } from '../../src/host/console';
 import { registerHostMessages } from '../../src/host/messages';
 import registry from '../fixtures/host/registry.json';
@@ -353,11 +354,44 @@ describe('実物のGameFrameへの結果と環境の連携', () => {
 
   const updates = (messages: HostToGame[]) => messages.filter((m) => m.m !== 'init');
 
+  it('cueは前面・消音解除・音の解除がそろうときだけSoundsへ渡す', async () => {
+    const cue = vi.spyOn(Sounds.prototype, 'cue').mockImplementation(() => {});
+    const on = vi.spyOn(Sounds.prototype, 'on', 'get').mockReturnValue(true);
+    const unlocked = vi.spyOn(Sounds.prototype, 'unlocked', 'get').mockReturnValue(true);
+    const visible = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const { root, sock } = await launched();
+    const game = await connect(root);
+    const send = async (name: 'tick' | 'confirm' | 'deny' | 'turn' | 'win' | 'lose' | 'go' | 'deal' | 'flip') => {
+      game.send({ m: 'cue', name, v: 0.4 }); await flush();
+    };
+    await send('tick');
+    expect(cue).toHaveBeenLastCalledWith('tick', 0.4);
+    on.mockReturnValue(false); await send('confirm'); on.mockReturnValue(true);
+    unlocked.mockReturnValue(false); await send('deny'); unlocked.mockReturnValue(true);
+    visible.mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange'));
+    await send('turn');
+    visible.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange'));
+    sock.frame({ t: 'in', p: 1, i: { k: 'menu' }, T: 1 }); await flush();
+    expect(root.dataset.phase).toBe('paused');
+    await send('win');
+    click('[data-nav="menu:continue"]'); await flush();
+    sock.setState('reconnecting'); await flush();
+    await send('lose');
+    expect(cue).toHaveBeenCalledTimes(1);
+    sock.welcome('XN7Q', [p(1, 'たろう'), p(2, 'はなこ')]); await flush();
+    await send('go'); expect(cue).toHaveBeenCalledTimes(2);
+    sock.frame({ t: 'in', p: 1, i: { k: 'menu' }, T: 2 }); await flush();
+    await send('deal'); expect(cue).toHaveBeenCalledTimes(2);
+    game.send({ m: 'end' }); await flush();
+    await send('flip'); expect(cue).toHaveBeenCalledTimes(2);
+  });
+
+
   it('非表示で開いた初期値とcapabilityを握手時に渡す', async () => {
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
     const { root } = await launched();
     const game = await connect(root);
-    expect(game.messages[0]).toMatchObject({ m: 'init', paused: false, capabilities: ['result-options-v1', 'host-environment-v1', 'pad-tiles-v1'], environment: { connected: true, visible: false } });
+    expect(game.messages[0]).toMatchObject({ m: 'init', paused: false, capabilities: ['result-options-v1', 'host-environment-v1', 'pad-tiles-v1', 'cue-v1'], environment: { connected: true, visible: false } });
   });
 
   it('握手前の切断と非表示を最新initへ保持する', async () => {

@@ -582,3 +582,25 @@ it('tilesのoffは選べる札があるときも選択せず、英語の通知�
   expect(container.querySelector('[role="status"]')!.textContent).toBe('Sent');
   expect(sent).toEqual([{ k: 'tiles', ids: [] }]); pad.destroy();
 });
+
+
+it('tokenは決定とパスのtに戻す。変更で選択を捨て、取り替え前のボタンは送れない', () => {
+  const spec = { k: 'tiles' as const, tiles: [{ id: 'a', label: 'A' }], ok: '出す', pass: 'パス', token: 'r1' };
+  const { pad, q, sent } = setup(spec);
+  q<HTMLButtonElement>('[data-id="a"]').click();
+  q<HTMLButtonElement>('[data-action="ok"]').click();
+  expect(sent).toEqual([{ k: 'tiles', ids: ['a'], t: 'r1' }]);
+  pad.setSpec(spec);
+  const oldPass = q<HTMLButtonElement>('[data-action="pass"]');
+  q<HTMLButtonElement>('[data-id="a"]').click();
+  pad.setSpec({ ...spec, token: 'r2' });
+  oldPass.click();
+  expect(sent).toHaveLength(1);
+  expect(q<HTMLButtonElement>('[data-action="ok"]').disabled).toBe(true);
+  q<HTMLButtonElement>('[data-action="pass"]').click();
+  expect(sent.at(-1)).toEqual({ k: 'tiles', ids: [], pass: true, t: 'r2' });
+  const { token: _, ...legacy } = spec;
+  pad.setSpec(legacy);
+  q<HTMLButtonElement>('[data-action="pass"]').click();
+  expect(sent.at(-1)).toEqual({ k: 'tiles', ids: [], pass: true });
+});

@@ -33,6 +33,7 @@ irori.ready();
 | `irori.on(name, fn)` | `players` `input` `pause` `resume` `environment` を購読する。戻り値で解除 |
 | `irori.setPad(spec, to?)` | コントローラーの画面を指定する。`to` は席番号か `'all'`（既定）。種類は [pad.md](pad.md) |
 | `irori.vibrate(ms[], to?)` | 振動を頼む。届かない端末もある |
+| `irori.cue(name, v?)` | コンソールに合成音を頼む。強さ0〜1（既定0.7）。`cue-v1` が無ければ何もしない |
 | `irori.look(id)` | 席の色と形。ゲームの中の表示を、コンソールとそろえるために使う |
 | `irori.ready()` | 最初の画面が出せたら呼ぶ。10秒以内に呼ばないと、コンソールが中断を勧める |
 | `irori.end(results?, options?)` | 終わりを知らせる。結果画面と「もう一度」はコンソールが出す。呼んだあとの `setPad` と `vibrate` は、コンソールのリモコンを上書きしないよう無視される |
@@ -64,7 +65,7 @@ irori.ready();
 - **スティックの入力は見張る。** `axis` と `ptr` は、押している間、約1秒ごとに届く。3秒来なければ、その席の入力を中立に戻す。席が切れたとき（`players` の `online` が偽）も同じ。ボタンは押した・離したの2回だけ届く。
 - **色だけで区別しない。** 席は `look` の色と形の両方で描く。赤と緑で意味を分けない。
 - **早押しの順番は `T` で見る。** 入力に付くサーバーの受信時刻で、ホストに届いた順より安定する。ただし回線の遅れは公平にできない。
-- **音は、最初の操作のあとに。** ブラウザは、ホストの画面を一度もクリックしないあいだ、音を止めることがある。コンソールが案内を出す。`AudioContext` は、`resume()` を最初の入力のあとに呼ぶと安全。コンソールの消音の設定は、まだゲームには伝わらない（未実装）ので、同梱の5本は音を出さない。
+- **音はコンソールが鳴らす。** `irori.cue` は消音・最初の操作の前・ゲームが前面でない間は捨てる。同じ名前は50ms間隔、全体は直近1秒に20件まで。仮想プレイヤーは無音。ゲーム側で音声ファイルを読み込む必要はない。
 - **重くしない。** ホストはノートPCやTVのブラウザかもしれない。60fpsを保てない端末では、描画を間引く道を用意する。
 
 ## 動かしながら作る
@@ -86,5 +87,11 @@ irori.ready();
 ## 札の選択と旧ホスト
 
 `irori.capabilities.includes('pad-tiles-v1')` を先に確認する。能力がなければ `irori.setPad({k:'wait',title:'更新が必要です'})` で待つ。
-能力なしの `setPad({k:'tiles',…})` は送信前に `IroriError('unsupported-feature')`。対応時は [pad.md](pad.md#tiles-の指定と操作) の指定を使い、`input.k === 'tiles'` の `ids` と `pass` を読む。
+能力なしの `setPad({k:'tiles',…})` は送信前に `IroriError('unsupported-feature')`。対応時は [pad.md](pad.md#tiles-の指定と操作) の指定を使い、`input.k === 'tiles'` の `ids` と `pass` を読む。`token` を指定したら、入力の `t` が現在の値と一致するものだけを受け付ける。
 仮想プレイヤーの札は席をクリックしてから、矢印で移動・Spaceで選択・Enterで決定・Pでパス。クリックとも併用できる。
+
+## 合成音の名前
+
+`tick` `confirm` `deny` `turn` `win` `lose` `count` `go`、札の `deal` `flip` `place` `sweep` `revolution`、
+投球の `roll` `pins` `strike` `spare` `gutter`、村の `night` `dawn` `vote` `execute` `reveal`。
+`v` は0〜1に丸め、`pins` では強さに加えて長さと粒の数も変わる。聞こえ方は人の耳での確認がまだ必要。

@@ -309,3 +309,17 @@ describe('tilesの境界', () => {
     expect(parsePadFrame(raw).ok).toBe(true);
   });
 });
+
+
+it('tilesのtokenと入力tは任意の24文字識別子で、通った値を保持する', () => {
+  for (const token of ['r_1-a', 'a'.repeat(24)]) {
+    const spec = { k: 'tiles', tiles: [], ok: '確認', token };
+    const input = { k: 'tiles', ids: [], pass: true, t: token };
+    expect(parseHostFrame(J({ t: 'pad', to: 1, spec }))).toMatchObject({ ok: true, frame: { spec } });
+    expect(parsePadFrame(J({ t: 'in', i: input }))).toMatchObject({ ok: true, frame: { i: input } });
+  }
+  for (const token of ['', 'A', 'a'.repeat(25), 'a b', 1, null]) {
+    expect(parseHostFrame(J({ t: 'pad', to: 1, spec: { k: 'tiles', tiles: [], ok: '確認', token } })).ok).toBe(false);
+    expect(parsePadFrame(J({ t: 'in', i: { k: 'tiles', ids: [], t: token } })).ok).toBe(false);
+  }
+});

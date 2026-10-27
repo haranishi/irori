@@ -7,6 +7,7 @@ type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ?
 type Expect<T extends true> = T;
 
 export type ApiMatches = [
+  Expect<Equal<D.CueName, I.CueName>>,
   Expect<Equal<D.PlayerId, I.PlayerId>>,
   Expect<Equal<D.PlayerInfo, I.PlayerInfo>>,
   Expect<Equal<D.GameInput, I.GameInput>>,

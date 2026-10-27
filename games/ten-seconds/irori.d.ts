@@ -24,7 +24,7 @@ export type GameInput =
   | { k: 'axis'; id: string; x: number; y: number }
   | { k: 'ptr'; id: string; x: number; y: number; ph: 's' | 'm' | 'e' }
   | { k: 'pick'; id: string }
-  | { k: 'tiles'; ids: string[]; pass?: true }
+  | { k: 'tiles'; ids: string[]; pass?: true; t?: string }
   | { k: 'tilt'; a: number; b: number; g: number };
 
 /** 色は名前だけ。任意のCSSは流し込めない。 */
@@ -66,7 +66,7 @@ export type PadSpec =
     }
   | { k: 'buzzer'; label: string; color?: ColorName; disabled?: boolean; hint?: string }
   | { k: 'choices'; options: ChoiceSpec[]; disabled?: boolean; hint?: string }
-  | { k: 'tiles'; tiles: TileSpec[]; ok: string; pass?: string; min?: number; max?: number; note?: string; hint?: string; disabled?: boolean }
+  | { k: 'tiles'; token?: string; tiles: TileSpec[]; ok: string; pass?: string; min?: number; max?: number; note?: string; hint?: string; disabled?: boolean }
   | { k: 'touch'; mode?: 'area' | 'swipe'; hint?: string }
   | { k: 'tilt'; buttons?: ButtonSpec[]; hint?: string };
 
@@ -87,6 +87,10 @@ export interface GameEndOptions {
 
 export interface HostEnvironment { connected: boolean; visible: boolean }
 export type HostCapability = 'result-options-v1' | 'host-environment-v1' | 'pad-tiles-v1' | 'cue-v1';
+
+export type CueName = 'tick' | 'confirm' | 'deny' | 'turn' | 'win' | 'lose' | 'count' | 'go'
+  | 'deal' | 'flip' | 'place' | 'sweep' | 'revolution' | 'roll' | 'pins' | 'strike' | 'spare' | 'gutter'
+  | 'night' | 'dawn' | 'vote' | 'execute' | 'reveal';
 
 export type ShapeName = 'circle' | 'square' | 'triangle' | 'diamond' | 'star' | 'cross' | 'hexagon' | 'ring';
 
@@ -137,6 +141,8 @@ export interface Irori {
   setPad(spec: PadSpec, to?: Target): void;
   /** 振動のパターン（ミリ秒、1〜8個、各0〜1000）。iOS では鳴らない。 */
   vibrate(ms: number | readonly number[], to?: Target): void;
+  /** コンソールの合成音。cue-v1 が無ければ無視。強さ0〜1、既定0.7。 */
+  cue(name: CueName, v?: number): void;
   look(id: PlayerId): Look;
   /** 最初の画面が出せたら呼ぶ。10秒以内に呼ばないと、コンソールが中断を勧める。 */
   ready(): void;

@@ -483,7 +483,8 @@ class Tiles implements Control {
       pass.setAttribute('aria-disabled', 'true');
       status.textContent = s.tilesSent;
       update();
-      out(passing ? { k: 'tiles', ids: [], pass: true } : { k: 'tiles', ids: [...selected] });
+      const token = spec.token === undefined ? {} : { t: spec.token };
+      out(passing ? { k: 'tiles', ids: [], pass: true, ...token } : { k: 'tiles', ids: [...selected], ...token });
     };
     for (const tile of spec.tiles) {
       const b = h('button', { type: 'button', class: 'irori-pad__btn irori-pad__tile', 'data-id': tile.id,

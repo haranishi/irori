@@ -185,7 +185,7 @@ describe('席・一時停止・振動・終わり・保存', () => {
   it('両能力とconnected=trueを示し、documentの表示変化をpause/resumeと別に知らせる', () => {
     Object.defineProperty(document, 'visibilityState', { get: () => 'hidden', configurable: true });
     const { irori } = start(1);
-    expect(irori.capabilities).toEqual(['result-options-v1', 'host-environment-v1', 'pad-tiles-v1']);
+    expect(irori.capabilities).toEqual(['result-options-v1', 'host-environment-v1', 'pad-tiles-v1', 'cue-v1']);
     expect(irori.environment).toEqual({ connected: true, visible: false });
     const log: unknown[] = [];
     irori.on('environment', (env) => log.push(env));
@@ -420,4 +420,16 @@ describe('仮想プレイヤーのtiles', () => {
     (seat(1).querySelector('[data-action="ok"]') as HTMLButtonElement).click();
     expect(inputs).toHaveLength(2);
   });
+});
+
+
+it('仮想プレイヤーはtokenを決定・パスへ戻し、cueは何も起こさない', () => {
+  const { irori, inputs, tap } = start(1);
+  const spec = { k: 'tiles' as const, tiles: [{ id: 'a', label: 'A' }], ok: '出す', pass: 'パス', token: 'round_1' };
+  irori.setPad(spec); tap('Space'); tap('Enter');
+  expect(inputs).toEqual([[1, { k: 'tiles', ids: ['a'], t: 'round_1' }]]);
+  irori.setPad({ ...spec, token: 'round_2' }); tap('KeyP');
+  expect(inputs.at(-1)).toEqual([1, { k: 'tiles', ids: [], pass: true, t: 'round_2' }]);
+  expect(() => irori.cue('strike', 1)).not.toThrow();
+  expect(inputs).toHaveLength(2);
 });

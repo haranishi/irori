@@ -1,3 +1,5 @@
+import { CUES } from '@irori/protocol';
+import { CUE_MAX_S } from '../../src/host/audio-cues';
 import { describe, expect, it, vi } from 'vitest';
 import { SOUND_MAX_S, SOUND_VOLUME, Sounds, type SoundName } from '../../src/host/audio';
 import { WakeKeeper } from '../../src/host/wake';
@@ -9,6 +11,9 @@ class Param {
   readonly ramps: { v: number; t: number }[] = [];
   setValueAtTime(v: number, t: number) {
     this.value = v;
+    this.ramps.push({ v, t });
+  }
+  linearRampToValueAtTime(v: number, t: number) {
     this.ramps.push({ v, t });
   }
   exponentialRampToValueAtTime(v: number, t: number) {
@@ -182,5 +187,61 @@ describe('画面の消灯を防ぐ（Wake Lock）', () => {
     none.want(true);
     await none.acquire();
     expect(none.held).toBe(false);
+  });
+});
+
+
+describe('ゲームの23合成音', () => {
+  it('全cueは音源を作り、1.5秒以内に止める。vで粒数と長さが変わる', () => {
+    const sounds = new Sounds(Ctx as unknown as new () => AudioContext);
+    sounds.unlock();
+    const ctx = Ctx.last!;
+    for (const name of CUES) {
+      const before = ctx.sources.length;
+      sounds.cue(name, 1);
+      const sources = ctx.sources.slice(before);
+      expect(sources.length, name).toBeGreaterThan(0);
+      for (const source of sources) expect(source.stop.mock.calls[0]![0] - ctx.currentTime, name).toBeLessThanOrEqual(CUE_MAX_S);
+    }
+    const before = ctx.sources.length;
+    sounds.cue('pins', 0.1);
+    const quiet = ctx.sources.slice(before);
+    const next = ctx.sources.length;
+    sounds.cue('pins', 1);
+    const strong = ctx.sources.slice(next);
+    expect(strong.length).toBeGreaterThan(quiet.length);
+    const end = (sources: Source[]) => Math.max(...sources.map((s) => s.stop.mock.calls[0]![0] as number));
+    expect(end(strong)).toBeGreaterThan(end(quiet));
+  });
+  it('消音・未解除・中断中・強さ0では音源を作らず、後で再生しない', () => {
+    Ctx.last = null;
+    const sounds = new Sounds(Ctx as unknown as new () => AudioContext);
+    sounds.cue('confirm');
+    expect(Ctx.last).toBeNull();
+    sounds.unlock();
+    const ctx = Ctx.last! as Ctx;
+    expect(ctx.sources).toHaveLength(0);
+    sounds.setOn(false); sounds.cue('confirm');
+    expect(ctx.gains[0]!.gain.value).toBe(0);
+    sounds.setOn(true);
+    expect(ctx.gains[0]!.gain.value).toBe(SOUND_VOLUME);
+    sounds.cue('confirm', 0);
+    ctx.state = 'suspended'; sounds.cue('confirm');
+    ctx.state = 'running';
+    expect(ctx.sources).toHaveLength(0);
+    sounds.cue('confirm'); expect(ctx.sources.length).toBeGreaterThan(0);
+  });
+  it('高さのふらつきは±3%以内で、同名でも変わる', () => {
+    const sounds = new Sounds(Ctx as unknown as new () => AudioContext);
+    sounds.unlock();
+    const ctx = Ctx.last!;
+    const rand = vi.spyOn(Math, 'random').mockReturnValue(0);
+    sounds.cue('tick');
+    const low = ctx.sources.at(-1)!.frequency.value;
+    rand.mockReturnValue(1);
+    sounds.cue('tick');
+    expect(low).toBeCloseTo(1800 * 0.97);
+    expect(ctx.sources.at(-1)!.frequency.value).toBeCloseTo(1800 * 1.03);
+    rand.mockRestore();
   });
 });

@@ -61,6 +61,31 @@ var SEND_RATE_HZ = {
 var HELD_REPEAT_MS = 1e3;
 //#endregion
 //#region ../protocol/src/bridge.ts
+var CUES = [
+	"tick",
+	"confirm",
+	"deny",
+	"turn",
+	"win",
+	"lose",
+	"count",
+	"go",
+	"deal",
+	"flip",
+	"place",
+	"sweep",
+	"revolution",
+	"roll",
+	"pins",
+	"strike",
+	"spare",
+	"gutter",
+	"night",
+	"dawn",
+	"vote",
+	"execute",
+	"reveal"
+];
 var STORAGE_LIMITS = {
 	KEY_MAX_LENGTH: 64,
 	VALUE_MAX_BYTES: 16384,
@@ -364,7 +389,8 @@ function padSpec(v, allowRemote, where) {
 				"max",
 				"note",
 				"hint",
-				"disabled"
+				"disabled",
+				"token"
 			], where);
 			if (!Array.isArray(o.tiles) || o.tiles.length > LIMITS.TILES_MAX) reject(`${where}.tiles: array of at most ${LIMITS.TILES_MAX}`);
 			const tiles = o.tiles.map((t, i) => tileSpec(t, `${where}.tiles[${i}]`));
@@ -384,6 +410,7 @@ function padSpec(v, allowRemote, where) {
 			const h = hint$1(o, where);
 			if (h !== void 0) s.hint = h;
 			if (o.disabled !== void 0) s.disabled = bool(o.disabled, `${where}.disabled`);
+			if (o.token !== void 0) s.token = ident(o.token, `${where}.token`);
 			return s;
 		}
 		case "touch": {
@@ -1019,13 +1046,16 @@ var Tiles = class {
 			pass.setAttribute("aria-disabled", "true");
 			status.textContent = s.tilesSent;
 			update();
+			const token = spec.token === void 0 ? {} : { t: spec.token };
 			out(passing ? {
 				k: "tiles",
 				ids: [],
-				pass: true
+				pass: true,
+				...token
 			} : {
 				k: "tiles",
-				ids: [...selected]
+				ids: [...selected],
+				...token
 			});
 		};
 		for (const tile of spec.tiles) {
@@ -1478,7 +1508,8 @@ var STORAGE_TIMEOUT_MS = 5e3;
 var CAPS = [
 	"result-options-v1",
 	"host-environment-v1",
-	"pad-tiles-v1"
+	"pad-tiles-v1",
+	"cue-v1"
 ];
 function report(err) {
 	if (typeof reportError === "function") reportError(err);
@@ -1506,6 +1537,8 @@ var IroriCore = class {
 	readied = false;
 	ended = false;
 	nextId = 1;
+	cueTimes = [];
+	lastCue = new Map();
 	waiting = new Map();
 	listeners = new Map();
 	constructor(mode, init, t, locale = init.locale) {
@@ -1567,6 +1600,19 @@ var IroriCore = class {
 			m: "vibrate",
 			to: dest,
 			ms: list
+		});
+	}
+	cue(name, v = .7) {
+		if (this.mode === "mock" || !this.caps.includes("cue-v1") || !CUES.includes(name) || typeof v !== "number" || Number.isNaN(v)) return;
+		const now = performance.now();
+		this.cueTimes = this.cueTimes.filter((t) => now - t < 1e3);
+		if (now - (this.lastCue.get(name) ?? -Infinity) < 50 || this.cueTimes.length >= 20) return;
+		this.lastCue.set(name, now);
+		this.cueTimes.push(now);
+		this.t.send({
+			m: "cue",
+			name,
+			v: Math.max(0, Math.min(1, v))
 		});
 	}
 	look(id) {

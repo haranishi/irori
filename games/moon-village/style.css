@@ -1,0 +1,86 @@
+/* 下書きの意図：藍の空に暖色の灯。昼は時計を中心にし、夜は匿名の灯だけを数える。 */
+:root {
+  color-scheme: dark;
+  --bg: #1a1411;
+  --panel: #2f241d;
+  --text: #f5ebe0;
+  --dim: #c9b8a6;
+  --glow: #ffd9a0;
+  --line: #957c66;
+  font-family: ui-rounded, "Hiragino Maru Gothic ProN", "Yu Gothic UI", system-ui, sans-serif;
+  font-size: 16px;
+  font-synthesis: none;
+  background: var(--bg);
+  color: var(--text);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(ellipse at 50% 20%, #4a302440, transparent 65%), var(--bg); }
+[hidden] { display: none !important; }
+h1, h2, p, ul, ol { margin: 0; }
+ul { list-style: none; padding: 0; }
+.game { width: min(100%, 1280px); min-height: 100dvh; margin: auto; padding: clamp(20px, 3vw, 40px); }
+.topbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; color: var(--dim); }
+.brand { color: var(--glow); letter-spacing: .08em; }
+.content { display: grid; justify-items: center; gap: clamp(16px, 2vw, 24px); padding-block: 24px; text-align: center; }
+.title { font-size: clamp(30px, 4vw, 56px); line-height: 1.3; overflow-wrap: anywhere; }
+.copy, .guide { font-size: clamp(16px, 1.9vw, 26px); line-height: 1.6; overflow-wrap: anywhere; }
+.copy { max-width: 48ch; color: var(--dim); }
+.guide { color: var(--glow); }
+/* 円と丘はCSS図形。朝は同じ円が短く昇り、物語の切り替わりを伝える。 */
+.scene { width: min(100%, 700px); height: clamp(100px, 15vw, 180px); position: relative; overflow: hidden; border-radius: 48% 48% 14px 14px; background: linear-gradient(#18213b, #2e2b38); }
+.orb { position: absolute; width: 68px; aspect-ratio: 1; border-radius: 50%; background: #ffdc9d; left: calc(50% - 34px); top: 18px; box-shadow: 0 0 44px #ffdc9d40; }
+.orb::after { content: ""; position: absolute; width: 54px; aspect-ratio: 1; border-radius: 50%; background: #20283e; left: 24px; top: -8px; }
+.hills { position: absolute; inset: 65% -10% -40%; border-radius: 50%; background: #372b25; box-shadow: 90px -12px 0 #493629; }
+html[data-phase="night"] body { background: radial-gradient(ellipse at 50% 15%, #222d49, #1a171b 70%); }
+html[data-phase="dawn"] .scene { background: linear-gradient(#413447, #a65f37); }
+html[data-phase="dawn"] .orb { animation: sunrise 450ms cubic-bezier(.2,.8,.3,1.1) both; }
+html[data-phase="dawn"] .orb::after { display: none; }
+.rules { display: grid; gap: 12px; text-align: left; padding-left: 24px; font-size: clamp(16px, 1.7vw, 24px); line-height: 1.6; }
+/* 数字と輪を併用。経過はJSのtickだけで進め、CSSアニメーションでは時間を測らない。 */
+.clock { --remaining: 1; width: min(76vw, 310px); aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 28px; border: 3px solid var(--line); border-radius: 50%; background: radial-gradient(closest-side, var(--bg) 88%, transparent 89%), conic-gradient(var(--glow) calc(var(--remaining) * 1turn), #4a382c 0); }
+.clock-time { font-size: clamp(52px, 7vw, 86px); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.clock-label, .extension { font-size: 16px; line-height: 1.5; }
+.extension { color: var(--dim); }
+.progress { display: grid; gap: 20px; justify-items: center; width: 100%; }
+.decided { font-size: clamp(24px, 3vw, 38px); font-variant-numeric: tabular-nums; }
+.anonymous-lights { display: flex; justify-content: center; flex-wrap: wrap; gap: clamp(12px, 3vw, 30px); max-width: 100%; padding: 10px; }
+.anonymous-light, .resident-lamp { display: inline-block; width: 30px; height: 42px; border: 2px solid var(--glow); border-radius: 42%; background: #ffbd7038; box-shadow: 0 0 24px #ffb96830; flex-shrink: 0; transition: background 160ms ease, box-shadow 160ms ease, transform 180ms cubic-bezier(.2,.8,.3,1.15); }
+.anonymous-light--out { border-style: dashed; background: transparent; box-shadow: none; transform: scale(.9); }
+.ballot-box { position: relative; width: 150px; height: 120px; border: 3px solid var(--line); border-radius: 12px; overflow: hidden; background: #241c18; }
+.ballot-box::before { content: ""; position: absolute; z-index: 1; top: 14px; left: 30%; right: 30%; border-top: 5px solid var(--glow); }
+.ballot-fill { --fill: 0; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, #c4925e 0 15px, #4a382c 15px 18px); transform: scaleY(var(--fill)); transform-origin: bottom; transition: transform 180ms cubic-bezier(.2,.8,.3,1.15); }
+.village { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; width: 100%; }
+.resident { display: grid; justify-items: center; align-content: start; gap: 10px; min-width: 0; padding: 18px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.resident-name { font-size: clamp(18px, 1.9vw, 26px); overflow-wrap: anywhere; max-width: 100%; }
+.resident-state { color: var(--dim); font-size: 16px; }
+.resident--out .resident-lamp { background: transparent; border-style: dashed; box-shadow: none; }
+.resident--winner { border: 3px double var(--glow); box-shadow: inset 0 0 30px #ffd9a015; }
+.role-card { font-size: 18px; color: var(--glow); border-top: 1px solid var(--line); padding-top: 10px; width: 100%; }
+.votes { display: grid; gap: 14px; width: min(100%, 800px); }
+.votes-title { font-size: 24px; }
+.vote-arrows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.vote-arrow { overflow-wrap: anywhere; padding: 8px; animation: reveal-vote 180ms ease both; animation-delay: calc(var(--order) * 60ms); }
+.vote-tally { --votes: 0; position: relative; isolation: isolate; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; text-align: left; overflow-wrap: anywhere; }
+.vote-tally::before { content: ""; position: absolute; inset: 0; z-index: -1; background: #725132; transform-origin: left; transform: scaleX(var(--votes)); transition: transform 180ms ease; }
+.continue { min-height: 52px; min-width: 140px; padding: 12px 24px; border: 2px solid var(--glow); border-radius: 12px; font: inherit; font-weight: 700; color: var(--bg); background: var(--glow); cursor: pointer; transition: transform 160ms cubic-bezier(.2,.8,.3,1.15); }
+.continue:active { transform: scale(.97); }
+.continue:focus-visible { outline: 3px solid var(--text); outline-offset: 5px; }
+.continue:disabled { cursor: wait; background: var(--panel); color: var(--dim); border-style: dashed; }
+.suspension { display: none; max-width: 52ch; padding: 16px; border: 2px dashed var(--glow); border-radius: 12px; line-height: 1.6; }
+.game[data-suspended="true"] .suspension { display: block; }
+.game[data-suspended="true"] *, .game[data-suspended="true"] *::before { animation-play-state: paused !important; transition: none !important; }
+.game--message { display: grid; align-content: center; justify-items: center; gap: 24px; text-align: center; }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@keyframes sunrise { from { transform: translateY(18px); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+@keyframes reveal-vote { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 650px) {
+  .game { padding: 20px 16px; }
+  .village { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .resident { padding: 14px 10px; }
+  .vote-arrows { grid-template-columns: minmax(0, 1fr); }
+  .scene { height: 110px; }
+}
+/* 移動・拡大・順次公開を止め、同じ文字と印で伝える。 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

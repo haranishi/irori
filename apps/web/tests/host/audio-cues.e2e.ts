@@ -12,8 +12,10 @@ test.beforeAll(async () => {
   const result = await build({ configFile: false, logLevel: 'silent', build: { write: false, minify: false,
     lib: { entry: fileURLToPath(new URL('../../src/host/audio-cues.ts', import.meta.url)), name: 'CueAudio', formats: ['iife'] },
   } });
-  if (Array.isArray(result) || !('output' in result)) throw new Error('音のビルド結果がありません');
-  code = result.output.filter((o) => o.type === 'chunk').map((o) => o.code).join('\n');
+  // 1形式のライブラリビルドでも、この版の Vite は結果を配列で返す。
+  const out = Array.isArray(result) ? result[0] : result;
+  if (!out || !('output' in out)) throw new Error('音のビルド結果がありません');
+  code = out.output.filter((o) => o.type === 'chunk').map((o) => o.code).join('\n');
 });
 
 for (const name of CUES) {

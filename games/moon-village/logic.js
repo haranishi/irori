@@ -49,7 +49,9 @@ export function updateGame(state,event) {
     const seats = state.phase === 'intro'
       ? event.players.map((p)=>({...p,alive:true,left:false,role:null,lastGuard:null}))
       : state.seats.map((s)=>({...s,online:!s.left && roster.get(s.id)?.online === true,left:s.left || !roster.has(s.id),alive:s.alive && roster.has(s.id)}));
-    let next = reconcile({...state,seats,players:event.players.map((p)=>({...p})),leader:event.leader});
+    const leaderLeft = state.phase !== 'intro' && state.leader !== null && !seats.some((s)=>s.id === state.leader && !s.left);
+    const leader = leaderLeft ? null : seats.some((s)=>s.id === event.leader && (s.alive || s.id === state.leader)) ? event.leader : state.leader;
+    let next = reconcile({...state,seats,players:event.players.map((p)=>({...p})),leader});
     if (next.phase !== 'intro') {
       next = judge(next);
       if (!next.blockers.length && next.phase !== 'ended') next = settle(next);
@@ -117,8 +119,8 @@ function reconcile(state) {
     if (state.phase === 'night' || state.phase === 'vote') next = {...next,picks:{},remaining:IDLE_MS};
     if (state.phase === 'reveal') next.checked = Object.fromEntries(Object.entries(state.checked).filter(([,v])=>v === 'done'));
   }
-  // 脱落済みの進行役でもオンラインなら操作できる。離席時は操作できる席へ引き継ぐ。
-  if (!next.seats.some((s)=>s.id === next.leader && !s.left && s.online)) next.leader = next.seats.find((s)=>!s.left && s.online)?.id ?? null;
+  // 脱落済みでも接続中の進行役は操作できる。不在なら操作できる最小番号の生存席へ渡す。
+  if (!next.seats.some((s)=>s.id === next.leader && !s.left && s.online)) next.leader = living(next).filter((s)=>s.online).sort((a,b)=>a.id-b.id)[0]?.id ?? null;
   return next;
 }
 
@@ -230,10 +232,12 @@ function padContent(state,seat) {
     if (state.checked[seat.id] === 'done') return {k:'wait',title:'全員の役の確認を待っています'};
     return emptyTiles(state.checked[seat.id] === 'shown' ? 'かくす' : '役を見る',state.checked[seat.id] === 'shown' ? roleText(state,seat) : '自分の役を確認してください。');
   }
-  // 夜明けは全席wait。「昼へ」は進行役の現在のepochsからtを付けた空決定を渡す。
-  if (state.phase === 'dawn') return {k:'wait',title:'夜が明けました',body:state.reports[seat.id] ?? state.announce};
+  // 発表と本人だけの夜の結果を残し、脱落した進行役も手元で次へ進める。
+  if (state.phase === 'dawn') return seat.id === state.leader
+    ? emptyTiles('つづける',[state.announce,state.reports[seat.id]].filter(Boolean).join('\n'))
+    : {k:'wait',title:'夜が明けました',body:state.reports[seat.id] ?? state.announce};
   if (state.phase === 'day' && seat.id === state.leader) return emptyTiles('投票へ','顔を合わせて話し合いましょう。','＋1分');
-  if (state.phase === 'exec' && seat.id === state.leader) return emptyTiles('次の夜へ',state.announce);
+  if (state.phase === 'exec' && seat.id === state.leader) return emptyTiles('つづける',state.announce);
   if (!seat.alive) return {k:'wait',title:'村の行方を見守りましょう'};
   if (state.phase === 'night' || state.phase === 'vote') {
     if (seat.id in state.picks) return {k:'wait',title:'全員の決定を待っています'};

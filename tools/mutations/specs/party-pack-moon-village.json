@@ -322,5 +322,37 @@
       "--",
       "games/moon-village/logic.test.js"
     ]
+  },
+  {
+    "id": "party-pack-moon-village-continue-leader",
+    "note": "夜明けと処刑後のリーダー判定を外し、他席でも進められる",
+    "file": "games/moon-village/logic.js",
+    "find": "(state.phase === 'dawn' || state.phase === 'exec') && p === state.leader && input.ids.length === 0 && !input.pass",
+    "replace": "(state.phase === 'dawn' || state.phase === 'exec') && input.ids.length === 0 && !input.pass",
+    "command": ["npm", "run", "test:games", "--", "games/moon-village/logic.test.js", "-t", "夜明け・処刑後のスマホ進行"]
+  },
+  {
+    "id": "party-pack-moon-village-dawn-control",
+    "note": "夜明けのリーダーにもwaitを送り、手元の続行操作をなくす",
+    "file": "games/moon-village/logic.js",
+    "find": "if (state.phase === 'dawn') return seat.id === state.leader",
+    "replace": "if (state.phase === 'dawn') return false",
+    "command": ["npm", "run", "test:games", "--", "games/moon-village/logic.test.js", "-t", "夜明け・処刑後のスマホ進行"]
+  },
+  {
+    "id": "party-pack-moon-village-exec-control",
+    "note": "処刑後のリーダーの続行操作をなくす",
+    "file": "games/moon-village/logic.js",
+    "find": "if (state.phase === 'exec' && seat.id === state.leader) return emptyTiles('つづける',state.announce);",
+    "replace": "if (false) return emptyTiles('つづける',state.announce);",
+    "command": ["npm", "run", "test:games", "--", "games/moon-village/logic.test.js", "-t", "夜明け・処刑後のスマホ進行"]
+  },
+  {
+    "id": "party-pack-moon-village-left-leader",
+    "note": "リーダー退出時に生存席を選び直さず、脱落した候補に操作を渡す",
+    "file": "games/moon-village/logic.js",
+    "find": "const leader = leaderLeft ? null : seats.some((s)=>s.id === event.leader && (s.alive || s.id === state.leader)) ? event.leader : state.leader;",
+    "replace": "const leader = event.leader;",
+    "command": ["npm", "run", "test:games", "--", "games/moon-village/logic.test.js", "-t", "夜明け・処刑後のスマホ進行"]
   }
 ]

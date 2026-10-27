@@ -68,9 +68,13 @@ function checkPrivacy(transition){
       if(receiver.role==='wolf'&&friends.length)expect(e.spec.note).toContain(`仲間：${friends.map((p)=>p.name).join('、')}`);
       else expect(e.spec.note).not.toContain('仲間：');
     }
-    if(e.spec.body?.includes('さんは')){
+    if(s.phase==='dawn'&&receiver&&!receiver.left&&!s.blockers.length&&!s.resumeRequired){
+      if(e.to===s.leader)expect(e.spec).toMatchObject({k:'tiles',tiles:[],min:0,max:0,ok:'つづける',note:[s.announce,s.reports[e.to]].filter(Boolean).join('\n')});
+      else expect(e.spec).toEqual({k:'wait',title:'夜が明けました',body:s.reports[e.to]??s.announce});
+    }
+    if(e.spec.body?.includes('さんは')||e.spec.note?.includes('さんは')){
       expect(receiver.role).toBe('seer');expect(s.phase).toBe('dawn');
-      expect(e.spec.body).toBe(s.reports[e.to]);
+      expect(e.spec.body??e.spec.note).toBe(e.to===s.leader?[s.announce,s.reports[e.to]].filter(Boolean).join('\n'):s.reports[e.to]);
     }
   }
 }
@@ -225,6 +229,92 @@ describe('昼・投票・決選・勝敗',()=>{
       }
     }
     expect(cases).toBe(1984);
+  });
+});
+
+describe('夜明け・処刑後のスマホ進行',()=>{
+  const announcement=(phase,roles)=>{
+    const dawn=decisions(night(roles),{1:5,2:5,3:1,4:3,5:6,6:5});
+    return phase==='dawn'?dawn:decisions(toVote(dawn),{1:null,2:null,3:null,4:null,5:null,6:null});
+  };
+  it.each(['dawn','exec'])('%sはリーダーだけに空の「つづける」を送り、本人の入力で進む',(phase)=>{
+    const before=announcement(phase);
+    // 全画面を再送させ、リーダー以外の操作がないことも調べる。
+    const s=next(ev(ev(before,{t:'menu',paused:true}),{t:'menu',paused:false}));
+    const tr=updateGame(s,{t:'players',players:players(),leader:3});
+    const leaderPad=tr.effects.find((e)=>e.t==='pad'&&e.to===3).spec;
+    expect(leaderPad).toEqual({k:'tiles',tiles:[],min:0,max:0,ok:'つづける',note:[s.announce,phase==='dawn'?s.reports[3]:null].filter(Boolean).join('\n'),token:token(tr.state,3)});
+    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===1).spec.k).toBe('wait');checkPrivacy(tr);
+    const accepted=choose(tr.state,3);expect(accepted.state.phase).toBe(phase==='dawn'?'day':'night');
+    expect(accepted.state.day).toBe(phase==='dawn'?1:2);checkPrivacy(accepted);
+    expect(input(accepted.state,3,{k:'tiles',t:leaderPad.token,ids:[]})).toEqual({state:accepted.state,effects:[]});
+  });
+  it.each(['dawn','exec'])('%sで他席・古いt・tなし・札あり・パスは無視する',(phase)=>{
+    const s=deepFreeze(announcement(phase));
+    const invalid=[
+      [2,{k:'tiles',t:token(s,2),ids:[]}],
+      [1,{k:'tiles',t:'old',ids:[]}],
+      [1,{k:'tiles',ids:[]}],
+      [1,{k:'tiles',t:token(s,1),ids:[id(s,1,2)]}],
+      [1,{k:'tiles',t:token(s,1),ids:[],pass:true}],
+    ];
+    for(const [p,value] of invalid){const tr=input(s,p,value);expect(tr.state).toBe(s);expect(tr.effects).toEqual([]);}
+    expect(next(s).phase).toBe(phase==='dawn'?'day':'night');
+  });
+  it.each(['dawn','exec'])('%sで脱落したリーダーにも進行を残す',(phase)=>{
+    let s=ev(night(),{t:'players',players:players(),leader:5});
+    let tr;
+    if(phase==='dawn'){
+      s={...s,day:2};
+      for(const p of [1,2,3,4,5,6]){tr=choose(s,p,{1:5,2:5,3:1,4:3,5:6,6:5}[p]);s=tr.state;}
+    }else{
+      s=toVote(decisions(s,{1:5,2:5,3:1,4:3,5:6,6:5}));
+      for(const p of [1,2,3,4,5,6]){tr=choose(s,p,p===5?6:5);s=tr.state;}
+    }
+    expect(s.phase).toBe(phase);expect(s.seats[4].alive).toBe(false);expect(s.leader).toBe(5);
+    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===5).spec).toMatchObject({k:'tiles',tiles:[],ok:'つづける',note:s.announce});
+    checkPrivacy(tr);expect(next(s).phase).toBe(phase==='dawn'?'day':'night');
+  });
+  it.each(['dawn','exec'])('%sで退出したリーダーの代わりは最小番号の生存席になる',(phase)=>{
+    const base=announcement(phase,['villager','villager','wolf','knight','seer','villager']);
+    // 席2は脱落済み。名簿順・ホストの候補が脱落席でも、生存席3に渡す。
+    const s={...base,seats:[...base.seats].reverse().map((p)=>({...p,alive:p.id!==2}))};
+    const roster=players().filter((p)=>p.id!==1).reverse();
+    for(const hint of [2,6,1,null]){
+      const tr=updateGame(s,{t:'players',players:roster,leader:hint});
+      expect(tr.state.leader).toBe(3);expect(tr.state.phase).toBe(phase);
+      expect(tr.effects.find((e)=>e.t==='pad'&&e.to===3).spec).toMatchObject({k:'tiles',tiles:[],ok:'つづける'});
+      expect(choose(tr.state,1).effects).toEqual([]);expect(choose(tr.state,2).effects).toEqual([]);
+      // 次の名簿通知で脱落席へ操作が戻ってしまう回帰も防ぐ。
+      expect(ev(tr.state,{t:'players',players:roster,leader:2}).leader).toBe(3);
+      checkPrivacy(tr);expect(next(tr.state).phase).toBe(phase==='dawn'?'day':'night');
+    }
+  });
+  it.each(['dawn','exec'])('%sで脱落リーダーが切断したら接続中の生存席へ渡す',(phase)=>{
+    const base=announcement(phase);
+    const s={...base,leader:5,seats:base.seats.map((p)=>({...p,alive:p.id!==5}))};
+    const tr=updateGame(s,{t:'players',players:players(6,[5]),leader:5});
+    expect(tr.state.leader).toBe(1);expect(tr.state.blockers).toEqual([]);expect(tr.state.phase).toBe(phase);
+    expect(tr.state.seats[4]).toMatchObject({alive:false,left:false,online:false});
+    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===1).spec).toMatchObject({k:'tiles',tiles:[],ok:'つづける'});
+    expect(choose(tr.state,5).effects).toEqual([]);checkPrivacy(tr);
+    expect(next(tr.state).phase).toBe(phase==='dawn'?'day':'night');
+  });
+  it.each(['dawn','exec'])('%sでリーダーの切断中は待ち、復帰確認後に新しいtで進む',(phase)=>{
+    const s=announcement(phase);const old={k:'tiles',t:token(s,1),ids:[]};
+    const stopped=updateGame(s,{t:'players',players:players(6,[1]),leader:1});
+    expect(stopped.state.phase).toBe(phase);expect(stopped.state.seats[0].alive).toBe(true);
+    expect(stopped.state.blockers).toContain('player-offline');
+    expect(stopped.effects.filter((e)=>e.t==='pad').every((e)=>e.spec.k==='wait')).toBe(true);
+    expect(input(stopped.state,1,old).effects).toEqual([]);
+    const reconnected=updateGame(stopped.state,{t:'players',players:players(),leader:1});
+    expect(reconnected.state.resumeRequired).toBe(true);expect(reconnected.state.phase).toBe(phase);
+    expect(input(reconnected.state,1,old).effects).toEqual([]);
+    const resumed=choose(reconnected.state,1);expect(resumed.state.phase).toBe(phase);
+    const spec=resumed.effects.find((e)=>e.t==='pad'&&e.to===1).spec;
+    expect(spec).toMatchObject({k:'tiles',tiles:[],ok:'つづける'});expect(spec.token).not.toBe(old.t);
+    expect(input(resumed.state,1,old).effects).toEqual([]);checkPrivacy(resumed);
+    expect(next(resumed.state).phase).toBe(phase==='dawn'?'day':'night');
   });
 });
 
@@ -389,11 +479,11 @@ describe('秘匿・入力・中断・退出',()=>{
       expect(tr.state.phase).toBe('ended');expect(tr.effects.filter((e)=>e.t==='cue').map((e)=>e.name)).toEqual(['win']);
     }
   });
-  it('進行役自身の夜の無効行動も、夜明けの本人宛waitで理由を返す',()=>{
+  it('進行役自身の夜の無効行動も、夜明けの本人宛tilesで発表と理由を返す',()=>{
     let s=night();let tr;
     for(const p of [1,2,3,4,5,6]){tr=choose(s,p,{1:2,2:1,3:1,4:5,5:6,6:5}[p]);s=tr.state;}
     const leaderPad=tr.effects.find((e)=>e.t==='pad'&&e.to===s.leader);
-    expect(leaderPad.spec.k).toBe('wait');expect(leaderPad.spec.body).toContain('仲間');
+    expect(leaderPad.spec.k).toBe('tiles');expect(leaderPad.spec.note).toContain(s.announce);expect(leaderPad.spec.note).toContain('仲間');checkPrivacy(tr);
     expect(next(s).phase).toBe('day');
   });
   it('入力が呼出元の凍結済みの状態を変更しない',()=>{

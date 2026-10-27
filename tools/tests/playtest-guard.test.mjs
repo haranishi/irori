@@ -1,8 +1,9 @@
 // 試遊サーバーの守り：ブラウザ経由の要求（Origin つき）と、127.0.0.1 以外の Host を断る。curl（Origin なし・Host が 127.0.0.1）は通す。
 import assert from 'node:assert/strict';
+import { rmSync } from 'node:fs';
 import { request } from 'node:http';
 import { after, describe, it } from 'node:test';
-import { serve } from '../playtest-server.mjs';
+import { Playtest, serve } from '../playtest-server.mjs';
 
 const stub = { state: () => ({ ok: true }) };
 const running = await serve(stub);
@@ -32,5 +33,16 @@ describe('試遊サーバーの守り', () => {
   });
   it('ブラウザ経由（Origin つき）なら断る', async () => {
     assert.equal((await get({ Origin: 'https://evil.example' })).status, 403);
+  });
+});
+
+describe('試遊サーバーのホストの画面の大きさ', () => {
+  it('範囲外や整数でない大きさは400、始める前は409（ブラウザを起こさずに確かめる）', async () => {
+    const pt = new Playtest();
+    after(() => rmSync(pt.shots, { recursive: true, force: true }));
+    for (const body of [undefined, {}, { width: 100, height: 700 }, { width: 768, height: 99999 }, { width: 768.5, height: 1024 }, { width: '768', height: 1024 }]) {
+      await assert.rejects(() => pt.viewport(body), { status: 400 });
+    }
+    await assert.rejects(() => pt.viewport({ width: 768, height: 1024 }), { status: 409 });
   });
 });

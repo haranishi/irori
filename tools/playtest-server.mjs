@@ -17,6 +17,7 @@
 //   curl -s -X POST localhost:PORT/pad/1/menu -d '{"item":"leave"}'            … 長押しのメニュー（pause か leave）
 //   curl -s -X POST localhost:PORT/pad/1/disconnect   /   .../reconnect           … 回線を切る・戻す
 //   curl -s -X POST localhost:PORT/host/key -d '{"key":"Escape"}'              … ホストのキー（ArrowRight・Enter・Escape・m）
+//   curl -s -X POST localhost:PORT/host/viewport -d '{"width":768,"height":1024}' … ホストの画面の大きさを変える（既定は1280×720）
 //   curl -s -X POST localhost:PORT/clock/advance -d '{"ms":30000}'             … ホストの時計を進める
 //   curl -s localhost:PORT/state                                                … いま見えている文字・状態（JSON）
 //   curl -s -X POST localhost:PORT/shot -d '{"target":"host"}'                  … 撮ってパスを返す（target は host か 1〜8）
@@ -327,6 +328,17 @@ export class Playtest {
     return { key: k };
   }
 
+  /** ホストの画面の大きさを変える。幅の違いで崩れないかを、撮って確かめるため。 */
+  async viewport(body) {
+    const { width, height } = body ?? {};
+    const within = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    if (!within(width, 320, 2560) || !within(height, 320, 1600)) throw new HttpError(400, 'width は320〜2560、height は320〜1600の整数');
+    if (!this.host) throw new HttpError(409, '先に /start');
+    await this.host.page.setViewportSize({ width, height });
+    await this.settle();
+    return { viewport: { width, height } };
+  }
+
   async shot(target) {
     const page = target === 'host' || target === undefined ? this.host?.page : this.pad(Number(target)).page;
     if (!page) throw new HttpError(409, '先に /start');
@@ -485,6 +497,7 @@ export function serve(pt, { port = 0 } = {}) {
         'POST /pad/:n/disconnect': () => pt.disconnect(n),
         'POST /pad/:n/reconnect': () => pt.reconnect(n),
         'POST /host/key': () => pt.key(body.key),
+        'POST /host/viewport': () => pt.viewport(body),
         'POST /clock/advance': () => pt.advance(body.ms),
         'POST /clock/pause': async () => (await pt.pauseClock(), { clock: 'paused' }),
         'POST /clock/resume': async () => (await pt.host?.page.clock.resume(), (pt.clockMode = 'running'), { clock: 'running' }),

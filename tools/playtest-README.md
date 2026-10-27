@@ -3,8 +3,9 @@
 遊んで採点する人のための道具です。`tools/playtest-server.mjs` が実 Worker を自分専用に起動します。開くのは本物のホストの画面（1280×720）と、本物のスマホの画面（390×844・タッチ）。採点する人は HTTP で、スマホのボタンやホストのキーを押し、いま見えている状態を読みます。前もって `npm run build` は要りません（Playwright の Chromium は要ります）。
 
 ```sh
-node tools/playtest-server.mjs --port-file /tmp/pt.txt &   # 1行目に {"playtest":"http://127.0.0.1:PORT"}
-U=$(cat /tmp/pt.txt)
+URL_FILE=$(mktemp)
+node tools/playtest-server.mjs --port-file "$URL_FILE" &   # 1行目に {"playtest":"http://127.0.0.1:PORT"}
+U=$(cat "$URL_FILE")
 curl -s -X POST $U/start -d '{}'                     # Worker を起こし、ホストを開く（数秒）
 curl -s -X POST $U/pad/1/join -d '{"name":"たろう"}'  # スマホを1台ずつ入れる（1〜8）
 curl -s -X POST $U/stop                              # 全部止めて、サーバーも終わる
@@ -16,9 +17,12 @@ curl -s -X POST $U/stop                              # 全部止めて、サー�
 | `POST /pad/:n/hold` | `{"id":"hop","ms":800}` | 押し続けて離す |
 | `POST /pad/:n/stick` | `{"x":1,"y":0,"ms":1500}` | スティック（か十字キー）を倒し続ける。x・y は -1〜1 |
 | `POST /pad/:n/choose` | `{"index":0}` | 選択肢を選ぶ（0から数える。`{"id":"c2"}` でも可） |
+| `POST /pad/:n/tiles` | `{"ids":["a","b"]}`・`{"pass":true}` | 札（タイル）の選択をそろえて「決定」する。`pass` は「パス」。手札や人を選ぶ画面で使う |
+| `POST /pad/:n/swipe` | `{"x0":0.5,"y0":0.3,"x1":0.5,"y1":0.8,"ms":400}` | 触る枠の中で、指を置いて動かして離す。座標は枠の中の0〜1（ボウリングは下へ引いてはなす） |
 | `POST /pad/:n/menu` | `{"item":"leave"}` | 名前の長押しのメニュー。pause（一時停止を頼む）か leave（退出） |
 | `POST /pad/:n/disconnect`・`/reconnect` | なし | スマホの回線を切る・戻す |
 | `POST /host/key` | `{"key":"Escape"}` | ホストのキー（ArrowRight・Enter・Escape・m） |
+| `POST /host/viewport` | `{"width":768,"height":1024}` | ホストの画面の大きさを変える（幅320〜2560・高さ320〜1600。既定は1280×720） |
 | `POST /clock/advance` | `{"ms":30000}` | ホストの時計を進める |
 | `GET /state` | なし | 状態を JSON で読む |
 | `POST /shot` | `{"target":"host"}`・`{"target":1}` | 撮って、画像のパスを返す |

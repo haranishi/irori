@@ -5,7 +5,8 @@ const players=(n=6,offline=[])=>Array.from({length:n},(_,i)=>({id:i+1,name:`席$
 const init=(overrides={})=>({players:players(),leader:1,environment:{connected:true,visible:true},paused:false,nonce:'moon1234',seed:42,...overrides});
 const input=(s,p,i)=>updateGame(s,{t:'input',p,input:i});
 const id=(s,p,target=p)=>`w${s.nonce}_${s.epochs[p].toString(36)}_${target.toString(36)}`;
-const choose=(s,p,to=null,pass=false)=>input(s,p,{k:'tiles',ids:to===null?[]:[id(s,p,to)],...(pass?{pass:true}:{})});
+const token=(s,p)=>`w${s.nonce}_${(s.epochs[p]??0).toString(36)}`;
+const choose=(s,p,to=null,pass=false)=>input(s,p,{k:'tiles',t:token(s,p),ids:to===null?[]:[id(s,p,to)],...(pass?{pass:true}:{})});
 const next=(s)=>choose(s,s.leader).state;
 const begin=(overrides={})=>{const s=createGame(init(overrides)).state;return input(s,s.leader,{k:'btn',id:id(s,s.leader),d:1}).state;};
 const night=(roles=['wolf','wolf','seer','knight','villager','villager'])=>{
@@ -24,7 +25,7 @@ const deepFreeze=(o)=>{if(o&&typeof o==='object'){Object.values(o).forEach(deepF
 
 // 通信の実装を読まない独立した上限の検査。ゲームは自分のフォルダとSDKだけを読む。
 function checkPadContract(spec){
-  const keys={wait:['k','title','body'],pad:['k','stick','buttons','hint'],tiles:['k','tiles','min','max','ok','pass','note']};
+  const keys={wait:['k','title','body'],pad:['k','stick','buttons','hint'],tiles:['k','tiles','min','max','ok','pass','note','token']};
   expect(Object.keys(keys)).toContain(spec.k);
   expect(Object.keys(spec).every((k)=>keys[spec.k].includes(k))).toBe(true);
   for(const [key,limit] of [['title',24],['body',120],['note',120],['hint',40],['ok',12],['pass',12]])if(spec[key]!==undefined)expect([...spec[key]].length).toBeLessThanOrEqual(limit);
@@ -32,6 +33,7 @@ function checkPadContract(spec){
   expect(new Set(items.map((p)=>p.id)).size).toBe(items.length);
   for(const item of items){expect(item.id).toMatch(/^[a-z0-9_-]{1,24}$/);expect([...item.label].length).toBeLessThanOrEqual(12);expect(Object.keys(item).sort()).toEqual(['id','label']);}
   if(spec.k==='tiles'){
+    expect(spec.token).toMatch(/^w[a-z0-9]{1,8}_[a-z0-9]+$/);expect(spec.token.length).toBeLessThanOrEqual(24);
     expect(items.length).toBeLessThanOrEqual(20);expect(spec.min).toBeGreaterThanOrEqual(0);expect(spec.max).toBeLessThanOrEqual(Math.min(8,items.length));expect(spec.min).toBeLessThanOrEqual(spec.max);
   }
 }
@@ -50,6 +52,7 @@ function checkPrivacy(transition){
   for(const e of effects.filter((e)=>e.t==='pad')){
     expect(typeof e.to).toBe('number');
     checkPadContract(e.spec);
+    if(e.spec.k==='tiles')expect(e.spec.token).toBe(token(s,e.to));
     if(s.phase==='ended')continue;
     const receiver=s.seats.find((p)=>p.id===e.to);
     const text=JSON.stringify(e.spec);
@@ -225,6 +228,75 @@ describe('昼・投票・決選・勝敗',()=>{
   });
 });
 
+describe('画面tokenと遅延した空入力',()=>{
+  it('夜の「役を見る」が遅れて投票の棄権になるのを防ぐ',()=>{
+    const original=night();const p=3;
+    const old={k:'tiles',t:token(original,p),ids:[],pass:true};
+    const shown=input(original,p,old);expect(shown.effects[0].spec.note).toContain('あなたは');
+    const hidden=choose(shown.state,p).state;
+    const vote=toVote(decisions(hidden,{1:5,2:5,3:1,4:3,5:6,6:5}));
+    expect(vote.phase).toBe('vote');
+    expect(input(vote,p,old)).toEqual({state:vote,effects:[]});
+    expect(choose(vote,p,null,true).state.picks[p]).toBeNull();
+  });
+  it('昼の「＋1分」が遅れて投票の棄権になるのを防ぐ',()=>{
+    const day=next(decisions(night(),{1:5,2:5,3:1,4:3,5:6,6:5}));const p=day.leader;
+    const old={k:'tiles',t:token(day,p),ids:[],pass:true};
+    const extended=input(day,p,old);expect(extended.state.remaining).toBe(240000);
+    const vote=next(extended.state);expect(vote.phase).toBe('vote');
+    expect(input(vote,p,old)).toEqual({state:vote,effects:[]});
+    expect(choose(vote,p,null,true).state.picks[p]).toBeNull();
+  });
+  it('役の確認の決定が遅れて夜の役表示を閉じるのを防ぐ',()=>{
+    let s=begin();const old={k:'tiles',t:token(s,3),ids:[]};
+    for(const seat of s.seats){s=choose(s,seat.id).state;s=choose(s,seat.id).state;}
+    expect(s.phase).toBe('night');s=choose(s,3,null,true).state;
+    expect(s.showRole[3]).toBe(true);
+    expect(input(s,3,old)).toEqual({state:s,effects:[]});
+    expect(choose(s,3).state.showRole[3]).toBe(false);
+  });
+  it('全段階でtなし・不一致・他席のtokenを拒み、現在のtokenだけ受ける',()=>{
+    const reveal=begin();const shown=choose(reveal,3).state;const base=night();
+    const role=choose(base,3,null,true).state;
+    const dawn=decisions(base,{1:5,2:5,3:1,4:3,5:6,6:5});const day=next(dawn);const vote=next(day);
+    const runoff=decisions(vote,{1:5,2:5,3:6,4:6,5:6,6:5});
+    const exec=decisions(vote,{1:null,2:null,3:null,4:null,5:null,6:null});
+    const resume=ev(ev(base,{t:'menu',paused:true}),{t:'menu',paused:false});
+    const cases=[[reveal,3,[],false],[shown,3,[],false],[base,3,[id(base,3,1)],false],
+      [base,3,[],true],[role,3,[],false],[dawn,1,[],false],[day,1,[],false],[day,1,[],true],
+      [vote,3,[id(vote,3,1)],false],[vote,3,[],true],[runoff,3,[],true],[exec,1,[],false],[resume,1,[],false]];
+    for(const [s,p,ids,pass] of cases){
+      const value={k:'tiles',ids,...(pass?{pass:true}:{})};const snapshot=structuredClone(s);
+      for(const invalid of [undefined,'wrong',token(s,p===1?2:1)]){
+        const tr=input(s,p,{...value,...(invalid===undefined?{}:{t:invalid})});
+        expect(tr.state).toBe(s);expect(tr.effects).toEqual([]);expect(s).toEqual(snapshot);
+      }
+      expect(input(s,p,{...value,t:token(s,p)}).state).not.toEqual(s);
+    }
+  });
+  it('同じ文面の昼の再送でもtokenを更新し、時間経過や他席の決定では保つ',()=>{
+    const base=night();const nightToken=token(base,3);
+    let s=ev(base,{t:'tick',ms:1000});s=choose(s,1,5).state;
+    expect(token(s,3)).toBe(nightToken);expect(choose(s,3,1).state.picks[3]).toBe(1);
+    const day=next(decisions(base,{1:5,2:5,3:1,4:3,5:6,6:5}));
+    const tr=choose(day,day.leader,null,true);const spec=tr.effects.find((e)=>e.t==='pad').spec;
+    expect(spec.token).toBe(token(tr.state,day.leader));expect(spec.token).not.toBe(token(day,day.leader));
+    const old={k:'tiles',t:token(day,day.leader),ids:[],pass:true};
+    expect(input(tr.state,day.leader,old)).toEqual({state:tr.state,effects:[]});
+    expect(choose(tr.state,day.leader,null,true).state.remaining).toBe(300000);
+  });
+  it('通常投票の棄権・中断前のパスを決選・再開後に再利用できない',()=>{
+    const vote=toVote(decisions(night(),{1:5,2:5,3:1,4:3,5:6,6:5}));
+    const old={k:'tiles',t:token(vote,3),ids:[],pass:true};
+    const runoff=decisions(vote,{1:5,2:5,3:6,4:6,5:6,6:5});
+    expect(runoff.runoff).toBe(true);expect(token(runoff,3)).not.toBe(old.t);
+    expect(input(runoff,3,old)).toEqual({state:runoff,effects:[]});
+    const resumed=next(ev(ev(vote,{t:'menu',paused:true}),{t:'menu',paused:false}));
+    expect(input(resumed,3,old)).toEqual({state:resumed,effects:[]});
+    expect(choose(resumed,3,null,true).state.picks[3]).toBeNull();
+  });
+});
+
 describe('秘匿・入力・中断・退出',()=>{
   it('全段階・各席のpadを許可表と照合し、公開用の型は秘密を含まない',()=>{
     let tr=createGame(init({players:players(7)}));checkPrivacy(tr);
@@ -250,8 +322,8 @@ describe('秘匿・入力・中断・退出',()=>{
   });
   it('他席・古いID・重複・不正な選択は状態と効果を変えず、確定は本人のpadだけを変える',()=>{
     const s=night();const first=choose(s,1,5);expect(first.effects.map((e)=>e.to)).toEqual([1]);expect(publicView(first.state).decided).toEqual({count:1,total:6});
-    for(const [p,i] of [[2,{k:'tiles',ids:[id(s,1,5)]}],[1,{k:'tiles',ids:[id(s,1,5)]}],[3,{k:'tiles',ids:['old']}],[3,{k:'tiles',ids:[id(s,3,1),id(s,3,2)]}],[3,{k:'tiles',ids:[id(s,3,1)],pass:true}],[3,{k:'tiles',ids:[]}],[3,{k:'tiles',ids:[id(s,3,3)]}],[7,{k:'tiles',ids:[id(s,3,1)]}]])expect(input(first.state,p,i)).toEqual({state:first.state,effects:[]});
-    const advanced=toVote(decisions(first.state,{2:5,3:1,4:3,5:6,6:5}));expect(input(advanced,3,{k:'tiles',ids:[id(s,3,1)]}).effects).toEqual([]);
+    for(const [p,i] of [[2,{k:'tiles',ids:[id(s,1,5)]}],[1,{k:'tiles',ids:[id(s,1,5)]}],[3,{k:'tiles',ids:['old']}],[3,{k:'tiles',ids:[id(s,3,1),id(s,3,2)]}],[3,{k:'tiles',ids:[id(s,3,1)],pass:true}],[3,{k:'tiles',ids:[]}],[3,{k:'tiles',ids:[id(s,3,3)]}],[7,{k:'tiles',ids:[id(s,3,1)]}]])expect(input(first.state,p,{...i,t:token(first.state,p)})).toEqual({state:first.state,effects:[]});
+    const advanced=toVote(decisions(first.state,{2:5,3:1,4:3,5:6,6:5}));expect(input(advanced,3,{k:'tiles',t:token(advanced,3),ids:[id(s,3,1)]}).effects).toEqual([]);
     for(const ms of [0,-1,NaN,Infinity])expect(updateGame(s,{t:'tick',ms})).toEqual({state:s,effects:[]});
   });
   it.each(['menu','offline','hidden','player'])('中断 %s で選択を捨て、時計・役・生死を保ち、復帰のIDを更新する',(cause)=>{
@@ -261,7 +333,7 @@ describe('秘匿・入力・中断・退出',()=>{
     const wait=s;expect(ev(s,{t:'tick',ms:500000})).toBe(wait);expect(choose(s,2,5).effects).toEqual([]);
     s=ev(s,{t:'menu',paused:false});s=ev(s,{t:'environment',value:{connected:true,visible:true}});s=ev(s,{t:'players',players:players(),leader:1});
     expect(s.blockers).toEqual([]);expect(s.resumeRequired).toBe(true);expect(ev(s,{t:'tick',ms:500000})).toBe(s);
-    expect(choose(s,2,5).effects).toEqual([]);s=next(s);expect(s.resumeRequired).toBe(false);expect(s.seats).toEqual(seats);expect(s.remaining).toBe(120000);expect(id(s,2,5)).not.toBe(old);expect(input(s,2,{k:'tiles',ids:[old]}).effects).toEqual([]);
+    expect(choose(s,2,5).effects).toEqual([]);s=next(s);expect(s.resumeRequired).toBe(false);expect(s.seats).toEqual(seats);expect(s.remaining).toBe(120000);expect(id(s,2,5)).not.toBe(old);expect(input(s,2,{k:'tiles',t:token(s,2),ids:[old]}).effects).toEqual([]);
   });
   it('複数の中断・脱落者の切断・昼の時計・投票の中断を扱う',()=>{
     let s=toVote(decisions(night(),{1:5,2:5,3:1,4:3,5:6,6:5}));s=choose(s,1,5).state;

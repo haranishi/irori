@@ -4,7 +4,9 @@ import {makeRng} from './roles.js';
 
 const input=(s,p,value)=>updateGame(s,{t:'input',p,input:value}).state;
 const tileId=(s,p,to)=>`w${s.nonce}_${s.epochs[p].toString(36)}_${to.toString(36)}`;
-const submit=(s,p,to=null)=>input(s,p,{k:'tiles',ids:to===null?[]:[tileId(s,p,to)],...(to===null&&s.phase==='vote'?{pass:true}:{})});
+const submit=(s,p,to=null)=>input(s,p,{k:'tiles',t:`w${s.nonce}_${s.epochs[p].toString(36)}`,ids:to===null?[]:[tileId(s,p,to)],...(to===null&&s.phase==='vote'?{pass:true}:{})});
+const simGames=Number(process.env.IRORI_SIM_GAMES??500);
+if(!Number.isSafeInteger(simGames)||simGames<1)throw new RangeError('IRORI_SIM_GAMES must be a positive safe integer');
 
 // 村側の知識は、自分の役・生存者・生きた占い師が夜明けに伝える二択だけ。
 // 人狼は自分と仲間を知る。全陣営とも、無作為に候補を選び、死亡者の役を参照しない。
@@ -67,13 +69,13 @@ function play(n,seed,informed){
 
 describe('配役ごとの無作為な対戦（勝率は規則の変更条件ではなく調整の目安）',()=>{
   for(const informed of [false,true])for(const n of [4,5,6,7,8]){
-    it(`${n}人・${informed?'占い結果を使う村側':'無作為な村側'}・2000対戦が終了する`,()=>{
+    it(`${n}人・${informed?'占い結果を使う村側':'無作為な村側'}・${simGames}対戦が終了する`,()=>{
       let wolfWins=0,maxDays=0;
-      for(let seed=0;seed<2000;seed++){
+      for(let seed=0;seed<simGames;seed++){
         const result=play(n,seed,informed);wolfWins+=result.winner==='wolf'?1:0;maxDays=Math.max(maxDays,result.days);
       }
-      const wolfRate=wolfWins/2000,villageRate=1-wolfRate;
-      console.info(JSON.stringify({players:n,policy:informed?'informed':'random',matches:2000,wolfWins,villageWins:2000-wolfWins,wolfRate,villageRate,maxDays}));
+      const wolfRate=wolfWins/simGames,villageRate=1-wolfRate;
+      console.info(JSON.stringify({players:n,policy:informed?'informed':'random',matches:simGames,wolfWins,villageWins:simGames-wolfWins,wolfRate,villageRate,maxDays}));
       if(informed)expect(villageRate).toBeGreaterThanOrEqual(0.4);
       else {expect(wolfRate).toBeGreaterThanOrEqual(0.05);expect(wolfRate).toBeLessThanOrEqual(0.95);}
     },120000);

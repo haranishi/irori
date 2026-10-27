@@ -38,6 +38,8 @@ function living(state) { return state.seats.filter((s)=>s.alive && !s.left); }
 function canBegin(state) { return state.phase === 'intro' && !state.blockers.length && state.seats.length >= 4 && state.seats.length <= 8 && state.seats.some((s)=>s.id === state.leader && s.online); }
 /** @param {GameState} state @param {number} p @param {number} target */
 function tileId(state,p,target) { return `w${state.nonce}_${(state.epochs[p] ?? 0).toString(36)}_${target.toString(36)}`; }
+/** @param {GameState} state @param {number} p */
+function tileToken(state,p) { return `w${state.nonce}_${(state.epochs[p] ?? 0).toString(36)}`; }
 
 /** @param {GameState} state @param {GameEvent} event @returns {Transition} */
 export function updateGame(state,event) {
@@ -78,6 +80,7 @@ export function updateGame(state,event) {
     return transition(state,{...state,phase:'reveal',seats:state.seats.map((s)=>({...s,role:roles[s.id] ?? null})),announce:'スマホで自分の役を確認してください'});
   }
   if (input.k !== 'tiles' || !Array.isArray(input.ids) || input.ids.length > 1 || (input.pass !== undefined && input.pass !== true) || (input.pass && input.ids.length)) return {state,effects:[]};
+  if (input.t !== tileToken(state,p)) return {state,effects:[]};
   if (state.resumeRequired) {
     if (p !== state.leader || input.ids.length || input.pass) return {state,effects:[]};
     return transition(state,settle({...state,resumeRequired:false}));
@@ -211,6 +214,11 @@ function roleText(state,seat) {
 function emptyTiles(ok,note,pass) { return {k:'tiles',tiles:[],min:0,max:0,ok,note,...(pass ? {pass} : {})}; }
 /** @param {GameState} state @param {Seat} seat @returns {PadSpec} */
 function padFor(state,seat) {
+  const spec = padContent(state,seat);
+  return spec.k === 'tiles' ? {...spec,token:tileToken(state,seat.id)} : spec;
+}
+/** @param {GameState} state @param {Seat} seat @returns {PadSpec} */
+function padContent(state,seat) {
   if (state.phase === 'ended') return {k:'wait',title:state.outcome === 'incomplete' ? '今回は未成立です' : '勝負が終わりました',body:[...state.seats.map((s)=>`${s.name}：${s.role ? ROLE_NAMES[s.role] : '未配役'}`).join('、')].slice(0,120).join('')};
   if (seat.left) return {k:'wait',title:'退出しました'};
   if (state.blockers.length) return {k:'wait',title:'再開を待っています',body:'接続・表示・メニューが戻るまで時計を止めています。'};
@@ -222,7 +230,7 @@ function padFor(state,seat) {
     if (state.checked[seat.id] === 'done') return {k:'wait',title:'全員の役の確認を待っています'};
     return emptyTiles(state.checked[seat.id] === 'shown' ? 'かくす' : '役を見る',state.checked[seat.id] === 'shown' ? roleText(state,seat) : '自分の役を確認してください。');
   }
-  // 夜明けの結果は全席で wait。大画面の「昼へ」が進行役の空決定イベントを渡す。
+  // 夜明けは全席wait。「昼へ」は進行役の現在のepochsからtを付けた空決定を渡す。
   if (state.phase === 'dawn') return {k:'wait',title:'夜が明けました',body:state.reports[seat.id] ?? state.announce};
   if (state.phase === 'day' && seat.id === state.leader) return emptyTiles('投票へ','顔を合わせて話し合いましょう。','＋1分');
   if (state.phase === 'exec' && seat.id === state.leader) return emptyTiles('次の夜へ',state.announce);

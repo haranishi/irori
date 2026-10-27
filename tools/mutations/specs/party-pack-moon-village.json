@@ -199,8 +199,8 @@
     "id": "party-pack-moon-village-seat-id",
     "note": "別の席の札の識別子を受け付ける",
     "file": "games/moon-village/logic.js",
-    "find": "(state.epochs[p] ?? 0).toString(36)",
-    "replace": "state.day.toString(36)",
+    "find": "function tileId(state,p,target) { return `w${state.nonce}_${(state.epochs[p] ?? 0).toString(36)}_${target.toString(36)}`; }",
+    "replace": "function tileId(state,p,target) { return `w${state.nonce}_${state.day.toString(36)}_${target.toString(36)}`; }",
     "command": [
       "npm",
       "run",
@@ -285,6 +285,36 @@
     "file": "games/moon-village/logic.js",
     "find": "].slice(0,120).join('')};",
     "replace": "].join('')};",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-token-check",
+    "note": "画面tokenの照合を外し、前の画面の空決定やパスを受け付ける",
+    "file": "games/moon-village/logic.js",
+    "find": "if (input.t !== tileToken(state,p)) return {state,effects:[]};",
+    "replace": "if (false) return {state,effects:[]};",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js",
+      "-t",
+      "画面tokenと遅延した空入力"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-token-output",
+    "note": "席宛tilesに画面tokenを付けず、古い空入力を見分けられなくする",
+    "file": "games/moon-village/logic.js",
+    "find": "return spec.k === 'tiles' ? {...spec,token:tileToken(state,seat.id)} : spec;",
+    "replace": "return spec;",
     "command": [
       "npm",
       "run",

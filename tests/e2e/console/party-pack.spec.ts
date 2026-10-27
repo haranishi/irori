@@ -19,8 +19,8 @@ const latest = (pad: Pad): PadSpec | undefined => pad.receivedFrames().at(-1);
 const hand = (spec: PadSpec | undefined, game: 'daifugo' | 'old-maid'): string[] => {
   if (!spec) return [];
   if (game === 'daifugo') return spec.k === 'tiles' ? spec.tiles.map((tile) => tile.label) : [];
-  // 引く札は位置番号。本人の手札はnote/bodyの「あなた：」以降だけ。
-  return cardWords(strings(spec).find((s) => s.startsWith('あなた：')) ?? '');
+  // 引く札は位置番号。本人の手札は、文の行のうち「あなた：」で始まる行だけ（引く相手の名前や、退出の知らせの行は含めない）。
+  return cardWords(strings(spec).flatMap((s) => s.split('\n')).find((line) => line.startsWith('あなた：')) ?? '');
 };
 
 /** 札の境界で比較する。♠3が♠10の部分一致になる検査にはしない。 */
@@ -105,7 +105,7 @@ class RolePrivacy {
       const own = this.ownText.get(pad);
       // 占い師だけに、自分が選んだ相手の結果の文を許す。昼まで残す結果の画面は、WebKit では次の段階の走査まで遅れて届くことがある。
       const reports = own?.includes('【占い師】')
-        ? (this.targets.get(pad) ?? []).flatMap((target) => [`${target}さんは人狼です。`, `${target}さんは人狼ではないです。`]) : [];
+        ? (this.targets.get(pad) ?? []).flatMap((target) => [`${target}さんは人狼です。`, `${target}さんは人狼ではありません。`]) : [];
       const frames = pad.receivedFrames();
       expect(frames.length).toBeGreaterThan(0);
       for (const spec of frames.slice(this.cursors[i])) {
@@ -132,7 +132,7 @@ test('秘匿走査：途中の漏えい・札ID・役の許可範囲を見逃さ
   expect(cardLeaks({ k: 'wait', title: '♠3' }, ['♠3'], [], ['♠3'])).toEqual([]);
   expect(cardLeaks({ k: 'wait', title: '♠10' }, ['♠3'], [], [])).toEqual([]);
   const own = 'あなたは【村人】。話し合いで人狼を探します。';
-  const report = 'こはくさんは人狼ではないです。';
+  const report = 'こはくさんは人狼ではありません。';
   expect(roleLeaks({ k: 'wait', title: own }, own, undefined, false)).toEqual([]);
   expect(roleLeaks({ k: 'wait', title: '騎士' }, own, undefined, false)).toContain('騎士');
   expect(roleLeaks({ k: 'wait', title: `${own}こはく：騎士` }, own, undefined, false)).toContain('騎士');
@@ -468,6 +468,41 @@ test('ババ抜き：3台で先頭を引き切る・秘匿・再接続・最下�
   await host.expectPhase('play');
   await oldTurn(host, pads);
   await new CardPrivacy('old-maid', pads).scan(host);
+});
+
+test('ババ抜き：途中で1人が席を立っても、残りの勝負は終わり、結果に出る', HOST, async ({ rig }) => {
+  // 以前の不具合：席を立った人の札を捨てると、残った札のペアが崩れ（相方がいない札が残り）、残りの人は手札を空にできず、
+  // 勝負がいつまでも終わらなかった（3人で2回引いてから1人が抜ける、で再現）。
+  test.setTimeout(175_000);
+  const host = await rig.openHost({ clock: true });
+  await host.page.emulateMedia({ reducedMotion: 'reduce' });
+  const pads = await rig.join(host, NAMES.slice(0, 3));
+  await host.choose('old-maid', pads[0]);
+  await start(pads[0]!);
+  await host.expectPhase('play');
+  const draw = async (): Promise<void> => {
+    const actor = await oldTurn(host, pads);
+    const before = JSON.stringify(latest(actor));
+    await actor.tiles('first');
+    await expect.poll(() => JSON.stringify(latest(actor))).not.toBe(before);
+  };
+  for (let move = 0; move < 2; move++) await draw();
+  await pads[2]!.leave();
+  // 大画面が席3を「退出」にするまで待つ。それまでは、抜けた人の席が「引く番」のまま残り、その人のスマホ（もう操作できない）を
+  // 待ってしまう。
+  await expect.poll(async () => {
+    await host.advance(150, { pause: 0 });
+    return (await (await host.gameFrame())?.locator('.seat[data-seat="3"]').textContent()) ?? '';
+  }, { timeout: 20_000, message: '大画面に、席3の退出が出る' }).toContain('退出');
+  // 抜けた人の札が配られ、できたペアが順に捨てられる動きが終わるまで、止めた時計を進める。
+  await host.advance(10_000);
+  for (let move = 0; move < 300 && await host.phase() !== 'ended'; move++) await draw();
+  await host.expectPhase('ended');
+  await host.advance(8_000);
+  await host.expectState('results');
+  const rows = await host.results();
+  expect(rows).toHaveLength(3);
+  expect(rows.filter((row) => row.label === '記録なし'), '席を立った人は、記録なしで載る').toHaveLength(1);
 });
 
 async function nightShape(host: Host, pads: Pad[]): Promise<void> {

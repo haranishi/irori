@@ -1,4 +1,6 @@
 // 実ホスト・実Worker・席ごとの独立文脈を通す下書き。実行はメインに引き継ぐ。
+import AxeBuilder from '@axe-core/playwright';
+import type { Page } from '@playwright/test';
 import { expect, test, type Host, type Pad } from './fixtures';
 import { HOST } from './lib/tags';
 import type { PadSpec } from '../../../packages/protocol/src/types';
@@ -599,5 +601,43 @@ for (const [game, title, seats] of ABANDON_IN_INTRO) {
     // 席は名簿から消えた順に作り直されるので、載るのは最後に残っていた席。全員「順位なし」で、「退出」と出る。
     await expect(host.page.locator('.results [data-rank="null"]').first()).toBeVisible();
     await expect(host.page.locator('.results [data-rank]:not([data-rank="null"])')).toHaveCount(0);
+  });
+}
+
+// アクセシビリティ：4本の「説明」と「最初の遊ぶ場面」を、大画面（ゲームの枠の中を含む）とスマホで、WCAG 2.2 の A・AA の規則にかける。
+// 動きの途中の色で誤検出しないよう、動きを減らす設定にして、少し待ってから測る。
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
+async function axeClean(page: Page, where: string): Promise<void> {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForTimeout(600);
+  // preload（CSS の読み込み直し）は切る。WebKit では、枠の中の axe が自分の CSS を取りに行き、ゲームの CSP に止められるため。
+  const result = await new AxeBuilder({ page })
+    .options({ preload: false, runOnly: { type: 'tag', values: AXE_TAGS } })
+    .analyze();
+  const found = result.violations.map((v) => `${v.id}（${v.impact}）: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' / ')}`);
+  expect(found, `${where} の axe の違反`).toEqual([]);
+  expect(result.passes.length, `${where}：axe が規則を1つも当てていない`).toBeGreaterThan(5);
+}
+const AXE_SCENES = [
+  ['strike-alley', 'ストライク横丁', 1, 'aim'],
+  ['daifugo', '大富豪', 3, 'play'],
+  ['old-maid', 'ババ抜き', 3, 'play'],
+  ['moon-village', '月あかりの寄り合い', 4, 'reveal'],
+] as const;
+for (const [game, title, seats, phase] of AXE_SCENES) {
+  test(`${title}：説明と最初の遊ぶ場面は、大画面もスマホも axe の違反がない`, HOST, async ({ rig }) => {
+    const host = await rig.openHost();
+    const pads = await rig.join(host, NAMES.slice(0, seats));
+    // axe は結果をまとめるために about:blank のページを開く。見張りには、それだけを許す。
+    for (const watch of rig.watches) watch.blankPagesOk = true;
+    await host.choose(game, pads[0]);
+    await host.expectPhase('intro');
+    await axeClean(host.page, `${title}の説明（大画面）`);
+    await axeClean(pads[0]!.page, `${title}の説明（スマホ）`);
+    if (game === 'strike-alley') await shortMode(pads[0]!);
+    else await start(pads[0]!);
+    await host.expectPhase(phase);
+    await axeClean(host.page, `${title}の ${phase}（大画面）`);
+    for (const pad of pads.slice(0, 2)) await axeClean(pad.page, `${title}の ${phase}（スマホ）`);
   });
 }

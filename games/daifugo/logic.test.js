@@ -8,8 +8,9 @@ const init = (overrides={}) => ({players:players(),leader:1,environment:{connect
 const input = (s,p,value) => updateGame(s,{t:'input',p,input:value});
 const begin = (s) => input(s,s.control.p,{k:'btn',id:s.control.id,d:1});
 const start = (overrides={}) => begin(createGame(init(overrides)).state);
-const play = (s,cards,p=s.turn) => input(s,p,{k:'tiles',ids:cards.map((c)=>cardId(s,c))});
-const pass = (s,p=s.turn) => input(s,p,{k:'tiles',ids:[],pass:true});
+const token = (s) => `d${s.nonce}_${s.revision.toString(36)}`;
+const play = (s,cards,p=s.turn) => input(s,p,{k:'tiles',t:token(s),ids:cards.map((c)=>cardId(s,c))});
+const pass = (s,p=s.turn) => input(s,p,{k:'tiles',t:token(s),ids:[],pass:true});
 const event = (s,e) => updateGame(s,e);
 const freeze = (o) => { if(o && typeof o === 'object') {Object.values(o).forEach(freeze);Object.freeze(o);} return o; };
 const allCards = (s) => [...s.stock,...s.seats.flatMap((x)=>x.hand),...(s.table?.cards ?? []),...s.discard,...s.excluded];
@@ -31,6 +32,8 @@ const checkPrivacy = (s,effects) => {
     expect(typeof effect.to).toBe('number');
     if (effect.spec.k !== 'tiles') continue;
     const seat = s.seats.find((x)=>x.id === effect.to);
+    expect(effect.spec.token).toBe(token(s));
+    expect(effect.spec.token).toMatch(/^[a-z0-9_-]{1,24}$/);
     expect(effect.spec.tiles.map((t)=>t.id)).toEqual(seat.hand.map((c)=>cardId(s,c)));
     const exposed = effect.spec.tiles.map((t)=>t.id.split('_').at(-1));
     expect(exposed.every((c)=>seat.hand.includes(c))).toBe(true);
@@ -150,6 +153,46 @@ describe('出す・パス・8切り・革命',()=>{
 });
 
 describe('拒否は状態を変更しない',()=>{
+  it.each(['出す','パス'])('token検査：%sのtなし・旧版・別ゲームを理由の再送なしで無視する',(action)=>{
+    const s=freeze(scenario([['s4','s7'],['h5','h9'],['d6','d10']],{table:{cards:['c3'],n:1,by:3}}));
+    const payload=action === 'パス' ? {ids:[],pass:true} : {ids:[cardId(s,'s4')]};
+    // パスはidsが空なので、札IDだけの検査では古い画面を見分けられなかった。
+    for(const t of [undefined,'',token({...s,revision:s.revision-1}),token({...s,nonce:'other'})]) {
+      const next=input(s,1,{k:'tiles',...payload,...(t === undefined ? {} : {t})});
+      expect(next.state).toBe(s);expect(next.effects).toEqual([]);
+    }
+    expect(input(s,1,{k:'tiles',...payload,t:token(s)}).state).not.toBe(s);
+  });
+  it.each(['出す','パス'])('token検査：番が一周して同じ席に戻っても旧画面の%sを無視する',(action)=>{
+    let s=scenario([['s4','s7'],['h5','h9'],['d6','d10']],{table:{cards:['c3'],n:1,by:3}});
+    const oldToken=token(s);const oldId=cardId(s,'s7');
+    s=play(s,['s4']).state;s=play(s,['h5']).state;const next=play(s,['d6']);s=freeze(next.state);
+    expect(s.turn).toBe(1);
+    const current=next.effects.find((e)=>e.t === 'pad' && e.to === 1).spec;
+    expect(current.token).not.toBe(oldToken);checkPrivacy(s,next.effects);
+    const payload=action === 'パス' ? {ids:[],pass:true} : {ids:[cardId(s,'s7')]};
+    // 現在の合法な札IDと旧tokenの組でも拒否し、札ID検査だけの成功を防ぐ。
+    const stale=input(s,1,{k:'tiles',...payload,t:oldToken});
+    expect(stale.state).toBe(s);expect(stale.effects).toEqual([]);
+    if(action === '出す') expect(input(s,1,{k:'tiles',ids:[oldId],t:oldToken})).toEqual({state:s,effects:[]});
+    expect(input(s,1,{k:'tiles',...payload,t:current.token}).state).not.toBe(s);
+  });
+  it('token検査：待機・中断・復帰・理由の再送でも全tilesに現在のtokenを付ける',()=>{
+    let next=start();checkPrivacy(next.state,next.effects);
+    for(const e of [
+      {t:'players',players:players(3,[2]),leader:1},
+      {t:'players',players:players(),leader:1},
+      {t:'menu',paused:true},{t:'menu',paused:false},
+      {t:'environment',value:null},{t:'environment',value:{connected:true,visible:true}},
+    ]) {
+      const old=next;next=event(next.state,e);
+      checkPrivacy(next.state,next.effects);expect(token(next.state)).not.toBe(token(old.state));
+      const stale=input(next.state,next.state.turn,{k:'tiles',ids:[],pass:true,t:token(old.state)});
+      expect(stale.state).toBe(next.state);expect(stale.effects).toEqual([]);
+    }
+    const invalid=input(next.state,next.state.turn,{k:'tiles',ids:[],t:token(next.state)});
+    expect(invalid.state).toBe(next.state);expect(invalid.effects).toHaveLength(1);checkPrivacy(invalid.state,invalid.effects);
+  });
   it('枚数違い・弱い・同値・数混在・他席・古いID・重複・空・5枚を理由つきで拒否する',()=>{
     const s=freeze(scenario([['s3','s5','s6','h6','d6','c6','jk1'],['h4','h5'],['d4','d5']],{table:{cards:['c5'],n:1,by:3}}));
     const original=structuredClone(s);
@@ -160,18 +203,18 @@ describe('拒否は状態を変更しない',()=>{
       [1,[cardId(s,'s6'),cardId(s,'s6')]], [1,[]], [1,['s6','h6','d6','c6','jk1'].map((c)=>cardId(s,c))],
     ];
     for(const [p,ids] of bad) {
-      const next=input(s,p,{k:'tiles',ids});expect(next.state).toBe(s);expect(next.state).toEqual(original);
+      const next=input(s,p,{k:'tiles',t:token(s),ids});expect(next.state).toBe(s);expect(next.state).toEqual(original);
       expect(next.effects).toHaveLength(1);expect(next.effects[0].to).toBe(p);expect(next.effects[0].spec.note).toMatch(/ください/);
       expect(next.effects[0].spec.tiles.map((t)=>t.id)).toEqual(s.seats.find((x)=>x.id === p).hand.map((c)=>cardId(s,c)));
     }
     const accepted=play(s,['s6']);expect(accepted.state).not.toBe(s);
     const duplicate=play(accepted.state,['s6'],1);expect(duplicate.state).toBe(accepted.state);
-    expect(input(s,99,{k:'tiles',ids:['x']})).toEqual({state:s,effects:[]});
+    expect(input(s,99,{k:'tiles',t:token(s),ids:['x']})).toEqual({state:s,effects:[]});
   });
   it('空の場へのパスと札つきパスを拒み、適正な札をoffにしない',()=>{
     let s=scenario([['s3','s4'],['h4','h5'],['d5','d6']]);expect(pass(s).state).toBe(s);
     s=play(s,['s3']).state;
-    expect(input(s,2,{k:'tiles',ids:[cardId(s,'h4')],pass:true}).state).toBe(s);
+    expect(input(s,2,{k:'tiles',t:token(s),ids:[cardId(s,'h4')],pass:true}).state).toBe(s);
     const next=pass(s);checkPrivacy(next.state,next.effects);
     const own=next.effects.find((e)=>e.t === 'pad' && e.to === 3).spec;
     const legal=new Set(legalPlays(next.state.seats[2].hand,next.state.table,next.state.revolution).flat());
@@ -187,7 +230,7 @@ describe('中断・接続・退出・順位・終了',()=>{
     expect(next.effects.filter((e)=>e.spec?.k === 'tiles').every((e)=>e.spec.disabled)).toBe(true);
     expect(play(next.state,['s3']).state).toBe(next.state);
     next=event(next.state,cause === 'menu' ? {t:'menu',paused:false} : {t:'environment',value:{connected:true,visible:true}});
-    expect(input(next.state,1,{k:'tiles',ids:[old]}).state).toBe(next.state);
+    expect(input(next.state,1,{k:'tiles',t:token(next.state),ids:[old]}).state).toBe(next.state);
     expect(play(next.state,['s3']).state.seats[0].hand).toEqual(['s4']);conservation(next.state);
   });
   it('複数の中断理由が解消するまで進めない',()=>{
@@ -207,7 +250,7 @@ describe('中断・接続・退出・順位・終了',()=>{
   it('途中参加者は待機し、終了者・退出者の席を復活させない',()=>{
     let s=start().state;let next=event(s,{t:'players',players:players(4),leader:1});
     expect(next.state.seats).toEqual(s.seats);expect(next.effects.find((e)=>e.to === 4).spec.k).toBe('wait');
-    expect(input(next.state,4,{k:'tiles',ids:[]})).toEqual({state:next.state,effects:[]});
+    expect(input(next.state,4,{k:'tiles',t:token(next.state),ids:[]})).toEqual({state:next.state,effects:[]});
     s=event(next.state,{t:'players',players:players().filter((p)=>p.id !== 2),leader:1}).state;
     s=event(s,{t:'players',players:players(),leader:1}).state;
     expect(s.seats[1]).toMatchObject({left:true,online:false,hand:[],rank:null});
@@ -242,7 +285,7 @@ describe('中断・接続・退出・順位・終了',()=>{
       }
     }
     expect(s.finishOrder).toEqual(Array.from({length:n},(_,i)=>i+1));expect(s.seats.map((x)=>x.rank)).toEqual(Array.from({length:n},(_,i)=>i+1));
-    for(const e of [{t:'players',players:[],leader:null},{t:'menu',paused:true},{t:'environment',value:null},{t:'input',p:1,input:{k:'tiles',ids:[]}}]) expect(event(s,e)).toEqual({state:s,effects:[]});
+    for(const e of [{t:'players',players:[],leader:null},{t:'menu',paused:true},{t:'environment',value:null},{t:'input',p:1,input:{k:'tiles',t:token(s),ids:[]}}]) expect(event(s,e)).toEqual({state:s,effects:[]});
     conservation(s);
   });
   it('上がった人の退出で順位を詰め、上がり1人と最後の1人なら成立する',()=>{
@@ -270,10 +313,14 @@ describe('中断・接続・退出・順位・終了',()=>{
   });
 });
 
+// CIの長い周回は IRORI_SIM_GAMES=2000 で再現する。0件や不正値では成功にしない。
+const simGames = Number(process.env.IRORI_SIM_GAMES ?? 300);
+if (!Number.isSafeInteger(simGames) || simGames < 1) throw new RangeError('IRORI_SIM_GAMES must be a positive integer');
+
 describe('無作為な対戦の保存則',()=>{
-  it.each([3,4,5,6,7,8])('%i人×2000種：各手で54枚・一意性・秘匿、必ず終了して順位が全員の並べ替えになる',(n)=>{
+  it.each([3,4,5,6,7,8])(`%i人×${simGames}種：各手で54枚・一意性・秘匿、必ず終了して順位が全員の並べ替えになる`,(n)=>{
     const deck=buildDeck().sort().join(',');
-    for(let seed=0;seed<2000;seed++) {
+    for(let seed=0;seed<simGames;seed++) {
       const rng=makeRng(seed+n*10000);let next=start({players:players(n),seed});let steps=0,ends=0;
       while(next.state.phase !== 'ended') {
         const s=next.state;const seat=s.seats.find((x)=>x.id === s.turn);

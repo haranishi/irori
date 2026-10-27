@@ -13,6 +13,7 @@
 //   curl -s -X POST localhost:PORT/pad/1/stick -d '{"x":1,"y":0,"ms":1500}'   … スティックを倒し続ける（-1〜1）
 //   curl -s -X POST localhost:PORT/pad/1/choose -d '{"index":0}'               … 選択肢を選ぶ（0から数える）
 //   POST /pad/:n/tiles {"ids":["a"]} または {"pass":true} … 札の選択をそろえて決定・パス
+//   POST /pad/:n/swipe {"x0":0.5,"y0":0.3,"x1":0.5,"y1":0.8,"ms":400} … touch の枠で、指を置いて動かして離す（座標は枠の中の0〜1。ボウリングは下へ引いてはなす）
 //   curl -s -X POST localhost:PORT/pad/1/menu -d '{"item":"leave"}'            … 長押しのメニュー（pause か leave）
 //   curl -s -X POST localhost:PORT/pad/1/disconnect   /   .../reconnect           … 回線を切る・戻す
 //   curl -s -X POST localhost:PORT/host/key -d '{"key":"Escape"}'              … ホストのキー（ArrowRight・Enter・Escape・m）
@@ -237,6 +238,24 @@ export class Playtest {
     return { held: Number(ms), x: clamp(x), y: clamp(y) };
   }
 
+  /** touch の枠で、(x0,y0) に指を置き、(x1,y1) まで動かして離す。座標は枠の中を0〜1にした値。 */
+  async swipe(n, { x0 = 0.5, y0 = 0.3, x1 = 0.5, y1 = 0.8, ms = 400 } = {}) {
+    const unit = (v, d) => { const f = Number(v); return Number.isFinite(f) ? Math.max(0, Math.min(1, f)) : d; };
+    const [ax, ay, bx, by] = [unit(x0, 0.5), unit(y0, 0.3), unit(x1, 0.5), unit(y1, 0.8)];
+    const c = await this.center(this.pad(n).page, '.irori-pad__touch');
+    const at = (px, py) => [c.x - c.w / 2 + px * c.w, c.y - c.h / 2 + py * c.h];
+    const steps = 8;
+    const wait = Math.max(0, Math.min(Number(ms) || 0, 5_000)) / steps;
+    await this.touch(n, 'touchStart', ...at(ax, ay));
+    for (let i = 1; i <= steps; i++) {
+      await this.touch(n, 'touchMove', ...at(ax + ((bx - ax) * i) / steps, ay + ((by - ay) * i) / steps));
+      if (wait) await sleep(wait);
+    }
+    await this.touch(n, 'touchEnd');
+    await this.settle();
+    return { from: [ax, ay], to: [bx, by], ms: Number(ms) || 0 };
+  }
+
   async choose(n, { index, id } = {}) {
     const { page } = this.pad(n);
     const sel = id !== undefined ? `.irori-pad__choice[data-id="${id}"]` : `.irori-pad__choice >> nth=${Number(index) || 0}`;
@@ -449,7 +468,7 @@ export function serve(pt, { port = 0 } = {}) {
       if (req.headers.origin !== undefined) throw new HttpError(403, 'ブラウザからの要求（Origin つき）は受けません。curl で操作してください');
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const body = req.method === 'POST' ? await readJson(req) : {};
-      const m = /^\/pad\/(\d+)\/(join|tap|hold|stick|choose|tiles|menu|disconnect|reconnect)$/.exec(url.pathname);
+      const m = /^\/pad\/(\d+)\/(join|tap|hold|stick|choose|tiles|swipe|menu|disconnect|reconnect)$/.exec(url.pathname);
       const route = `${req.method} ${m ? `/pad/:n/${m[2]}` : url.pathname}`;
       const n = m ? Number(m[1]) : 0;
       const handlers = {
@@ -461,6 +480,7 @@ export function serve(pt, { port = 0 } = {}) {
         'POST /pad/:n/stick': () => pt.stick(n, body),
         'POST /pad/:n/choose': () => pt.choose(n, body),
         'POST /pad/:n/tiles': () => pt.tiles(n, body),
+        'POST /pad/:n/swipe': () => pt.swipe(n, body),
         'POST /pad/:n/menu': () => pt.menu(n, body),
         'POST /pad/:n/disconnect': () => pt.disconnect(n),
         'POST /pad/:n/reconnect': () => pt.reconnect(n),

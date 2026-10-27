@@ -97,5 +97,14 @@
     "replace": "if (false) return {state,effects:[]};",
     "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "endを1回だけ送る"],
     "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-tiles-token",
+    "note": "画面tokenの検査を外し、旧画面やtなしの入力を受ける",
+    "file": "games/daifugo/logic.js",
+    "find": "if (input.t !== tilesToken(state)) return {state,effects:[]};",
+    "replace": "if (false) return {state,effects:[]};",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "token検査"],
+    "timeoutMs": 30000
   }
 ]

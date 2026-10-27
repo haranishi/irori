@@ -4,9 +4,9 @@ import {buildDeck, classify, isLegal, legalPlays, makeRng, shuffle, strength} fr
 /** @typedef {import('./irori.js').PlayerInfo} PlayerInfo */
 /** @typedef {import('./irori.js').HostEnvironment} HostEnvironment */
 // 同梱SDKの同期前にも検査できるよう、追加契約だけをローカルの型で補う。
-/** @typedef {{k:'tiles',tiles:{id:string,label:string,color:'red'|'gray',off:boolean}[],min:number,max:number,ok:string,pass?:string,disabled:boolean,note:string}} TilesPadSpec */
+/** @typedef {{k:'tiles',token:string,tiles:{id:string,label:string,color:'red'|'gray',off:boolean}[],min:number,max:number,ok:string,pass?:string,disabled:boolean,note:string}} TilesPadSpec */
 /** @typedef {import('./irori.js').PadSpec|TilesPadSpec} PadSpec */
-/** @typedef {import('./irori.js').GameInput|{k:'tiles',ids:string[],pass?:true}} GameInput */
+/** @typedef {Exclude<import('./irori.js').GameInput,{k:'tiles'}>|{k:'tiles',ids:string[],pass?:true,t?:string}} GameInput */
 /** @typedef {PlayerInfo & {hand:string[], left:boolean, passed:boolean, rank:number|null}} Seat */
 /** @typedef {{cards:string[], n:number, by:PlayerId}} Table */
 /** @typedef {{seq:number, type:'play'|'pass'|'sweep'|'revolution'|'finish', p:PlayerId, cards?:string[], revolution?:boolean, reason?:string, rank?:number}} PublicEvent */
@@ -45,7 +45,9 @@ function setControl(state) {
   state.control = canBegin(state) ? {p:/** @type {number} */ (state.leader),id:`d${state.nonce}_${state.revision.toString(36)}_start`,label:'はじめる'} : null;
 }
 /** @param {GameState} state @param {string} card */
-export function cardId(state, card) { return `d${state.nonce}_${state.revision.toString(36)}_${card}`; }
+export function cardId(state, card) { return `${tilesToken(state)}_${card}`; }
+/** @param {GameState} state */
+function tilesToken(state) { return `d${state.nonce}_${state.revision.toString(36)}`; }
 
 /** @param {GameState} state @param {GameEvent} event @returns {Transition} */
 export function updateGame(state, event) {
@@ -94,6 +96,7 @@ export function updateGame(state, event) {
     return transition(next,state,[{t:'cue',name:'deal'}]);
   }
   if (input.k !== 'tiles') return {state,effects:[]};
+  if (input.t !== tilesToken(state)) return {state,effects:[]};
   const seat = state.seats.find((s)=>s.id === p && !s.left);
   if (!seat) return {state,effects:[]};
   if (blocked(state) || !state.seats.find((s)=>s.id === state.turn)?.online) return reject(state,seat,'接続と再開を待っています');
@@ -179,7 +182,7 @@ function padFor(state, seat, reason) {
   const table = state.table ? state.table.cards.map(cardLabel).join(' ') : 'なし';
   const note = `${reason ? reason + '｜' : ''}${blocked(state) ? '再開待ち' : state.turn === seat.id ? 'あなたの番' : `${name}の番`}｜場 ${table}${state.revolution ? '｜革命中' : ''}`;
   const count = seat.hand.filter((c)=>playable.has(c)).length;
-  return {k:'tiles',tiles:seat.hand.map((c)=>({id:cardId(state,c),label:cardLabel(c),color:/** @type {'red'|'gray'} */ (c[0] === 'h' || c[0] === 'd' ? 'red' : 'gray'),off:!playable.has(c)})),
+  return {k:'tiles',token:tilesToken(state),tiles:seat.hand.map((c)=>({id:cardId(state,c),label:cardLabel(c),color:/** @type {'red'|'gray'} */ (c[0] === 'h' || c[0] === 'd' ? 'red' : 'gray'),off:!playable.has(c)})),
     min:count ? 1 : 0,max:Math.min(4,count),ok:'出す',...(state.table ? {pass:'パス'} : {}),disabled,note:[...note].slice(0,120).join('')};
 }
 /** @param {string} card */

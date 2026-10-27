@@ -23,6 +23,8 @@ const decisions=(s,targets)=>{
 const toVote=(s)=>next(next(s));
 const ev=(s,event)=>updateGame(s,event).state;
 const deepFreeze=(o)=>{if(o&&typeof o==='object'){Object.values(o).forEach(deepFreeze);Object.freeze(o);}return o;};
+const idleWarning='あと30秒で、決まっていない人は行動なし（棄権）になります';
+const vote=()=>toVote(decisions(night(),{1:5,2:5,3:1,4:3,5:6,6:5}));
 
 // 通信の実装を読まない独立した上限の検査。ゲームは自分のフォルダとSDKだけを読む。
 function checkPadContract(spec){
@@ -64,10 +66,11 @@ function checkPrivacy(transition){
       expect(text).not.toContain(`${other.name}：${roleWords[other.role]}`);
       if(!(receiver?.role==='wolf'&&other.role==='wolf'))expect(text).not.toContain(`仲間：${other.name}`);
     }
-    if(e.spec.note?.startsWith('あなたは【')){
+    const roleNote=e.spec.note?.startsWith(idleWarning+'\n')?e.spec.note.slice(idleWarning.length+1):e.spec.note;
+    if(roleNote?.startsWith('あなたは【')){
       const jobs={villager:'話し合いで人狼を探します。',wolf:'夜に1人を襲います。',seer:'夜に1人が人狼か占います。',knight:'自分以外を守ります。同じ人は2夜続けて守れません。',madman:'人間として数えますが、人狼の勝ちを願います。'};
       const allies=s.seats.filter((p)=>p.id!==e.to&&p.role==='wolf').map((p)=>p.name);
-      expect(e.spec.note).toBe(`あなたは【${roleWords[receiver.role]}】。${receiver.role==='wolf'&&allies.length?`仲間：${allies.join('、')}。`:''}${jobs[receiver.role]}`);
+      expect(roleNote).toBe(`あなたは【${roleWords[receiver.role]}】。${receiver.role==='wolf'&&allies.length?`仲間：${allies.join('、')}。`:''}${jobs[receiver.role]}`);
       const friends=s.seats.filter((p)=>p.id!==e.to&&p.role==='wolf');
       if(receiver.role==='wolf'&&friends.length)expect(e.spec.note).toContain(`仲間：${friends.map((p)=>p.name).join('、')}`);
       else expect(e.spec.note).not.toContain('仲間：');
@@ -82,6 +85,120 @@ function checkPrivacy(transition){
     }
   }
 }
+
+describe('追補D6の回帰',()=>{
+  it('昼のwaitの見出しと本文が同じだった：占い師以外は役を含まない会話の案内を出す',()=>{
+    const dawn=decisions(night(['wolf','wolf','seer','knight','madman','villager','villager','villager']),{1:5,2:5,3:1,4:3,5:6,6:7,7:8,8:7});
+    const tr=choose(dawn,dawn.leader);checkPrivacy(tr);
+    for(const e of tr.effects.filter((e)=>e.t==='pad'&&e.to!==tr.state.leader)){
+      expect(e.spec.k).toBe('wait');
+      expect(e.spec.body).toBe(e.to===3?dawn.reports[3]:'顔を合わせて話し合いましょう');
+      expect(e.spec.body).not.toBe(e.spec.title);
+      if(e.to!==3)expect(e.spec.body).not.toMatch(/人狼|村人|占い師|騎士|狂人/);
+    }
+  });
+  it.each(['night','vote'])('%sの決定後に相手を見直せなかった：本人の選びだけを12文字の名前で返す',(phase)=>{
+    let s=phase==='night'?night():vote();
+    const longName='あいうえおかきくけこさしすせそ😀';
+    s={...s,seats:s.seats.map((p)=>({...p,name:p.id===5?longName:p.name}))};
+    const tr=choose(s,1,5);checkPrivacy(tr);
+    expect(tr.effects).toEqual([{t:'pad',to:1,spec:{k:'wait',title:'全員の決定を待っています',body:phase==='night'?'あなたはあいうえおかきくけこさしさんを選びました':'あなたはあいうえおかきくけこさしさんに投票しました'}}]);
+    const after=choose(tr.state,2,3);checkPrivacy(after);
+    expect(after.effects).toEqual([{t:'pad',to:2,spec:{k:'wait',title:'全員の決定を待っています',body:phase==='night'?'あなたは席3さんを選びました':'あなたは席3さんに投票しました'}}]);
+    expect(publicView(after.state)).toEqual({...publicView(s),decided:{count:2,total:6}});
+    if(phase==='night'){
+      // 役ごとに決定後のキー構成が変わってはならない。
+      let keys;
+      for(const p of s.seats){const ack=choose(s,p.id,p.id===5?6:5).effects.find((e)=>e.t==='pad'&&e.to===p.id).spec;keys??=Object.keys(ack).sort();expect(Object.keys(ack).sort()).toEqual(keys);}
+    }
+  });
+  it('投票の棄権後に選びが残らなかった：本人だけに棄権を返す',()=>{
+    const tr=choose(vote(),2,null,true);checkPrivacy(tr);
+    expect(tr.effects).toEqual([{t:'pad',to:2,spec:{k:'wait',title:'全員の決定を待っています',body:'あなたは棄権しました'}}]);
+  });
+  it.each(['night','vote'])('%sに打ち切りの予告がなかった：30秒の境で未決定席だけのnoteとtokenを1回更新する',(phase)=>{
+    let s=choose(phase==='night'?night():vote(),1,5).state;
+    const before=updateGame(deepFreeze(s),{t:'tick',ms:89999});
+    expect(before.effects).toEqual([]);expect(before.state.remaining).toBe(30001);
+    const tr=updateGame(before.state,{t:'tick',ms:1});checkPrivacy(tr);
+    expect(tr.state.remaining).toBe(30000);
+    expect(tr.effects.map((e)=>e.to)).toEqual([2,3,4,5,6]);
+    for(const e of tr.effects){
+      expect(e.spec.note).toBe(idleWarning+'\n'+(phase==='night'?'相手を1人選んで決定してください。':'投票先を1人選んでください。'));
+      expect(e.spec.token).not.toBe(token(before.state,e.to));
+      expect(e.spec.token).toBe(token(tr.state,e.to));
+      expect(e.spec.note).not.toMatch(/あなたは|席[1-6]|仲間|占い師|騎士|狂人|村人/);
+    }
+    expect(tr.state.epochs[1]).toBe(s.epochs[1]);
+    expect(publicView(tr.state)).toEqual({...publicView(before.state),timer:{remaining:30000,total:120000}});
+    expect(choose(tr.state,2,3).state.picks[2]).toBe(3);
+    expect(input(tr.state,2,{k:'tiles',t:token(before.state,2),ids:[id(before.state,2,3)]})).toEqual({state:tr.state,effects:[]});
+    s=ev(tr.state,{t:'tick',ms:1});expect(updateGame(s,{t:'tick',ms:1000}).effects).toEqual([]);
+    const end=updateGame(s,{t:'tick',ms:29999});
+    expect(end.state.phase).toBe(phase==='night'?'dawn':'exec');
+    expect(end.effects.some((e)=>e.t==='pad'&&e.spec.note?.includes(idleWarning))).toBe(false);
+  });
+  it('夜の役の確認中は予告が届かなかった：本人の役だけを残しnoteの先頭で予告する',()=>{
+    let s=choose(night(),3,null,true).state;
+    const tr=updateGame(s,{t:'tick',ms:90000});checkPrivacy(tr);
+    const note=tr.effects.find((e)=>e.to===3).spec.note;
+    expect(note).toBe(idleWarning+'\nあなたは【占い師】。夜に1人が人狼か占います。');
+    expect(tr.effects.every((e)=>e.t==='pad'&&e.spec.note.startsWith(idleWarning))).toBe(true);
+    s=choose(tr.state,3).state;
+    expect(choose(s,3,null,true).effects[0].spec.note).toBe(note);
+  });
+  it.each(['night','vote'])('%sで決定が進んだ新しい2分窓にも、予告を1回だけ出す',(phase)=>{
+    const s=ev(phase==='night'?night():vote(),{t:'tick',ms:90000});
+    const tr=choose(s,1,5);checkPrivacy(tr);
+    expect(tr.state.remaining).toBe(120000);
+    for(const e of tr.effects.filter((e)=>e.t==='pad'&&e.to!==1))expect(e.spec.note).not.toContain(idleWarning);
+    const warned=updateGame(tr.state,{t:'tick',ms:90000});
+    expect(warned.effects.map((e)=>e.to)).toEqual([2,3,4,5,6]);
+    expect(warned.effects.every((e)=>e.spec.note.startsWith(idleWarning))).toBe(true);
+    expect(updateGame(warned.state,{t:'tick',ms:1}).effects).toEqual([]);
+  });
+  it.each(['night','vote'])('%sの中断後の窓に予告が戻らなかった：確定済みの選びを保ち再開から90秒で再予告する',(phase)=>{
+    let s=choose(phase==='night'?night():vote(),2,5).state;
+    s=ev(s,{t:'tick',ms:90000});
+    s=ev(s,{t:'menu',paused:true});expect(s.remaining).toBe(120000);
+    expect(updateGame(s,{t:'tick',ms:100000}).effects).toEqual([]);
+    s=ev(s,{t:'menu',paused:false});
+    expect(updateGame(s,{t:'tick',ms:100000}).effects).toEqual([]);
+    const resumed=choose(s,s.leader);checkPrivacy(resumed);
+    expect(resumed.state.picks).toEqual({2:5});
+    const tr=updateGame(resumed.state,{t:'tick',ms:90000});checkPrivacy(tr);
+    expect(tr.effects.map((e)=>e.to)).toEqual([1,3,4,5,6]);
+    expect(tr.effects.every((e)=>e.spec.note.startsWith(idleWarning))).toBe(true);
+  });
+  it('予告の印を次の夜・投票・決選へ持ち越すと予告が消える：窓ごとに再予告する',()=>{
+    let s=ev(night(['wolf','seer','villager','villager']),{t:'tick',ms:90000});
+    s=decisions(s,{1:2,2:1,3:1,4:1});s=toVote(s);
+    const first=updateGame(s,{t:'tick',ms:90000});
+    expect(first.effects).toHaveLength(4);expect(first.effects.every((e)=>e.spec.note.startsWith(idleWarning))).toBe(true);
+    s=decisions(first.state,{1:2,2:3,3:1,4:null});expect(s.runoff).toBe(true);
+    const runoff=updateGame(s,{t:'tick',ms:90000});
+    expect(runoff.effects).toHaveLength(4);expect(runoff.effects.every((e)=>e.spec.note.startsWith(idleWarning))).toBe(true);
+    s=next(decisions(runoff.state,{1:null,2:null,3:null,4:null}));expect(s.phase).toBe('night');
+    const nextNight=updateGame(s,{t:'tick',ms:90000});
+    expect(nextNight.effects).toHaveLength(4);expect(nextNight.effects.every((e)=>e.spec.note.startsWith(idleWarning))).toBe(true);
+  });
+  it.each(['wolf','villager'])('退出した%sにも役と勝敗が出ていた：結果labelは記録なし、全役公開は保つ',(role)=>{
+    const s=night(['wolf','seer','villager','villager']);
+    const left=s.seats.find((p)=>p.role===role).id;
+    const ids=role==='wolf'?[2,3,4]:[1,2];
+    const tr=updateGame(s,{t:'players',players:players(4).filter((p)=>ids.includes(p.id)),leader:ids[0]});
+    expect(tr.state.phase).toBe('ended');
+    const row=tr.effects.find((e)=>e.t==='end').results.find((r)=>r.p===left);
+    expect(row).toMatchObject({label:'記録なし',ranked:false});
+    expect(publicView(tr.state).reveal.find((p)=>p.id===left).role).toBe(role);
+  });
+  it('人狼ではないですが不自然だった：占い結果の否定文を本人だけに自然な文で返す',()=>{
+    const tr=choose(decisions(night(['wolf','seer','villager','villager']),{1:2,2:3,3:1,4:1}),1);
+    expect(tr.state.reports[2]).toBe('席3さんは人狼ではありません。');checkPrivacy(tr);
+    expect(tr.effects.find((e)=>e.to===2).spec.body).toBe('席3さんは人狼ではありません。');
+    expect(tr.effects.filter((e)=>e.to!==2).every((e)=>!JSON.stringify(e).includes('人狼ではありません'))).toBe(true);
+  });
+});
 
 describe('開始と役の確認',()=>{
   it.each([1,4,8])('%i席のintroで全員退出：名簿の作り直しでendに届かず、席も失われていた',(n)=>{
@@ -150,7 +267,7 @@ describe('夜と夜明けの全組合せ',()=>{
         else if(possible.length===1)expect(dead).toEqual(possible[0]===guard?[]:possible);
         else {expect(dead.length).toBeLessThanOrEqual(1);if(dead.length)expect(possible).toContain(dead[0]);else expect(possible).toContain(guard);}
         expect(after.seats[3].lastGuard).toBe(guard);
-        expect(after.reports[3]).toBe(`席${c}さんは${c<=2?'人狼':'人狼ではない'}です。`);
+        expect(after.reports[3]).toBe(`席${c}さんは${c<=2?'人狼です。':'人狼ではありません。'}`);
         if(d===lastGuard)expect(after.reports[4]).toContain('続けて守れない');
         expect(after.rng).toBe(decisions(s,{1:a,2:b,3:c,4:d,5:6,6:5}).rng);
         expect(publicView(after).reveal).toBeNull();cases++;
@@ -170,13 +287,13 @@ describe('夜と夜明けの全組合せ',()=>{
   it('狂人の占いは人狼ではなく、守りと占いは同時に有効、襲われた占い師も結果を受け取る',()=>{
     let s={...night(['wolf','wolf','seer','knight','madman','villager','villager']),day:2};
     let tr;for(const [p,target] of [[1,3],[2,3],[3,5],[4,5],[5,6],[6,7],[7,6]]){tr=choose(s,p,target);s=tr.state;}
-    expect(s.seats[2].alive).toBe(false);expect(s.reports[3]).toBe('席5さんは人狼ではないです。');
+    expect(s.seats[2].alive).toBe(false);expect(s.reports[3]).toBe('席5さんは人狼ではありません。');
     expect(tr.effects.find((e)=>e.t==='pad'&&e.to===3).spec.body).toBe('あなたは襲われました。\n'+s.reports[3]);checkPrivacy(tr);
-    s={...night(),day:2};s=decisions(s,{1:5,2:5,3:5,4:5,5:6,6:5});expect(s.seats[4].alive).toBe(true);expect(s.reports[3]).toBe('席5さんは人狼ではないです。');
+    s={...night(),day:2};s=decisions(s,{1:5,2:5,3:5,4:5,5:6,6:5});expect(s.seats[4].alive).toBe(true);expect(s.reports[3]).toBe('席5さんは人狼ではありません。');
   });
   it('選べない仲間と連続護衛の理由を確定前には返さず、夜明けに本人だけへ返す',()=>{
     let s=night();s={...s,seats:s.seats.map((p)=>({...p,lastGuard:p.id===4?5:null}))};
-    const tr=choose(s,1,2);expect(tr.effects).toEqual([{t:'pad',to:1,spec:{k:'wait',title:'全員の決定を待っています'}}]);
+    const tr=choose(s,1,2);expect(tr.effects).toEqual([{t:'pad',to:1,spec:{k:'wait',title:'全員の決定を待っています',body:'あなたは席2さんを選びました'}}]);
     s=decisions(tr.state,{2:1,3:1,4:5,5:6,6:5});
     expect(s.reports[1]).toContain('仲間');expect(s.reports[4]).toContain('続けて');expect(publicView(s).announce).toBe('今朝は誰も襲われませんでした');
   });
@@ -579,7 +696,7 @@ describe('追補D4の回帰',()=>{
     let resumed=ev(stopped.state,{t:'players',players:players(),leader:1});
     const tr=choose(resumed,1);resumed=tr.state;
     expect(resumed.picks).toEqual({2:5});
-    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===2).spec).toEqual({k:'wait',title:'全員の決定を待っています'});
+    expect(tr.effects.find((e)=>e.t==='pad'&&e.to===2).spec).toEqual({k:'wait',title:'全員の決定を待っています',body:phase==='night'?'あなたは席5さんを選びました':'あなたは席5さんに投票しました'});
     expect(decisions(resumed,{1:5,3:1,4:3,5:6,6:5}).phase).toBe(phase==='night'?'dawn':'exec');
   });
   it.each(['night','vote'])('再開時に%sの全決定があれば選び直しなしで解決する',(phase)=>{
@@ -609,7 +726,7 @@ describe('追補D4の回帰',()=>{
       const content=e.spec.body??e.spec.note??'';
       if(e.to===seerId)expect(content).toContain(dawn.reports[seerId]);
       else expect(content).not.toContain('さんは');
-      if(e.to!==tr.state.leader)expect(e.spec).toEqual({k:'wait',title:'大画面を見てください',body:e.to===seerId?dawn.reports[seerId]:'大画面を見てください'});
+      if(e.to!==tr.state.leader)expect(e.spec).toEqual({k:'wait',title:'大画面を見てください',body:e.to===seerId?dawn.reports[seerId]:'顔を合わせて話し合いましょう'});
     }
     const exec=decisions(next(tr.state),{1:null,2:null,3:null,4:null,5:null,6:null});
     expect(next(exec).reports).toEqual({});
@@ -629,7 +746,7 @@ describe('追補D4の回帰',()=>{
     const base=night(['wolf','wolf','seer','knight','madman','villager','villager','villager']);
     const tr=updateGame(base,{t:'players',players:players(8).filter((p)=>p.id>2),leader:3});
     const rows=tr.effects.find((e)=>e.t==='end').results;
-    expect(rows.map((r)=>r.label)).toEqual(['人狼・負け','人狼・負け','占い師（村人側）・勝ち','騎士（村人側）・勝ち','狂人（人狼側）・負け','村人・勝ち','村人・勝ち','村人・勝ち']);
-    for(const row of rows){expect([...row.label].length).toBeLessThanOrEqual(12);expect(row.label).toMatch(/・(勝ち|負け)$/);}
+    expect(rows.map((r)=>r.label)).toEqual(['記録なし','記録なし','占い師（村人側）・勝ち','騎士（村人側）・勝ち','狂人（人狼側）・負け','村人・勝ち','村人・勝ち','村人・勝ち']);
+    for(const row of rows){expect([...row.label].length).toBeLessThanOrEqual(12);expect(row.label).toMatch(/^(記録なし|.*・(勝ち|負け))$/);}
   });
 });

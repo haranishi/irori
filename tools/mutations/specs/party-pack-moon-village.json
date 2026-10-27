@@ -87,8 +87,8 @@
     "id": "party-pack-moon-village-seer-madman",
     "note": "占いで狂人を人狼と誤判定する",
     "file": "games/moon-village/logic.js",
-    "find": "target.role === 'wolf' ? '人狼' : '人狼ではない'",
-    "replace": "target.role === 'wolf' || target.role === 'madman' ? '人狼' : '人狼ではない'",
+    "find": "target.role === 'wolf' ? '人狼です。' : '人狼ではありません。'",
+    "replace": "target.role === 'wolf' || target.role === 'madman' ? '人狼です。' : '人狼ではありません。'",
     "command": [
       "npm",
       "run",
@@ -171,8 +171,8 @@
     "id": "party-pack-moon-village-night-shape",
     "note": "人狼だけ夜の文面を変えてしまう",
     "file": "games/moon-village/logic.js",
-    "find": "note:state.phase === 'night' ? '相手を1人選んで決定してください。'",
-    "replace": "note:state.phase === 'night' ? (seat.role === 'wolf' ? '襲う相手を選んでください。' : '相手を1人選んで決定してください。')",
+    "find": "note:warning+(state.phase === 'night' ? '相手を1人選んで決定してください。'",
+    "replace": "note:warning+(state.phase === 'night' ? (seat.role === 'wolf' ? '襲う相手を選んでください。' : '相手を1人選んで決定してください。')",
     "command": [
       "npm",
       "run",
@@ -391,8 +391,8 @@
     "id": "party-pack-moon-village-pause-picks",
     "note": "中断時に確定した夜の行動と投票を消す",
     "file": "games/moon-village/logic.js",
-    "find": "next = {...next,remaining:IDLE_MS};",
-    "replace": "next = {...next,picks:{},remaining:IDLE_MS};",
+    "find": "next = {...next,remaining:IDLE_MS,idleWarned:false};",
+    "replace": "next = {...next,picks:{},remaining:IDLE_MS,idleWarned:false};",
     "command": [
       "npm",
       "run",
@@ -419,7 +419,7 @@
     "id": "party-pack-moon-village-day-foreign-role",
     "note": "昼のwaitに他席の役を含める",
     "file": "games/moon-village/logic.js",
-    "find": "body:report ?? '大画面を見てください'",
+    "find": "body:report ?? '顔を合わせて話し合いましょう'",
     "replace": "body:state.seats.filter((s)=>s.id!==seat.id).map((s)=>`${s.name}：${ROLE_NAMES[s.role]}`).join('、')",
     "command": [
       "npm",
@@ -537,6 +537,54 @@
       "games/moon-village/view.test.js",
       "-t",
       "導入に勝ち方"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-warning-decided",
+    "note": "30秒予告を決定済みの席にも出す",
+    "file": "games/moon-village/logic.js",
+    "find": "return {k:'wait',title:'全員の決定を待っています',body};",
+    "replace": "return {k:'wait',title:'全員の決定を待っています',body:state.idleWarned ? IDLE_WARNING+'\\n'+body : body};",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js",
+      "-t",
+      "追補D6の回帰"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-foreign-pick",
+    "note": "選んだ相手の文に先に決めた他席の選びを入れる",
+    "file": "games/moon-village/logic.js",
+    "find": "const picked = state.picks[seat.id];",
+    "replace": "const picked = Object.values(state.picks)[0];",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js",
+      "-t",
+      "追補D6の回帰"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-left-result-label",
+    "note": "退出した席にも役と勝敗のlabelを出す",
+    "file": "games/moon-village/logic.js",
+    "find": "label:!s.left && s.role ?",
+    "replace": "label:s.role ?",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js",
+      "-t",
+      "追補D6の回帰"
     ]
   }
 ]

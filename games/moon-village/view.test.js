@@ -207,6 +207,19 @@ describe('公開モデルだけで全段階を描く', ()=>{
     expect(stage.querySelectorAll('.resident--winner')).toHaveLength(2);
   });
 
+  it('本人の選びと未決定者の予告が大画面に漏れてはならない：夜・投票は人数だけを描く', ()=>{
+    const {stage,status,view}=mount();
+    for(const phase of ['night','vote']){
+      const state=createGame(init(4)).state;
+      const value=publicView({...state,phase,day:1,remaining:30000,total:120000,idleWarned:true,picks:{1:3},seats:state.seats.map((s,i)=>({...s,role:['wolf','seer','villager','villager'][i]}))});
+      view.render(value);
+      expect(stage.querySelector('.decided').textContent).toBe('1 / 4人が決定');
+      expect(stage.querySelectorAll('.vote-arrow')).toHaveLength(0);
+      expect(stage.outerHTML+status.outerHTML).not.toMatch(/あと30秒|あなたは|選びました|投票しました|棄権しました|idleWarned|picks/);
+      noRoles();
+    }
+  });
+
   it.each(['unsupported', 'error'])('%sの案内を出せる', (phase)=>{
     const {stage, status, view} = mount();
     view.showMessage('更新が必要です', '開き直してください', phase);
@@ -268,6 +281,55 @@ describe('SDKとの接続（小さな偽物＋実際の判定）', ()=>{
   function day() { dawn(); document.querySelector('[data-action="day"]').click(); expect(document.documentElement.dataset.phase).toBe('day'); }
   /** 見せ場の時計を ms だけ進める（1コマは最大1秒として数えるので、1秒ずつ送る）。 */
   function watch(ms, from = 10000) { frame(from); for (let t = 1000; t <= ms; t += 1000) frame(from+t); }
+
+  it.each(['night','vote'])('%sの待機で相手も予告も見えなかった：本人の確認と未決定席の30秒予告をSDKへ届ける', async (phase)=>{
+    await boot();
+    if(phase==='night')startNight();else{day();empty(1);}
+    choose(1,2);
+    expect(pads.get(1)).toEqual({k:'wait',title:'全員の決定を待っています',body:phase==='night'?'あなたは灯2さんを選びました':'あなたは灯2さんに投票しました'});
+    const before=pads.get(2).token;
+    host.setPad.mockClear();
+    watch(89000);
+    expect(host.setPad).not.toHaveBeenCalled();
+    frame(100000);
+    expect(host.setPad.mock.calls.map(([,to])=>to)).toEqual([2,3,4]);
+    expect(pads.get(2).token).not.toBe(before);
+    for(const p of [2,3,4])expect(pads.get(p).note).toMatch(/^あと30秒で、決まっていない人は行動なし（棄権）になります\n/);
+    expect(document.getElementById('stage').outerHTML+document.getElementById('status').outerHTML).not.toMatch(/あと30秒|あなたは|選びました|投票しました/);
+    frame(101000);expect(host.setPad).toHaveBeenCalledTimes(3);
+    choose(2,3);
+    expect(pads.get(2).body).toBe(phase==='night'?'あなたは灯3さんを選びました':'あなたは灯3さんに投票しました');
+    expect(pads.get(3).note).not.toContain('あと30秒');
+  });
+
+  it('昼の案内が二重で占いの否定文も不自然だった：SDKが本人だけへ昼の案内と自然な占い結果を送る', async ()=>{
+    const logic=await boot();
+    const roles=assignRoles(host.players.map((p)=>p.id),logic.createGame.mock.calls[0][0].seed);
+    const seer=host.players.find((p)=>roles[p.id]==='seer').id;
+    const target=host.players.find((p)=>roles[p.id]==='villager').id;
+    startNight();
+    for(const p of host.players)choose(p.id,p.id===seer?target:p.id===1?2:1);
+    empty(1);
+    for(const p of host.players){
+      const spec=pads.get(p.id);
+      const content=spec.body??spec.note;
+      if(p.id===seer)expect(content).toContain(`灯${target}さんは人狼ではありません。`);
+      else{expect(content).not.toMatch(/人狼|村人|占い師|騎士|狂人/);expect(content).toMatch(/顔を合わせて話し合いましょう/);}
+      if(p.id!==1&&p.id!==seer)expect(spec.body).not.toBe(spec.title);
+    }
+  });
+
+  it('退出した席の役と勝敗labelが退出印と食い違っていた：全役を表示し結果は記録なしで渡す', async ()=>{
+    const logic=await boot();startNight();
+    const roles=assignRoles(host.players.map((p)=>p.id),logic.createGame.mock.calls[0][0].seed);
+    const wolf=host.players.find((p)=>roles[p.id]==='wolf').id;
+    emit('players',host.players.filter((p)=>p.id!==wolf),host.players.find((p)=>p.id!==wolf).id);
+    expect(document.querySelectorAll('.role-card')).toHaveLength(4);
+    expect(document.getElementById('stage').textContent).toContain('退出');
+    const {FINALE_MS}=await import('./main.js');watch(FINALE_MS);
+    expect(host.end).toHaveBeenCalledTimes(1);
+    expect(host.end.mock.calls[0][0].find((r)=>r.p===wolf)).toMatchObject({label:'記録なし',ranked:false});
+  });
 
   it.each(['pad-tiles-v1', 'result-options-v1', 'host-environment-v1'])('%sなしではwaitとreadyだけを送り待つ', async (cap)=>{
     host.capabilities = host.capabilities.filter((c)=>c !== cap);

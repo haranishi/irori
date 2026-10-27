@@ -9,12 +9,13 @@ import {assignRoles, makeRng, rolesFor} from './roles.js';
 /** @typedef {PlayerInfo & {alive:boolean,left:boolean,role:Role|null,lastGuard:number|null}} Seat */
 /** @typedef {'intro'|'reveal'|'night'|'dawn'|'day'|'vote'|'exec'|'ended'} Phase */
 /** @typedef {{from:number,to:number|null}} Vote */
-/** @typedef {{phase:Phase,day:number,seats:Seat[],players:PlayerInfo[],leader:number|null,environment:HostEnvironment|null,paused:boolean,resumeRequired:boolean,blockers:string[],nonce:string,revision:number,epochs:Record<number,number>,seed:number,rng:number,discussMs:number,remaining:number,total:number,picks:Record<number,number|null>,checked:Record<number,'shown'|'done'>,showRole:Record<number,boolean>,reports:Record<number,string>,victim:number|null,runoff:boolean,candidates:number[],votes:Vote[]|null,announce:string,outcome:'complete'|'incomplete',winner:'village'|'wolf'|null}} GameState */
+/** @typedef {{phase:Phase,day:number,seats:Seat[],players:PlayerInfo[],leader:number|null,environment:HostEnvironment|null,paused:boolean,resumeRequired:boolean,blockers:string[],nonce:string,revision:number,epochs:Record<number,number>,seed:number,rng:number,discussMs:number,remaining:number,total:number,idleWarned:boolean,picks:Record<number,number|null>,checked:Record<number,'shown'|'done'>,showRole:Record<number,boolean>,reports:Record<number,string>,victim:number|null,runoff:boolean,candidates:number[],votes:Vote[]|null,announce:string,outcome:'complete'|'incomplete',winner:'village'|'wolf'|null}} GameState */
 /** @typedef {{players:readonly PlayerInfo[],leader:number|null,environment:Readonly<HostEnvironment>|null,paused:boolean,nonce:string,seed:number,discussMs?:number}} GameInit */
 /** @typedef {{t:'input',p:number,input:GameInput}|{t:'players',players:readonly PlayerInfo[],leader:number|null}|{t:'menu',paused:boolean}|{t:'environment',value:Readonly<HostEnvironment>|null}|{t:'tick',ms:number}} GameEvent */
 /** @typedef {{t:'pad',to:number,spec:PadSpec}|{t:'cue',name:string,v?:number}|{t:'vibrate',to:number,ms:number[]}|{t:'end',results:import('./irori.js').GameResult[],options:import('./irori.js').GameEndOptions}} GameEffect */
 /** @typedef {{state:GameState,effects:GameEffect[]}} Transition */
 const IDLE_MS = 120000;
+const IDLE_WARNING = 'あと30秒で、決まっていない人は行動なし（棄権）になります';
 const ROLE_NAMES = {villager:'村人',wolf:'人狼',seer:'占い師',knight:'騎士',madman:'狂人'};
 
 /** @param {GameInit} init @returns {Transition} */
@@ -27,7 +28,7 @@ export function createGame(init) {
   const state = {phase:'intro',day:0,seats:init.players.map((p)=>({...p,alive:true,left:false,role:null,lastGuard:null})),
     players:init.players.map((p)=>({...p})),leader:init.leader,environment:init.environment ? {...init.environment} : null,
     paused:init.paused,resumeRequired:false,blockers:[],nonce:init.nonce,revision:0,epochs:{},seed:init.seed,rng:(init.seed ^ 0x9e3779b9) >>> 0,
-    discussMs:init.discussMs ?? 180000,remaining:0,total:0,picks:{},checked:{},showRole:{},reports:{},victim:null,
+    discussMs:init.discussMs ?? 180000,remaining:0,total:0,idleWarned:false,picks:{},checked:{},showRole:{},reports:{},victim:null,
     runoff:false,candidates:[],votes:null,announce:'役を確かめて、月あかりの寄り合いを始めましょう',outcome:'complete',winner:null};
   return transition(null, reconcile(state));
 }
@@ -77,6 +78,7 @@ export function updateGame(state,event) {
         next = settle(next);
       }
     }
+    if ((next.phase === 'night' || next.phase === 'vote') && !next.idleWarned && next.remaining > 0 && next.remaining <= 30000) next = {...next,idleWarned:true};
     return transition(state,next);
   }
   const {p,input} = event;
@@ -111,7 +113,7 @@ export function updateGame(state,event) {
   const emptyVote = state.phase === 'vote' && targets.length === 0 && input.ids.length === 0;
   const target = input.pass || emptyVote ? null : targets.find((s)=>tileId(state,p,s.id) === input.ids[0])?.id;
   if (target === undefined || (!input.pass && !emptyVote && input.ids.length !== 1)) return {state,effects:[]};
-  return transition(state,settle({...state,picks:{...state.picks,[p]:target},remaining:IDLE_MS}));
+  return transition(state,settle({...state,picks:{...state.picks,[p]:target},remaining:IDLE_MS,idleWarned:false}));
 }
 
 /** @param {GameState} state @returns {GameState} */
@@ -121,7 +123,7 @@ function reconcile(state) {
   let next = {...state,blockers};
   if (blockers.length && !state.blockers.length) {
     next = {...next,showRole:{},resumeRequired:state.phase !== 'intro'};
-    if (state.phase === 'night' || state.phase === 'vote') next = {...next,remaining:IDLE_MS};
+    if (state.phase === 'night' || state.phase === 'vote') next = {...next,remaining:IDLE_MS,idleWarned:false};
     if (state.phase === 'reveal') next.checked = Object.fromEntries(Object.entries(state.checked).filter(([,v])=>v === 'done'));
   }
   // 脱落済みでも接続中の進行役は操作できる。不在なら操作できる最小番号の生存席へ渡す。
@@ -131,11 +133,11 @@ function reconcile(state) {
 
 /** @param {GameState} state @returns {GameState} */
 function openNight(state) {
-  return {...state,phase:'night',day:state.day+1,picks:{},showRole:{},reports:{},victim:null,votes:null,candidates:[],runoff:false,total:IDLE_MS,remaining:IDLE_MS,announce:'夜です。スマホで行動を決めてください'};
+  return {...state,phase:'night',day:state.day+1,idleWarned:false,picks:{},showRole:{},reports:{},victim:null,votes:null,candidates:[],runoff:false,total:IDLE_MS,remaining:IDLE_MS,announce:'夜です。スマホで行動を決めてください'};
 }
 /** @param {GameState} state @returns {GameState} */
 function openVote(state) {
-  return {...state,phase:'vote',picks:{},showRole:{},total:IDLE_MS,remaining:IDLE_MS,runoff:false,candidates:[],votes:null,announce:'スマホで投票してください'};
+  return {...state,phase:'vote',idleWarned:false,picks:{},showRole:{},total:IDLE_MS,remaining:IDLE_MS,runoff:false,candidates:[],votes:null,announce:'スマホで投票してください'};
 }
 /** @param {GameState} state @returns {GameState} */
 function settle(state) {
@@ -190,7 +192,7 @@ function resolveNight(state) {
   const victim = guarded.includes(attacked) ? null : attacked;
   for (const seer of alive.filter((s)=>s.role === 'seer')) {
     const target = alive.find((s)=>s.id === actions[seer.id]);
-    if (target) reports[seer.id] = `${target.name}さんは${target.role === 'wolf' ? '人狼' : '人狼ではない'}です。`;
+    if (target) reports[seer.id] = `${target.name}さんは${target.role === 'wolf' ? '人狼です。' : '人狼ではありません。'}`;
   }
   const seats = state.seats.map((s)=>({...s,alive:s.alive && s.id !== victim,lastGuard:s.role === 'knight' && s.alive ? actions[s.id] ?? null : s.lastGuard}));
   const name = state.seats.find((s)=>s.id === victim)?.name;
@@ -203,7 +205,7 @@ function resolveVote(state) {
   const alive = living(state);
   const votes = alive.map((s)=>({from:s.id,to:alive.some((t)=>t.id === state.picks[s.id]) ? state.picks[s.id] ?? null : null}));
   const tied = mostVoted(votes.map((v)=>v.to));
-  if (tied.length > 1 && !state.runoff) return {...state,runoff:true,candidates:tied,picks:{},votes,total:IDLE_MS,remaining:IDLE_MS,announce:'同数のため、決選投票です'};
+  if (tied.length > 1 && !state.runoff) return {...state,runoff:true,candidates:tied,idleWarned:false,picks:{},votes,total:IDLE_MS,remaining:IDLE_MS,announce:'同数のため、決選投票です'};
   const victim = tied.length === 1 ? tied[0] : null;
   const name = state.seats.find((s)=>s.id === victim)?.name;
   return judge({...state,phase:'exec',seats:state.seats.map((s)=>({...s,alive:s.alive && s.id !== victim})),picks:{},votes,total:0,remaining:0,
@@ -246,17 +248,24 @@ function padContent(state,seat) {
     const report = seat.role === 'seer' ? state.reports[seat.id] : undefined;
     return seat.id === state.leader
       ? emptyTiles('投票へ',['顔を合わせて話し合いましょう。',report].filter(Boolean).join('\n'),'＋1分')
-      : {k:'wait',title:'大画面を見てください',body:report ?? '大画面を見てください'};
+      : {k:'wait',title:'大画面を見てください',body:report ?? '顔を合わせて話し合いましょう'};
   }
   if (state.phase === 'exec' && seat.id === state.leader) return emptyTiles('つづける',state.announce);
   if (!seat.alive) return {k:'wait',title:'村の行方を見守りましょう'};
   if (state.phase === 'night' || state.phase === 'vote') {
-    if (seat.id in state.picks) return {k:'wait',title:'全員の決定を待っています'};
-    if (state.phase === 'night' && state.showRole[seat.id]) return emptyTiles('かくす',roleText(state,seat));
+    if (seat.id in state.picks) {
+      const picked = state.picks[seat.id];
+      const name = [...(state.seats.find((s)=>s.id === picked)?.name ?? '')].slice(0,12).join('');
+      const body = picked === null ? (state.phase === 'vote' ? 'あなたは棄権しました' : 'あなたは行動なしです')
+        : state.phase === 'night' ? `あなたは${name}さんを選びました` : `あなたは${name}さんに投票しました`;
+      return {k:'wait',title:'全員の決定を待っています',body};
+    }
+    const warning = state.idleWarned ? IDLE_WARNING+'\n' : '';
+    if (state.phase === 'night' && state.showRole[seat.id]) return emptyTiles('かくす',warning+roleText(state,seat));
     const targets = living(state).filter((s)=>s.id !== seat.id && (state.phase !== 'vote' || !state.runoff || state.candidates.includes(s.id)));
     return {k:'tiles',tiles:targets.map((s)=>({id:tileId(state,seat.id,s.id),label:[...s.name].slice(0,12).join('')})),min:targets.length ? 1 : 0,max:targets.length ? 1 : 0,
       ok:state.phase === 'night' ? '決定' : '投票する',pass:state.phase === 'night' ? '役を見る' : '棄権',
-      note:state.phase === 'night' ? '相手を1人選んで決定してください。' : '投票先を1人選んでください。'};
+      note:warning+(state.phase === 'night' ? '相手を1人選んで決定してください。' : '投票先を1人選んでください。')};
   }
   return {k:'wait',title:'大画面を見てください'};
 }
@@ -288,7 +297,7 @@ function transition(before,next,forceSeat) {
       const side = s.role === 'wolf' || s.role === 'madman' ? 'wolf' : 'village';
       const won = side === next.winner;
       const role = s.role ? ROLE_NAMES[s.role]+(s.role === 'madman' ? '（人狼側）' : s.role === 'seer' || s.role === 'knight' ? '（村人側）' : '') : '';
-      return {p:s.id,score:won ? 1 : 0,ranked:next.outcome === 'complete' && !s.left,label:s.role ? `${role}・${next.outcome === 'incomplete' ? '未成立' : won ? '勝ち' : '負け'}` : '記録なし'};
+      return {p:s.id,score:won ? 1 : 0,ranked:next.outcome === 'complete' && !s.left,label:!s.left && s.role ? `${role}・${next.outcome === 'incomplete' ? '未成立' : won ? '勝ち' : '負け'}` : '記録なし'};
     }),options:{display:'record',outcome:next.outcome,note:next.outcome === 'incomplete' ? '残った参加者が2人未満のため、今回は勝敗なしです。' : `${next.winner === 'wolf' ? '人狼' : '村人'}側の勝ちです。`}});
   }
   return {state:next,effects};

@@ -1,0 +1,23 @@
+{
+  "feature_name": "party-game-pack",
+  "created_at": "2026-10-27T12:52:07Z",
+  "updated_at": "2026-10-27T13:07:11Z",
+  "language": "ja",
+  "phase": "design-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "ready_for_implementation": false,
+  "approval_evidence": "2026-10-27: 本人の「スキルとハーネスを使って実行」の指示と、許可の取り直しを求めない共通の自律実行方針に基づく（要件・設計・タスクは -y で進めた）。個別のゲーム名や設計の対面承認を得たという意味ではない。"
+}

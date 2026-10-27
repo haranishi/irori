@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 // ゲームのフォルダに写して使う1ファイル（dist/irori.js）。依存を含めて1つにまとめ、読める形のまま（minify しない）にする。
-// 60KB の上限は tests/build.test.ts が測る。
+// 生の72KBの上限は tests/build.test.ts が測る（gzip の上限は tools/check-budgets.mjs）。
 export default defineConfig({
   build: {
     outDir: 'dist',

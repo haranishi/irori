@@ -13,6 +13,11 @@
     "games/blade-duel/view.js",
     "games/lantern-market/logic.js",
     "games/lantern-market/main.js",
-    "games/lantern-market/view.js"
-  ]
+    "games/lantern-market/view.js",
+    "games/strike-alley/*.js",
+    "games/daifugo/*.js",
+    "games/old-maid/*.js",
+    "games/moon-village/*.js"
+  ],
+  "exclude": ["games/*/*.test.js", "games/*/irori.js"]
 }

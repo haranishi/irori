@@ -14,6 +14,8 @@ var LIMITS = {
 	BUTTONS_MAX: 4,
 	CHOICES_MIN: 2,
 	CHOICES_MAX: 6,
+	TILES_MAX: 20,
+	TILES_SELECT_MAX: 8,
 	FX_PATTERN_MAX: 8,
 	FX_MS_MAX: 1e3,
 	HELLO_TIMEOUT_MS: 5e3,
@@ -240,6 +242,10 @@ function bool(v, where) {
 	if (typeof v !== "boolean") reject(`${where}: boolean`);
 	return v;
 }
+function integer(v, lo, hi, where) {
+	if (typeof v !== "number" || !Number.isInteger(v) || v < lo || v > hi) reject(`${where}: integer ${lo}..${hi}`);
+	return v;
+}
 function oneOf(v, values, where) {
 	if (typeof v !== "string" || !values.includes(v)) reject(`${where}: one of ${values.join("|")}`);
 	return v;
@@ -262,6 +268,24 @@ function labeledList(v, min, max, where) {
 	if (!Array.isArray(v)) reject(`${where}: array`);
 	if (v.length < min || v.length > max) reject(`${where}: ${min}..${max} items`);
 	return v.map((item, i) => labeled(item, `${where}[${i}]`));
+}
+function tileSpec(v, where) {
+	const o = obj(v, where);
+	onlyKeys(o, [
+		"id",
+		"label",
+		"sub",
+		"color",
+		"off"
+	], where);
+	const t = {
+		id: ident(o.id, `${where}.id`),
+		label: text(o.label, LIMITS.LABEL_MAX_GRAPHEMES, `${where}.label`)
+	};
+	if (o.sub !== void 0) t.sub = text(o.sub, LIMITS.LABEL_MAX_GRAPHEMES, `${where}.sub`);
+	if (o.color !== void 0) t.color = oneOf(o.color, COLORS$2, `${where}.color`);
+	if (o.off !== void 0) t.off = bool(o.off, `${where}.off`);
+	return t;
 }
 function hint$1(o, where) {
 	return o.hint === void 0 ? void 0 : text(o.hint, LIMITS.HINT_MAX_GRAPHEMES, `${where}.hint`);
@@ -328,6 +352,38 @@ function padSpec(v, allowRemote, where) {
 			if (o.disabled !== void 0) s.disabled = bool(o.disabled, `${where}.disabled`);
 			const h = hint$1(o, where);
 			if (h !== void 0) s.hint = h;
+			return s;
+		}
+		case "tiles": {
+			onlyKeys(o, [
+				"k",
+				"tiles",
+				"ok",
+				"pass",
+				"min",
+				"max",
+				"note",
+				"hint",
+				"disabled"
+			], where);
+			if (!Array.isArray(o.tiles) || o.tiles.length > LIMITS.TILES_MAX) reject(`${where}.tiles: array of at most ${LIMITS.TILES_MAX}`);
+			const tiles = o.tiles.map((t, i) => tileSpec(t, `${where}.tiles[${i}]`));
+			if (new Set(tiles.map((t) => t.id)).size !== tiles.length) reject(`${where}.tiles: duplicate id`);
+			const cap = Math.min(LIMITS.TILES_SELECT_MAX, tiles.filter((t) => t.off !== true).length);
+			const s = {
+				k: "tiles",
+				tiles,
+				ok: text(o.ok, LIMITS.LABEL_MAX_GRAPHEMES, `${where}.ok`)
+			};
+			const max = o.max === void 0 ? Math.min(1, cap) : integer(o.max, 0, cap, `${where}.max`);
+			const min = o.min === void 0 ? Math.min(1, max) : integer(o.min, 0, max, `${where}.min`);
+			if (o.pass !== void 0) s.pass = text(o.pass, LIMITS.LABEL_MAX_GRAPHEMES, `${where}.pass`);
+			if (o.min !== void 0) s.min = min;
+			if (o.max !== void 0) s.max = max;
+			if (o.note !== void 0) s.note = text(o.note, LIMITS.BODY_MAX_GRAPHEMES, `${where}.note`);
+			const h = hint$1(o, where);
+			if (h !== void 0) s.hint = h;
+			if (o.disabled !== void 0) s.disabled = bool(o.disabled, `${where}.disabled`);
 			return s;
 		}
 		case "touch": {

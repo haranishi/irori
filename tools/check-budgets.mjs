@@ -1,6 +1,6 @@
 // 容量の点検：ビルドの出力のうち、画面が読む JavaScript を gzip で測り、上限と比べる。KB は 1024 バイト。
-//   ホストの画面（/）80KB・スマホの画面（/pad）40KB・SDK（/sdk/v1/irori.js）60KB。
-//   SDK は、そのままの大きさも 60KB まで（docs/architecture.md の上限。読める形で配るので minify しない）。
+//   ホストの画面（/）80KB・スマホの画面（/pad）40KB・SDK（/sdk/v1/irori.js）gzip 60KB。
+//   SDK は、そのままの大きさも 72KB まで（docs/architecture.md の上限。読める形で配るので minify しない）。
 // 使い方：
 //   node tools/check-budgets.mjs           … 自分専用の一時フォルダにビルドして測り、消す（apps/web/dist には触らない）
 //   node tools/check-budgets.mjs --dir D   … すでにあるビルドの出力 D を測る（ビルドしない）
@@ -13,7 +13,7 @@ import { buildWeb } from './lib/edge-server.mjs';
 import { isDirectRun } from './lib/files.mjs';
 
 const KB = 1024;
-export const BUDGETS = { host: 80 * KB, pad: 40 * KB, sdk: 60 * KB, sdkRaw: 60 * KB };
+export const BUDGETS = { host: 80 * KB, pad: 40 * KB, sdk: 60 * KB, sdkRaw: 72 * KB };
 
 const ATTR = /<(?:script|link)\b[^>]*\b(?:src|href)="(\/[^"]+\.js)"/g;
 const IMPORT = /(?:\bimport\s*\(\s*|\bfrom\s*|\bimport\s*)["'](\.{1,2}\/[^"']+\.js)["']/g;

@@ -1,0 +1,296 @@
+[
+  {
+    "id": "party-pack-moon-village-role-count",
+    "note": "6人の人狼を1人に減らす",
+    "file": "games/moon-village/roles.js",
+    "find": "...Array(n >= 6 ? 2 : 1).fill('wolf')",
+    "replace": "...Array(n >= 7 ? 2 : 1).fill('wolf')",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/roles.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-shuffle",
+    "note": "配役の乱数を固定して並びが変わらなくなる",
+    "file": "games/moon-village/roles.js",
+    "find": "const j = Math.floor(random() * (i + 1));",
+    "replace": "const j = 0;",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/roles.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-first-night",
+    "note": "初夜にも襲撃する",
+    "file": "games/moon-village/logic.js",
+    "find": "if (state.day > 1 && wolfTargets.length)",
+    "replace": "if (wolfTargets.length)",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-guard",
+    "note": "守りを無視して襲撃を通す",
+    "file": "games/moon-village/logic.js",
+    "find": "const victim = guarded.includes(attacked) ? null : attacked;",
+    "replace": "const victim = attacked;",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-repeat-guard",
+    "note": "2夜連続で同じ人を守れる",
+    "file": "games/moon-village/logic.js",
+    "find": "seat.role === 'knight' && seat.lastGuard === target.id",
+    "replace": "seat.role === 'knight' && false",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-split-attack",
+    "note": "割れた人狼の票で常に同じ人を襲う",
+    "file": "games/moon-village/logic.js",
+    "find": "wolfTargets[Math.floor(random()*wolfTargets.length)]",
+    "replace": "wolfTargets[0]",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-seer-madman",
+    "note": "占いで狂人を人狼と誤判定する",
+    "file": "games/moon-village/logic.js",
+    "find": "target.role === 'wolf' ? '人狼' : '人狼ではない'",
+    "replace": "target.role === 'wolf' || target.role === 'madman' ? '人狼' : '人狼ではない'",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-parity",
+    "note": "狼と人間が同数でも終わらない",
+    "file": "games/moon-village/logic.js",
+    "find": "wolves >= humans ? 'wolf' : null",
+    "replace": "wolves > humans ? 'wolf' : null",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-zero-wolves",
+    "note": "狼が0人になっても村側が勝たない",
+    "file": "games/moon-village/logic.js",
+    "find": "wolves === 0 ? 'village'",
+    "replace": "wolves < 0 ? 'village'",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-runoff",
+    "note": "決選で再同数でも候補の1人を処刑する",
+    "file": "games/moon-village/logic.js",
+    "find": "const victim = tied.length === 1 ? tied[0] : null;",
+    "replace": "const victim = tied.length >= 1 ? tied[0] : null;",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-idle-reset",
+    "note": "決定が進んでも2分の待機時間を戻さない",
+    "file": "games/moon-village/logic.js",
+    "find": "picks:{...state.picks,[p]:target},remaining:IDLE_MS",
+    "replace": "picks:{...state.picks,[p]:target},remaining:state.remaining",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-public-leak",
+    "note": "公開用の型へ未確定の選択を漏らす",
+    "file": "games/moon-village/logic.js",
+    "find": "return {phase:state.phase,day:state.day,seats:",
+    "replace": "return {picks:state.picks,phase:state.phase,day:state.day,seats:",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-night-shape",
+    "note": "人狼だけ夜の文面を変えてしまう",
+    "file": "games/moon-village/logic.js",
+    "find": "note:state.phase === 'night' ? '相手を1人選んで決定してください。'",
+    "replace": "note:state.phase === 'night' ? (seat.role === 'wolf' ? '襲う相手を選んでください。' : '相手を1人選んで決定してください。')",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-foreign-role",
+    "note": "自分の役の代わりに他席の役を表示する",
+    "file": "games/moon-village/logic.js",
+    "find": "あなたは【${ROLE_NAMES[seat.role]}】",
+    "replace": "あなたは【${ROLE_NAMES[state.seats.find((s)=>s.id!==seat.id).role]}】",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-seat-id",
+    "note": "別の席の札の識別子を受け付ける",
+    "file": "games/moon-village/logic.js",
+    "find": "(state.epochs[p] ?? 0).toString(36)",
+    "replace": "state.day.toString(36)",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-menu-clock",
+    "note": "メニューの一時停止を無視する",
+    "file": "games/moon-village/logic.js",
+    "find": "...(state.paused ? ['menu'] : [])",
+    "replace": "...(false ? ['menu'] : [])",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-terminal",
+    "note": "終了した状態への追加入力を受け付けてしまう",
+    "file": "games/moon-village/logic.js",
+    "find": "if (state.phase === 'ended') return {state,effects:[]};",
+    "replace": "if (false) return {state,effects:[]};",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-resume-clock",
+    "note": "復旧しただけで議論の時計を再開する",
+    "file": "games/moon-village/logic.js",
+    "find": "state.blockers.length || state.resumeRequired && event.t === 'tick'",
+    "replace": "state.blockers.length",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-empty-runoff",
+    "note": "候補退出で札が空になった本人の決定を拒否する",
+    "file": "games/moon-village/logic.js",
+    "find": "const emptyVote = state.phase === 'vote' && targets.length === 0 && input.ids.length === 0;",
+    "replace": "const emptyVote = false;",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-role-append",
+    "note": "自分の役の文に別表記で他席の役を付け足す",
+    "file": "games/moon-village/logic.js",
+    "find": "${job[seat.role]}`;",
+    "replace": "${job[seat.role]} 他の役:${state.seats.find((s)=>s.id!==seat.id).role}`;",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  },
+  {
+    "id": "party-pack-moon-village-final-text-limit",
+    "note": "終了本文の文字数制限を外し、8人の長い名前で上限を超える",
+    "file": "games/moon-village/logic.js",
+    "find": "].slice(0,120).join('')};",
+    "replace": "].join('')};",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js"
+    ]
+  }
+]

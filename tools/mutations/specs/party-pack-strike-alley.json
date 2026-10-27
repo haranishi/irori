@@ -1,0 +1,173 @@
+[
+  {
+    "id": "strike-alley-strike-bonus-one-roll",
+    "note": "ストライクのボーナスを次の1投だけにする（満点が300にならない）",
+    "file": "games/strike-alley/scoring.js",
+    "find": "provisional = PINS + (b1 ?? 0) + (b2 ?? 0);",
+    "replace": "provisional = PINS + (b1 ?? 0);",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-spare-no-bonus",
+    "note": "スペアのボーナス（次の1投）を足さない",
+    "file": "games/strike-alley/scoring.js",
+    "find": "provisional = PINS + (b ?? 0);",
+    "replace": "provisional = PINS;",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-final-spare-no-third",
+    "note": "最後のフレームでスペアのあとに3投目を投げさせない",
+    "file": "games/strike-alley/scoring.js",
+    "find": "return balls[0] === PINS || /** @type {number} */ (balls[0]) + /** @type {number} */ (balls[1]) === PINS ? 3 : 2;",
+    "replace": "return balls[0] === PINS ? 3 : 2;",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-final-always-reset",
+    "note": "最後のフレームで、ストライクのあとの2投目の残りピンでも立て直す",
+    "file": "games/strike-alley/scoring.js",
+    "find": "return { done: false, frame: f, ball: balls.length, reset: left === PINS, pinsLeft: left };",
+    "replace": "return { done: false, frame: f, ball: balls.length, reset: true, pinsLeft: PINS };",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-gesture-min-pull-exclusive",
+    "note": "ちょうど0.12の引きを投げにしない（境目が1つずれる）",
+    "file": "games/strike-alley/gesture.js",
+    "find": "const long = pull >= MIN_PULL;",
+    "replace": "const long = pull > MIN_PULL;",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-gesture-dead-zone-exclusive",
+    "note": "±0.04ちょうどの曲がりを0にしない",
+    "file": "games/strike-alley/gesture.js",
+    "find": "const hook = Math.abs(dx) <= HOOK_DEAD ? 0 : clamp(dx / HOOK_SPAN, -1, 1);",
+    "replace": "const hook = Math.abs(dx) < HOOK_DEAD ? 0 : clamp(dx / HOOK_SPAN, -1, 1);",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-gutter-still-hits",
+    "note": "溝に落ちた球も、ピンに当たる（縁へ向かう曲がりで0本にならない）",
+    "file": "games/strike-alley/physics.js",
+    "find": "if (!ball.gutter && !ball.gone) {",
+    "replace": "if (!ball.gone) {",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-knock-threshold-inverted",
+    "note": "強い当たりでは倒れず、弱い当たりで倒れる（閾値の比較を逆にする）",
+    "file": "games/strike-alley/physics.js",
+    "find": "if (p.state === 1 && j < TUNING.knock) {",
+    "replace": "if (p.state === 1 && j > TUNING.knock) {",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-pin-speed-unlimited",
+    "note": "球に当たったピンの速さの上限を外す（刻みあたりの移動が当たり半径を越え、すり抜けが起きうる）",
+    "file": "games/strike-alley/physics.js",
+    "find": "p.vz += j * invP * nz;\n            limit(p);",
+    "replace": "p.vz += j * invP * nz;",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-off-deck-counted-standing",
+    "note": "台の外へ落ちたピンを、立っている数に入れる（倒した本数が減る）",
+    "file": "games/strike-alley/physics.js",
+    "find": "const down = pins.map((p) => p.state !== 1);",
+    "replace": "const down = pins.map((p) => p.state === 2);",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-other-seat-throws",
+    "note": "番でない席の指でも投げられる",
+    "file": "games/strike-alley/logic.js",
+    "find": "if (!turn || p !== turn.p || state.waiting || input.k !== 'ptr' || input.id !== 'touch') return { state, effects: [] };",
+    "replace": "if (!turn || state.waiting || input.k !== 'ptr' || input.id !== 'touch') return { state, effects: [] };",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-stray-move-starts",
+    "note": "s のない m・e を、置いた点として受け付ける（止まる前の指の続きが投げになりうる）",
+    "file": "games/strike-alley/logic.js",
+    "find": "  if (!gesture) return { state, effects: [] };",
+    "replace": "  if (!gesture) return transition(state, { ...state, gesture: { s: at, last: at } });",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-two-left-continues",
+    "note": "2人以上で始めて1人になっても、未成立で終えずに続ける",
+    "file": "games/strike-alley/logic.js",
+    "find": "if (ranked === 0 || (state.startCount >= 2 && ranked <= 1)) {",
+    "replace": "if (ranked === 0) {",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-solo-ends",
+    "note": "1人で始めた勝負も、順位を付けられる席が1人なので、すぐ未成立で終える",
+    "file": "games/strike-alley/logic.js",
+    "find": "if (ranked === 0 || (state.startCount >= 2 && ranked <= 1)) {",
+    "replace": "if (ranked === 0 || (state.startCount >= 1 && ranked <= 1)) {",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-left-seat-ranked",
+    "note": "途中で席が消えた人も、順位の対象にする",
+    "file": "games/strike-alley/logic.js",
+    "find": "p: s.id, score: totalOf(state, s), ranked: state.outcome === 'complete' && !s.left,",
+    "replace": "p: s.id, score: totalOf(state, s), ranked: state.outcome === 'complete',",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-pause-keeps-finger",
+    "note": "一時停止で指の途中経過を捨てない（再開後に、止まる前の指の続きで投げられる）",
+    "file": "games/strike-alley/logic.js",
+    "find": "if ((blockers.length || waiting) && next.gesture) next = { ...next, gesture: null };",
+    "replace": "if (waiting && next.gesture) next = { ...next, gesture: null };",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-second-ball-full-rack",
+    "note": "2投目でも、ピンを全部立て直す",
+    "file": "games/strike-alley/logic.js",
+    "find": "standing: nt.reset ? [...ALL_STANDING] : state.standing,",
+    "replace": "standing: [...ALL_STANDING],",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-settle-while-paused",
+    "note": "止まっている間も、再生の終わり（settled・next）を受け付ける",
+    "file": "games/strike-alley/logic.js",
+    "find": "  if (state.blockers.length) return { state, effects: [] };\n  if (event.t === 'settled')",
+    "replace": "  if (state.blockers.length && event.t === 'input') return { state, effects: [] };\n  if (event.t === 'settled')",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-stale-mode-id",
+    "note": "長さの選択肢の id から revision を外す（止まる前に出した古い選択肢で始められる）",
+    "file": "games/strike-alley/logic.js",
+    "find": "return `m${state.nonce}_${state.revision.toString(36)}_${frames}`;",
+    "replace": "return `m${state.nonce}_0_${frames}`;",
+    "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
+    "timeoutMs": 180000
+  }
+]

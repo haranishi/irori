@@ -258,6 +258,8 @@
 }
 .irori-pad__tiles-grid, .irori-pad__tiles-grid * { touch-action: pan-y; }
 .irori-pad__tile { position: relative; min-width: 56px; min-height: 56px; padding: 8px 4px 20px; overflow-wrap: anywhere; }
+/* 押せない札（出せない手札）も、明るい部屋で読める濃さにする（既定の .45 だと、文字と地の差が約3.6:1まで落ちる）。押せないことは、明るさと「押せない」の動かなさで示す。 */
+.irori-pad__tile:disabled { opacity: 0.68; }
 .irori-pad__tile-label, .irori-pad__tile small { display: block; }
 .irori-pad__tile small { font-size: 16px; }
 .irori-pad__tile-check { position: absolute; right: 5px; bottom: 0; visibility: hidden; }

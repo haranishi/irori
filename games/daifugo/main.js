@@ -39,6 +39,30 @@ async function boot() {
     availability.hidden=!blocker;
     availability.textContent=blocker === 'menu' ? '一時停止中 · メニューを閉じると続けられます'
       : blocker === 'offline' ? '大画面の接続を待っています' : blocker === 'hidden' ? '大画面に戻るのを待っています' : '';
+    view.hold(!!blocker);
+  }
+  /** @type {number|null} */
+  let feltTurn=null;
+  let feltSeq=0;
+  /** 公開の流れだけから、スマホの振動を頼む。番は短く、革命は全員に、上がりは本人に長く。
+   * 判定は振動を出さないため、画面側で足す（音の依頼は判定の効果だけを使う）。
+   * @param {import('./logic.js').GameViewModel} model */
+  function feel(model) {
+    const fresh=model.events.filter((event)=>event.seq>feltSeq);
+    feltSeq=fresh.at(-1)?.seq ?? feltSeq;
+    const turn=model.phase === 'play' ? model.turn : null;
+    const turned=turn !== feltTurn;
+    feltTurn=turn;
+    if (paused || !environment?.connected || !environment.visible) return;
+    const reachable=new Set(model.seats.filter((seat)=>seat.online && !seat.left).map((seat)=>seat.id));
+    /** 1つの更新で1席に1回だけ（後の振動が前を打ち消すため、強いほうを選ぶ）。 @type {Map<number,number[]>} */
+    const buzz=new Map();
+    for (const event of fresh) {
+      if (event.type === 'finish' && model.seats.find((seat)=>seat.id === event.p)?.count === 0) buzz.set(event.p,[40,40,40,40,120]);
+    }
+    if (fresh.some((event)=>event.type === 'revolution')) for (const id of reachable) if (!buzz.has(id)) buzz.set(id,[70,50,140]);
+    if (turned && turn !== null && !buzz.has(turn)) buzz.set(turn,[30]);
+    for (const [id,ms] of buzz) if (reachable.has(id)) irori.vibrate(ms,id);
   }
   function dispose() {
     if (disposed) return;
@@ -68,7 +92,9 @@ async function boot() {
     if (disposed || ended) return;
     const next=updateGame(state,event);
     state=next.state;
-    view.render(publicView(state),looks);
+    const model=publicView(state);
+    view.render(model,looks);
+    feel(model);
     apply(next.effects);
   }
   subscriptions.push(

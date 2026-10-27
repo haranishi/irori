@@ -145,8 +145,88 @@ describe('公開モデルの全段階',()=>{
     expect(stage.querySelectorAll('.table-trail .playing-card')).toHaveLength(4);
     expect(stage.querySelector('.table-trail .playing-card').getAttribute('aria-label')).toBe('♠8');
     value.revolution=false;value.events.push({seq:4,type:'revolution',p:2,revolution:false});view.render(value);
-    expect(stage.querySelector('.event-banner').textContent).toBe('革命が戻りました！');
+    expect(stage.querySelector('.event-banner').textContent).toBe('革命返し！');
     expect(stage.querySelector('.strength-order').textContent).toContain('通常');
+  });
+  it('新しい出札は前の組を薄く後ろへ送り、2組より前は消す',()=>{
+    const view=fixture();const value=model();let seq=0;
+    for (const id of ['s3','s4','s5','s6']) {
+      value.table={cards:[id],n:1,by:1};value.events=[...value.events,{seq:++seq,type:'play',p:1,cards:[id]}];view.render(structuredClone(value),looks);
+    }
+    expect([...stage.querySelectorAll('.table-cards .playing-card')].map((node)=>node.getAttribute('aria-label'))).toEqual(['♠6']);
+    expect(stage.querySelector('.table-cards').classList.contains('table-cards--placed')).toBe(true);
+    const backs=[...stage.querySelectorAll('.table-trail--back')];
+    expect(backs.map((node)=>node.dataset.depth).sort()).toEqual(['1','2']);
+    expect(backs.every((node)=>node.getAttribute('aria-hidden') === 'true')).toBe(true);
+  });
+  it('8切りは置いた札を見せてから一線で払い、大きな見出しのあとで「先に出す」を出す',()=>{
+    const view=fixture();const value=model();
+    value.table={cards:['s7'],n:1,by:1};value.events=[{seq:1,type:'play',p:1,cards:['s7']}];view.render(structuredClone(value),looks);
+    value.table=null;value.turn=2;value.events.push({seq:2,type:'play',p:2,cards:['h8','d8']},{seq:3,type:'sweep',p:2,reason:'eight'});view.render(structuredClone(value),looks);
+    expect([...stage.querySelectorAll('.table-trail--cut .playing-card')].map((node)=>node.getAttribute('aria-label'))).toEqual(['♥8','♦8']);
+    expect(stage.querySelector('.table-trail--swept .playing-card').getAttribute('aria-label')).toBe('♠7');
+    expect(stage.querySelector('.sweep-line:not(.sweep-line--soft)')).not.toBeNull();
+    expect(stage.querySelector('.table-empty').hidden).toBe(false);
+    expect(stage.querySelector('.table-empty').classList.contains('table-empty--after-cut')).toBe(true);
+    expect(stage.querySelector('.event-burst--eight').textContent).toContain('8切り！');
+    expect(stage.querySelector('.event-burst--eight').textContent).toContain('参加者2さんが、もう一度');
+  });
+  it('みんなパスで流すときは前の組を払い、大きな見出しは出さない',()=>{
+    const view=fixture();const value=model();
+    value.table={cards:['s7'],n:1,by:1};value.events=[{seq:1,type:'play',p:1,cards:['s7']}];view.render(structuredClone(value),looks);
+    value.table=null;value.events.push({seq:2,type:'pass',p:2},{seq:3,type:'pass',p:3},{seq:4,type:'sweep',p:1,reason:'passes'});view.render(structuredClone(value),looks);
+    expect(stage.querySelector('.table-trail--swept .playing-card').getAttribute('aria-label')).toBe('♠7');
+    expect(stage.querySelector('.sweep-line--soft')).not.toBeNull();
+    expect(stage.querySelector('.table-empty').classList.contains('table-empty--after')).toBe(true);
+    expect(stage.querySelector('.event-burst')).toBeNull();
+    expect(stage.querySelector('.event-banner').textContent).toBe('みんなパス。場が流れました');
+    // 払った組は、次の更新で片づける（動きの終わりを待たずに溜まらない）。
+    value.events.push({seq:5,type:'play',p:1,cards:['s9']});value.table={cards:['s9'],n:1,by:1};view.render(structuredClone(value),looks);
+    expect(stage.querySelector('.table-trail--swept')).toBeNull();
+  });
+  it('革命は強さの並びと置いた札を裏返し、帯の見出しを出す',()=>{
+    const view=fixture();const value=model();const four=['s7','h7','d7','c7'];
+    value.table={cards:four,n:4,by:1};value.revolution=true;value.turn=2;
+    value.events=[{seq:1,type:'play',p:1,cards:four},{seq:2,type:'revolution',p:1,revolution:true}];view.render(value,looks);
+    expect(stage.querySelector('.strength-scale').classList.contains('is-flipping')).toBe(true);
+    expect(stage.querySelector('.table-cards').classList.contains('table-cards--flip')).toBe(true);
+    const burst=stage.querySelector('.event-burst--revolution');
+    expect(burst.textContent).toContain('革命！');expect(burst.textContent).toContain('強さの順が逆になった');
+    expect(burst.getAttribute('aria-hidden')).toBe('true');
+  });
+  it('大きな見出しは自分の動きが終わったときだけ外す（帯の疑似要素が終わっても消さない）',()=>{
+    const view=fixture();const value=model();
+    value.events=[{seq:1,type:'play',p:1,cards:['s9','h9','d9','c9']},{seq:2,type:'revolution',p:1,revolution:true}];value.revolution=true;
+    value.table={cards:['s9','h9','d9','c9'],n:4,by:1};view.render(value,looks);
+    const burst=stage.querySelector('.event-burst');
+    const end=(target,name,pseudo='')=>{
+      const event=new Event('animationend',{bubbles:true});
+      Object.defineProperties(event,{animationName:{value:name},pseudoElement:{value:pseudo}});target.dispatchEvent(event);
+    };
+    // 以前は帯（::after）の動きの終わりで見出し全体を外し、革命の字が0.6秒で消えていた。
+    end(burst,'band','::after');end(burst.querySelector('.burst-sub'),'burst-sub');
+    expect(burst.isConnected).toBe(true);
+    end(burst,'burst-life');
+    expect(burst.isConnected).toBe(false);
+  });
+  it('残り枚数が減った席だけ数字をはずませる',()=>{
+    const view=fixture();const value=model();view.render(structuredClone(value),looks);
+    value.seats[0].count-=2;view.render(structuredClone(value),looks);
+    expect(stage.querySelector('[data-seat="1"] .count-num--drop')).not.toBeNull();
+    expect(stage.querySelectorAll('.count-num--drop')).toHaveLength(1);
+    expect(stage.querySelector('[data-seat="1"] .seat-count').textContent).toBe(`残り${value.seats[0].count}枚`);
+  });
+  it('終わったら順位の順に並べ、パスの吹き出しを残さない',()=>{
+    const view=fixture();const value=model();
+    value.seats[2].passed=true;view.render(structuredClone(value),looks);
+    expect(stage.querySelector('[data-seat="3"] .seat-note--pass')).not.toBeNull();
+    value.phase='ended';value.turn=null;value.outcome='complete';
+    value.seats[0].rank=2;value.seats[0].count=0;value.seats[1].rank=3;value.seats[1].count=4;value.seats[2].rank=1;value.seats[2].count=0;
+    view.render(value,looks);
+    // 退出で終わると、パスした席の passed が残ったまま終わる道があり、以前は終わりの画面にパスの吹き出しが出ていた。
+    expect(stage.querySelector('.seat-note--pass')).toBeNull();
+    expect([...stage.querySelectorAll('.seat')].map((node)=>node.dataset.seat)).toEqual(['3','1','2']);
+    expect([...stage.querySelectorAll('.rank-badge')].map((node)=>node.textContent)).toEqual(['1位 · 大富豪','2位','3位 · 大貧民']);
   });
   it('席の追加・消失・名前と番の変更を反映する',()=>{
     const view=fixture();const value=model();view.render(value);
@@ -262,6 +342,50 @@ describe('mainと画面・判定・SDKの接続',()=>{
     expect(host.cue.mock.calls.map(([name])=>name)).toContain('place');
     expect(host.cue.mock.calls.map(([name])=>name)).toContain('lose');
     expect(host.listeners.size).toBe(0);
+  });
+  it('番が回ってきた席だけを短く振動させ、番が同じなら重ねない',async()=>{
+    const host=fakeHost();await boot(host);startHost(host);
+    const state=hooks.updateGame.mock.results.at(-1).value.state;
+    expect(host.vibrate).toHaveBeenCalledExactlyOnceWith([30],state.turn);
+    host.emit('environment',{connected:true,visible:true});
+    expect(host.vibrate).toHaveBeenCalledTimes(1);
+  });
+  it('革命は在席の全員、上がりは本人に長く、1席には1回だけ振動させる',async()=>{
+    const host=fakeHost();host.players=players(4);await boot(host);startHost(host);host.vibrate.mockClear();
+    const next=structuredClone(hooks.updateGame.mock.results.at(-1).value.state);
+    const p=next.turn;const others=[1,2,3,4].filter((id)=>id !== p);
+    const seat=next.seats.find((item)=>item.id === p);const four=seat.hand.slice(0,4);
+    seat.hand=[];seat.rank=1;next.seats.find((item)=>item.id === others[0]).online=false;
+    next.events.push({seq:1,type:'play',p,cards:four},{seq:2,type:'revolution',p,revolution:true},{seq:3,type:'finish',p,rank:1});
+    next.seq=3;next.revolution=true;next.turn=others[1];
+    hooks.updateGame.mockReturnValueOnce({state:next,effects:[]});
+    host.emit('input',p,{k:'tiles',ids:[],t:'x'});
+    // 次の番の席にも革命の振動だけを送る（後の短い振動が、革命の振動を打ち消さないように）。
+    expect(host.vibrate.mock.calls).toEqual([[[40,40,40,40,120],p],[[70,50,140],others[1]],[[70,50,140],others[2]]]);
+  });
+  it('止まっている間は振動させず、配札や輪の動きも止めて、再開で続ける',async()=>{
+    const original=HTMLElement.prototype.animate;
+    /** @type {{pause:any,play:any}[]} */
+    const made=[];
+    HTMLElement.prototype.animate=vi.fn(()=>{const motion={pause:vi.fn(),play:vi.fn(),cancel:vi.fn(),addEventListener:vi.fn()};made.push(motion);return motion;});
+    vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockReturnValue({left:10,top:10,width:100,height:60,right:110,bottom:70,x:10,y:10,toJSON(){}});
+    try {
+      const host=fakeHost();await boot(host);startHost(host);
+      expect(made).toHaveLength(9);
+      host.vibrate.mockClear();
+      host.emit('pause');
+      expect(made.every((motion)=>motion.pause.mock.calls.length === 1)).toBe(true);
+      const next=structuredClone(hooks.updateGame.mock.results.at(-1).value.state);
+      next.turn=next.seats.find((item)=>item.id !== next.turn).id;
+      hooks.updateGame.mockReturnValueOnce({state:next,effects:[]});
+      host.emit('input',1,{k:'tiles',ids:[],t:'x'});
+      expect(host.vibrate).not.toHaveBeenCalled();
+      host.emit('resume');
+      expect(made.every((motion)=>motion.play.mock.calls.length === 1)).toBe(true);
+      expect(host.vibrate).not.toHaveBeenCalled();
+    } finally {
+      HTMLElement.prototype.animate=original;
+    }
   });
   it('pagehideで購読を解除し、以後の入力を処理しない',async()=>{
     const host=fakeHost();await boot(host);const input=host.listeners.get('input');

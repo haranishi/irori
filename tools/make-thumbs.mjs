@@ -77,12 +77,33 @@ const SCENES = {
     await phase(page, 'rolling');
     await page.waitForTimeout(2650);
   },
-  // 札と人狼：いまは説明の場面（見どころの場面は、画面の仕上げのあとに差し替える）。
+  // 大富豪：番の席の手札から、ジョーカーと8を除いて一番多い数を最大4枚出す（4枚なら革命の印も入る）。
   daifugo: async (page) => {
     await phase(page, 'intro');
+    await page.keyboard.press('Space');
+    await phase(page, 'play');
+    const seat = page.locator('.irori-mock__seat:has(.irori-pad__tiles-actions)').first();
+    await seat.waitFor({ timeout: 15_000 });
+    const tiles = seat.locator('.irori-pad__tile:not(:disabled)');
+    const byRank = new Map();
+    for (let i = 0, n = await tiles.count(); i < n; i++) {
+      const label = (await tiles.nth(i).locator('.irori-pad__tile-label').textContent()) ?? '';
+      const m = /^[♠♥♦♣](.+)$/.exec(label);
+      if (!m || m[1] === '8') continue;
+      byRank.set(m[1], [...(byRank.get(m[1]) ?? []), i]);
+    }
+    const pick = [...byRank.values()].sort((a, b) => b.length - a.length)[0] ?? [];
+    for (const i of pick.slice(0, 4)) await tiles.nth(i).click();
+    await seat.locator('[data-action="ok"]').click();
+    await page.waitForTimeout(2600);
   },
+  // ババ抜き：配札のあと、演出が落ち着いた勝負中の机（引く線・表向きのペアが乗った捨て札）を撮る。
   'old-maid': async (page) => {
     await phase(page, 'intro');
+    await page.keyboard.press('Space');
+    await phase(page, 'play');
+    await page.waitForFunction(() => !document.getElementById('stage')?.hasAttribute('data-busy'), null, { timeout: 15_000 });
+    await page.waitForTimeout(600);
   },
   'moon-village': async (page) => {
     await phase(page, 'intro');

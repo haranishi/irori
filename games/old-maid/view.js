@@ -341,7 +341,7 @@ export function createView(stage,status,hooks) {
   /** @param {Model} model */
   function buildBoard(model) {
     const header=el('header','topbar');const edition=el('p','edition');
-    header.append(el('p','brand','IRORI / THE LAST JOKER'),edition);
+    header.append(el('p','brand','IRORI / HEARTH JOKER'),edition);
     const content=el('section','content content--table');
     const turn=el('div','turn');const eyebrow=el('p','eyebrow');const line=el('p','turn-line');turn.append(eyebrow,line);
     const table=el('div','table');const inner=el('div','table-inner');
@@ -528,7 +528,7 @@ export function createView(stage,status,hooks) {
   // ── 導入画面 ──
   /** @param {Model} model */
   function renderIntro(model) {
-    const header=el('header','topbar');header.append(el('p','brand','IRORI / THE LAST JOKER'),el('p','edition','2〜8人 · 1回およそ5〜8分'));
+    const header=el('header','topbar');header.append(el('p','brand','IRORI / HEARTH JOKER'),el('p','edition','2〜8人 · 1回およそ5〜8分'));
     const content=el('section','content content--intro');
     const hero=el('div','hero');const copy=el('div','hero-copy');
     copy.append(el('p','eyebrow','表情を読む、となりの1枚。'),el('h1','title','ババ抜き'),el('p','tagline','最後にジョーカーを持っていた人の負け。'));

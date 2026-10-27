@@ -98,7 +98,8 @@
   cursor: default;
 }
 .irori-pad__btn:focus-visible,
-.irori-pad__arrow:focus-visible {
+.irori-pad__arrow:focus-visible,
+.irori-pad__tiles-grid:focus-visible {
   outline: 3px solid var(--pad-on);
   outline-offset: 2px;
 }

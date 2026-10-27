@@ -462,7 +462,9 @@ class Tiles implements Control {
     const min = spec.min ?? Math.min(1, max);
     let sent = false;
     const status = h('p', { class: 'irori-pad__status', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
-    const grid = h('div', { class: 'irori-pad__tiles-grid' });
+    // 札が多いと縦にスクロールする。見るだけの画面（札がすべて押せない）や送信後は中に押せるものがなく、WebKit ではキーボードで届かない
+    // スクロール領域になる（axe: scrollable-region-focusable）。領域そのものをキーボードの停止位置にして、矢印キーで読めるようにする。
+    const grid = h('div', { class: 'irori-pad__tiles-grid', tabindex: '0' });
     const ok = h('button', { type: 'button', class: 'irori-pad__btn', 'data-action': 'ok' }, spec.ok);
     const pass = h('button', { type: 'button', class: 'irori-pad__btn', 'data-action': 'pass' }, spec.pass ?? '');
     const actions = h('div', { class: 'irori-pad__tiles-actions' }, ok, spec.pass === undefined ? null : pass);

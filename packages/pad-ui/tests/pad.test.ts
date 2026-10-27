@@ -546,6 +546,13 @@ describe('tiles：画面内で選び、確定時だけ送る', () => {
     for (const b of qa('button')) { expect(b.getAttribute('aria-disabled')).toBe('true'); (b as HTMLButtonElement).click(); }
     expect(sent).toEqual([]);
   });
+  it('札の欄はキーボードの停止位置になる：見るだけの画面でも、押せる札がなくても、スクロール領域に届く', () => {
+    // 以前の不具合：札がすべて押せない画面は、中にフォーカスできるものがなく、WebKit で axe の scrollable-region-focusable に当たった。
+    const view = setup({ k: 'tiles', tiles, ok: '確認', disabled: true, note: '見るだけ' });
+    expect(view.q('.irori-pad__tiles-grid')?.getAttribute('tabindex')).toBe('0');
+    const live = setup({ k: 'tiles', tiles, ok: '出す' });
+    expect(live.q('.irori-pad__tiles-grid')?.getAttribute('tabindex')).toBe('0');
+  });
   it('文と補助文字はHTMLとして解釈せず、破棄後の古い決定は送らない', () => {
     const { q, pad, container, sent } = setup({ k: 'tiles', tiles: [{ id: 'a', label: '<b>x</b>', sub: '<img src=x>' }], ok: '出す', min: 0 });
     expect(container.querySelector('b, img')).toBeNull();

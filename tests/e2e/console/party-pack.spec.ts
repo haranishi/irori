@@ -66,7 +66,7 @@ class CardPrivacy {
         const drawn = pad === drawer ? cardWords(strings(spec).filter((text) => text.includes('ひいた札：')).join(' ')) : [];
         expect(cardLeaks(spec, foreign, foreignIds, [...own, ...publicCards, ...drawn]), `${pad.label}: 他席の手札`).toEqual([]);
         if (this.game === 'old-maid' && drawer && pad !== drawer) {
-          expect(strings(spec).some((s) => s.includes('ひいた札：')), '引いた中身の通知は引いた本人だけ').toBe(false);
+          expect(strings(spec).some((s) => s.includes('ひいた札：') || s.includes('ジョーカーをひきました')), '引いた中身（ジョーカーの通知を含む）は引いた本人だけ').toBe(false);
         }
       }
       this.cursors[i] = frames.length;
@@ -75,6 +75,7 @@ class CardPrivacy {
       if (!ended) {
         expect(hostText).not.toBeNull();
         expect(cardWords(hostText ?? '').filter((card) => hands.flat().includes(card)), '大画面の手札漏えい').toEqual([]);
+        expect(hostText ?? '', '大画面にジョーカーの通知を出さない').not.toContain('ジョーカーをひきました');
       }
     }
     this.previous = hands;
@@ -95,15 +96,16 @@ function roleLeaks(spec: PadSpec, ownText: string | undefined, seerReport: strin
 class RolePrivacy {
   private readonly cursors: number[];
   readonly ownText = new Map<Pad, string>();
-  readonly targets = new Map<Pad, string>();
+  /** 占い師が夜に選んだ相手（これまでの全部）。結果の文は、遅れて届くので、後の段階の走査でも許す。 */
+  readonly targets = new Map<Pad, string[]>();
   constructor(private readonly pads: Pad[]) { this.cursors = pads.map((pad) => Math.max(0, pad.receivedFrames().length - 1)); }
   async scan(host: Host, phase: string): Promise<void> {
     const ended = phase === 'ended';
     for (const [i, pad] of this.pads.entries()) {
       const own = this.ownText.get(pad);
-      const target = this.targets.get(pad);
-      const reports = own?.includes('【占い師】') && target && (phase === 'dawn' || ended)
-        ? [`${target}さんは人狼です。`, `${target}さんは人狼ではないです。`] : [];
+      // 占い師だけに、自分が選んだ相手の結果の文を許す。昼まで残す結果の画面は、WebKit では次の段階の走査まで遅れて届くことがある。
+      const reports = own?.includes('【占い師】')
+        ? (this.targets.get(pad) ?? []).flatMap((target) => [`${target}さんは人狼です。`, `${target}さんは人狼ではないです。`]) : [];
       const frames = pad.receivedFrames();
       expect(frames.length).toBeGreaterThan(0);
       for (const spec of frames.slice(this.cursors[i])) {
@@ -115,7 +117,9 @@ class RolePrivacy {
     if (!ended) {
       const body = await hostSurface(host);
       expect(body).not.toBeNull();
-      for (const role of ROLES) expect(body).not.toContain(role);
+      // はじめる前の説明（勝ち方と、人数ごとの役の内訳）は公開してよい。役の割り当てではない。
+      const shown = phase === 'intro' ? body!.replace(/勝ち方：[^\n]*/g, '').replace(/いまの人数の役：[^\n]*/g, '') : body!;
+      for (const role of ROLES) expect(shown).not.toContain(role);
     }
   }
 }
@@ -458,7 +462,7 @@ test('ババ抜き：3台で先頭を引き切る・秘匿・再接続・最下�
   const rows = await host.results();
   expect(rows).toHaveLength(3);
   expect(rows.filter((row) => row.rank === 3)).toHaveLength(1);
-  expect(rows.filter((row) => row.label === '最下位')).toHaveLength(1);
+  expect(rows.filter((row) => row.label === 'ジョーカーが残った')).toHaveLength(1);
   expect(rows.map((row) => row.rank).sort()).toEqual([1, 2, 3]);
   await start(await replay(host, pads));
   await host.expectPhase('play');
@@ -550,7 +554,7 @@ async function playWerewolf(rig: Rig, cpuRate: number): Promise<void> {
       const acting = pads.filter(isActing);
       for (const pad of acting) {
         const spec = latest(pad) as Tiles;
-        if (phase === 'night') privacy.targets.set(pad, spec.tiles[0]!.label);
+        if (phase === 'night') privacy.targets.set(pad, [...(privacy.targets.get(pad) ?? []), spec.tiles[0]!.label]);
         const before = JSON.stringify(spec);
         await pad.tiles(spec.tiles.length ? 'first' : []);
         await expect.poll(() => JSON.stringify(latest(pad))).not.toBe(before);
@@ -593,6 +597,49 @@ async function playWerewolf(rig: Rig, cpuRate: number): Promise<void> {
 }
 test('月あかりの寄り合い：5台で役確認・夜・再接続・議論・投票・処刑・全役公開・再戦', HOST, ({ rig }) => playWerewolf(rig, 1));
 test('月あかりの寄り合い：CPUを4倍遅くしても、同じ流れで勝敗と全役公開まで終わる', ONLY_DC, ({ rig }) => playWerewolf(rig, 4));
+
+test('月あかりの寄り合い：決選投票が始まっても、最後に棄権した席は、決選で投票できる', HOST, async ({ rig }) => {
+  // 以前の不具合：最後の1票が棄権で、決選の候補の並びが1回目と同じだと、その席の画面が前回と同じ内容になり、
+  // ホストが送り直さず、スマホが「送りました」のまま固まった（2分の上限まで投票も棄権もできない）。
+  test.setTimeout(120_000);
+  const host = await rig.openHost({ clock: true });
+  const pads = await rig.join(host, NAMES.slice(0, 4));
+  await host.choose('moon-village', pads[0]);
+  await start(pads[0]!);
+  await host.expectPhase('reveal');
+  for (const pad of pads) {
+    await pad.tiles([]);
+    await expect.poll(() => { const s = latest(pad); return s?.k === 'tiles' ? s.note : ''; }).toMatch(/あなたは【/);
+    await pad.tiles([]);
+  }
+  await host.expectPhase('night');
+  const acting = async (pad: Pad, ok: string): Promise<Tiles> => {
+    await expect.poll(() => { const s = latest(pad); return s?.k === 'tiles' && s.ok === ok; }, { timeout: 10_000 }).toBe(true);
+    return latest(pad) as Tiles;
+  };
+  for (const pad of pads) { await acting(pad, '決定'); await pad.tiles('first'); }
+  await host.expectPhase('dawn');
+  await pads[0]!.tiles([]);
+  await host.expectPhase('day');
+  await pads[0]!.tiles([]);
+  await host.expectPhase('vote');
+  // 席1→2・席2→3・席3→1 と投票し、席4が最後に棄権する。同数（1・2・3）で決選になり、席4の候補は1回目と同じ並びになる。
+  const ring: [number, number][] = [[0, 1], [1, 2], [2, 0]];
+  for (const [from, to] of ring) {
+    const spec = await acting(pads[from]!, '投票する');
+    await pads[from]!.tiles([spec.tiles.find((tile) => tile.label === NAMES[to])!.id]);
+  }
+  const last = pads[3]!;
+  const firstRound = await acting(last, '投票する');
+  expect(firstRound.tiles.map((tile) => tile.label)).toEqual(NAMES.slice(0, 3));
+  await last.tiles({ pass: true });
+  // 決選が始まり、最後に棄権した席にも、決選の画面が届いて、また選べる。
+  await expect.poll(() => { const s = latest(last); return s?.k === 'tiles' && s.ok === '投票する' && s.token !== firstRound.token; }, { timeout: 10_000, message: '決選の画面が、最後に棄権した席へ届く' }).toBe(true);
+  await expect(last.page.locator('.irori-pad__tiles'), '決選の画面は、決定が押せる').not.toHaveAttribute('data-sent', '', { timeout: 5_000 });
+  expect(await host.phase()).toBe('vote');
+  for (const pad of pads) { await acting(pad, '投票する'); await pad.tiles('first'); }
+  await expect.poll(() => host.phase(), { timeout: 15_000, message: '決選の投票がそろって、先へ進む' }).not.toBe('vote');
+});
 
 // 「はじめる」の前に全員が席を立つと、結果は1回だけ・順位なしで出る（以前は intro のまま、終わりの合図が一度も出なかった）。
 const ABANDON_IN_INTRO = [

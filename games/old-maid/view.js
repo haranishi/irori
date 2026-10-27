@@ -304,7 +304,7 @@ export function createView(stage,status,hooks) {
     if(!board) return;
     const seat=(/** @type {number|undefined} */ id)=>model.seats.find((s)=>s.id === id);
     const loser=loserOf(model);
-    if(model.phase === 'ended') board.line.replaceChildren(...(loser ? [el('span','turn-verb','ジョーカーは'),who(loser,looks),el('span','turn-verb','の手に')] : [el('span','turn-verb','参加者が退出したため、勝敗なしで終わります')]));
+    if(model.phase === 'ended') board.line.replaceChildren(...(loser ? [el('span','turn-verb','ジョーカーは'),who(loser,looks),el('span','turn-verb','の手に')] : [el('span','turn-verb',model.outcome === 'complete' ? '参加者が退出したため、上がった人の順位で終わります' : '参加者が退出したため、勝敗なしで終わります')]));
     else if(model.turn) board.line.replaceChildren(who(seat(model.turn.from),looks),el('span','turn-verb','が'),who(seat(model.turn.to),looks),el('span','turn-verb','から1枚ひく'));
     else board.line.replaceChildren();
   }
@@ -331,7 +331,7 @@ export function createView(stage,status,hooks) {
     }
     const loser=loserOf(model);const wait=blockers(model);
     if(model.phase === 'play' && model.turn) parts.push(`${name(model.turn.from)}さんが${name(model.turn.to)}さんの札をひく番です`);
-    if(model.phase === 'ended') parts.push(loser ? `勝負あり。ジョーカーは${loser.name}さんの手に` : '参加者が退出したため、勝敗なしで終わります');
+    if(model.phase === 'ended') parts.push(loser ? `勝負あり。ジョーカーは${loser.name}さんの手に` : model.outcome === 'complete' ? '参加者が退出したため、上がった人の順位で終わります' : '参加者が退出したため、勝敗なしで終わります');
     if(wait && model.phase === 'play') parts.push(wait);
     const say=parts.join('。');
     if(say && say !== announced) {announced=say;status.textContent=`${say}。`;}

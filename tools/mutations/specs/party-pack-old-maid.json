@@ -139,8 +139,8 @@
     "id": "party-pack-old-maid-joker-lost",
     "note": "退出者のジョーカーを移す処理を失う",
     "file": "games/old-maid/logic.js",
-    "find": "recipient.hand.push('jk');",
-    "replace": "recipient.hand.push('s3');",
+    "find": "recipient.hand.push(card);",
+    "replace": "recipient.hand.push(card === 'jk' ? 's3' : card);",
     "command": [
       "npm",
       "run",
@@ -258,7 +258,7 @@
     "id": "party-pack-old-maid-observer-tiles",
     "note": "第三者に説明のないdisabled tilesを戻す",
     "file": "games/old-maid/logic.js",
-    "find": "if (seat.id !== from?.id) return {k:'wait',title:`${[...(from?.name ?? '')].slice(0,4).join('')}さんが${[...(to?.name ?? '')].slice(0,4).join('')}さんから札をひいています`,body:hand};",
+    "find": "if (seat.id !== from?.id) return {k:'wait',title:notice || '札をひいています',body:`${[...(from?.name ?? '')].slice(0,4).join('')}さんが${[...(to?.name ?? '')].slice(0,4).join('')}さんから\\n${hand}`};",
     "replace": "if (seat.id !== from?.id) return {k:'tiles',tiles:(to?.hand ?? []).map((_,i) => ({id:drawId(state,i),label:String(i+1)})),max:1,ok:'ひく',note:hand,disabled:true};",
     "command": [
       "npm",
@@ -292,8 +292,8 @@
     "id": "party-pack-old-maid-finish-body",
     "note": "上がりの本文を順位だけへ戻す",
     "file": "games/old-maid/logic.js",
-    "find": "。${seat.rank}位${seat.hand.length ? '' : 'で上がりました'}",
-    "replace": "。${seat.rank}位",
+    "find": "seat.rank ? `${seat.rank}位で上がりました` :",
+    "replace": "seat.rank ? `${seat.rank}位` :",
     "command": [
       "npm",
       "run",
@@ -343,7 +343,7 @@
     "id": "party-pack-old-maid-result-record",
     "note": "結果の記録を順位と退出の繰り返しへ戻す",
     "file": "games/old-maid/logic.js",
-    "find": "label:s.left ? '記録なし' : s.rank === null ? '未成立' : s.rank === state.order.length ? 'ジョーカーが残った' : `${s.rank}番目に上がり`",
+    "find": "label:s.left ? '記録なし' : s.hand.length ? s.rank === null ? '勝負なし' : 'ジョーカーが残った' : s.rank === null ? '未成立' : `${s.rank}番目に上がり`",
     "replace": "label:s.left ? '退出' : s.rank === null ? '未成立' : s.rank === state.order.length ? '最下位' : `${s.rank}位`",
     "command": [
       "npm",
@@ -355,5 +355,108 @@
       "結果の記録|退出終了"
     ],
     "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-old-maid-departure-exclude",
+    "note": "退出した全札を受取席でなく除外へ戻す",
+    "file": "games/old-maid/logic.js",
+    "find": "recipient.hand.push(card);",
+    "replace": "next.excluded.push(card);",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "追補D5：退出の再現"
+    ],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-old-maid-departure-last-rank",
+    "note": "席が抜けて終わるときも、最後の1人に順位を付ける",
+    "file": "games/old-maid/logic.js",
+    "find": "if (last && !forfeit)",
+    "replace": "if (last)",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "退出終了時に上がり"
+    ],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-old-maid-departure-no-pair",
+    "note": "配った後にペアを捨てない",
+    "file": "games/old-maid/logic.js",
+    "find": "const paired = pairOff(seat.hand);",
+    "replace": "const paired = {hand:seat.hand,discard:[]};",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "全札を配った後にペア"
+    ],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-old-maid-departure-joker-leak",
+    "note": "配られた知らせへジョーカーの有無を加える",
+    "file": "games/old-maid/logic.js",
+    "find": "`退出した人の札が${state.received[seat.id]}枚、配られました`",
+    "replace": "`退出した人の札が${state.received[seat.id]}枚、配られました（ジョーカー${seat.hand.includes('jk') ? 'あり' : 'なし'}）`",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid",
+      "-t",
+      "再配布の知らせと引く相手"
+    ],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-old-maid-departure-caption",
+    "note": "上がり順位が成立した退出終了も勝敗なしと表示する",
+    "file": "games/old-maid/view.js",
+    "find": "[el('span','turn-verb',model.outcome === 'complete' ? '参加者が退出したため、上がった人の順位で終わります' : '参加者が退出したため、勝敗なしで終わります')]",
+    "replace": "[el('span','turn-verb','参加者が退出したため、勝敗なしで終わります')]",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid/view.test.js",
+      "-t",
+      "退出で成立した結果"
+    ],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-old-maid-departure-then-normal-end-unranked",
+    "note": "席が抜けたあとに普通に引き合って決着しても、最後の1人（ジョーカーを持つ人）に順位を付けない",
+    "file": "games/old-maid/logic.js",
+    "find": "if (last && !forfeit)",
+    "replace": "if (last && !state.seats.some((s) => s.left))",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.games.config.ts",
+      "games/old-maid/logic.test.js",
+      "-t",
+      "退出を混ぜた無作為対戦"
+    ],
+    "timeoutMs": 120000
   }
 ]

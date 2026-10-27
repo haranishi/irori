@@ -17,7 +17,7 @@ const init = (n = 8)=>({players:players(n), leader:1, environment:{connected:tru
 function model(phase, overrides = {}) {
   const state = createGame(init()).state;
   const roleList = ['wolf', 'wolf', 'seer', 'knight', 'madman', 'villager', 'villager', 'villager'];
-  const announce = {intro:'役を確かめて、月夜の村を始めましょう', reveal:'スマホで自分の役を確認してください', night:'夜です。スマホで行動を決めてください', dawn:'今朝は誰も襲われませんでした', day:'顔を合わせて話し合いましょう', vote:'スマホで投票してください', exec:'灯8さんが処刑されました', ended:'灯8さんが処刑されました'};
+  const announce = {intro:'役を確かめて、月あかりの寄り合いを始めましょう', reveal:'スマホで自分の役を確認してください', night:'夜です。スマホで行動を決めてください', dawn:'今朝は誰も襲われませんでした', day:'顔を合わせて話し合いましょう', vote:'スマホで投票してください', exec:'灯8さんが処刑されました', ended:'灯8さんが処刑されました'};
   return publicView({...state, phase, day:phase === 'intro' ? 0 : 1, remaining:180000, total:180000, announce:announce[phase], seats:state.seats.map((s, i)=>({...s, role:roleList[i], alive:phase !== 'ended' || i >= 2})), ...overrides});
 }
 function mount() {
@@ -43,8 +43,8 @@ afterEach(()=>{
 
 describe('公開モデルだけで全段階を描く', ()=>{
   it.each([
-    ['intro', '月夜の村'], ['reveal', 'スマホで自分の役を確認'],
-    ['night', '夜です。スマホで行動を決めてください'], ['dawn', '今朝は誰も襲われませんでした'],
+    ['intro', '月あかりの寄り合い'], ['reveal', 'スマホで自分の役を確認'],
+    ['night', 'スマホで行動を決めてください'], ['dawn', '今朝は誰も襲われませんでした'],
     ['day', '3:00'], ['vote', '0 / 8人が決定'], ['exec', '灯8さんが処刑されました'], ['ended', '村人側の勝ち'],
   ])('%sの必要な文とphaseが出る', (phase, expected)=>{
     const {stage, view} = mount();
@@ -123,15 +123,35 @@ describe('公開モデルだけで全段階を描く', ()=>{
     expect(stage.querySelector('.extension').textContent).toBe('延長 ＋1分');
   });
 
-  it('夜明けだけ昼へボタンを表示し、夜に戻ると前の公開票を消す', ()=>{
+  it('補助ボタンは仮想プレイヤーの夜明けと処刑後だけ。本物のホストでは出さず、スマホの「つづける」へ案内する', ()=>{
     const {stage, view} = mount();
-    view.render(model('dawn'));
+    view.render(model('dawn'), {assist:true});
     expect(stage.querySelector('button').hidden).toBe(false);
-    view.render(model('exec', {votes:[{from:1, to:3}]}));
+    view.render(model('exec', {votes:[{from:1, to:3}]}), {assist:true});
+    expect(stage.querySelector('button').hidden).toBe(false);
+    view.render(model('day'), {assist:true});
     expect(stage.querySelector('button').hidden).toBe(true);
+    // 本物のホストでは枠がポインタを受けないため、押せないボタンを見せない。
+    for (const phase of ['dawn', 'exec']) {
+      view.render(model(phase));
+      expect(stage.querySelector('button').hidden).toBe(true);
+      expect(stage.querySelector('.guide').textContent).toBe('灯1さんのスマホで「つづける」');
+    }
     view.render(model('night'));
     expect(stage.querySelectorAll('.vote-arrow')).toHaveLength(0);
     noRoles();
+  });
+
+  it('夜は見出しを短くし、同じ意味の文を繰り返さない。知らせは見出しにする', ()=>{
+    const {stage, view} = mount();
+    view.render(model('night'));
+    expect(stage.querySelector('h1').textContent).toBe('夜です');
+    expect(stage.querySelector('.copy').textContent).toBe('スマホで行動を決めてください');
+    view.render(model('exec'));
+    expect(stage.querySelector('h1').textContent).toBe('灯8さんが処刑されました');
+    expect(stage.querySelector('.kicker').textContent).toBe('村の決定');
+    view.render(model('day'));
+    expect(stage.querySelector('.copy').hidden).toBe(true);
   });
 
   it('終了後だけ全役と勝ちの印を出し、未成立は勝者を作らない', ()=>{
@@ -185,6 +205,7 @@ describe('SDKとの接続（小さな偽物＋実際の判定）', ()=>{
     vi.stubGlobal('requestAnimationFrame', vi.fn((fn)=>{raf = fn; return ++frameId;}));
     vi.stubGlobal('cancelAnimationFrame', vi.fn(()=>{raf = null;}));
     host = {
+      mode:'mock',
       capabilities:['pad-tiles-v1', 'result-options-v1', 'host-environment-v1'],
       players:players(4), leader:1, environment:{connected:true, visible:true}, paused:false,
       setPad:vi.fn((spec, seat)=>pads.set(seat, spec)), cue:vi.fn(), vibrate:vi.fn(), end:vi.fn(), ready:vi.fn(),
@@ -217,6 +238,8 @@ describe('SDKとの接続（小さな偽物＋実際の判定）', ()=>{
     expect(document.documentElement.dataset.phase).toBe('dawn');
   }
   function day() { dawn(); document.querySelector('[data-action="day"]').click(); expect(document.documentElement.dataset.phase).toBe('day'); }
+  /** 見せ場の時計を ms だけ進める（1コマは最大1秒として数えるので、1秒ずつ送る）。 */
+  function watch(ms, from = 10000) { frame(from); for (let t = 1000; t <= ms; t += 1000) frame(from+t); }
 
   it.each(['pad-tiles-v1', 'result-options-v1', 'host-environment-v1'])('%sなしではwaitとreadyだけを送り待つ', async (cap)=>{
     host.capabilities = host.capabilities.filter((c)=>c !== cap);
@@ -257,6 +280,7 @@ describe('SDKとの接続（小さな偽物＋実際の判定）', ()=>{
 
   it('実際の役確認→夜→夜明け→昼→投票→処刑→次夜→終了まで接続する', async ()=>{
     const logic = await boot();
+    const {FINALE_MS} = await import('./main.js');
     day();
     noRoles();
     empty(1, true);
@@ -275,7 +299,12 @@ describe('SDKとの接続（小さな偽物＋実際の判定）', ()=>{
     const target = alive.find((p)=>p.id !== wolf).id;
     for (const p of alive) choose(p.id, p.id === wolf ? target : wolf);
     expect(document.documentElement.dataset.phase).toBe('ended');
+    // 全役の画面を先に送り、見せ場のあいだは end を待つ。
+    expect(host.end).not.toHaveBeenCalled();
+    expect([...pads.values()].every((spec)=>spec.k === 'wait' && spec.title === '勝負が終わりました')).toBe(true);
+    watch(FINALE_MS);
     expect(host.end).toHaveBeenCalledTimes(1);
+    expect(host.setPad.mock.invocationCallOrder.at(-1)).toBeLessThan(host.end.mock.invocationCallOrder[0]);
     expect(host.end.mock.calls[0][0]).toHaveLength(4);
     expect(host.end.mock.calls[0][1]).toMatchObject({display:'record', outcome:'complete'});
     expect(host.cue.mock.calls.map(([name])=>name)).toEqual(expect.arrayContaining(['night', 'dawn', 'vote', 'reveal', 'execute', 'lose']));
@@ -328,11 +357,44 @@ describe('SDKとの接続（小さな偽物＋実際の判定）', ()=>{
 
   it('席の消失を判定へ送り、未成立も一度だけ終了する', async ()=>{
     await boot(); startNight();
+    const {FINALE_MS} = await import('./main.js');
     emit('players', [host.players[0]], 1);
+    expect(document.querySelector('h1').textContent).toBe('今回は、勝敗なし');
+    watch(FINALE_MS);
     expect(host.end).toHaveBeenCalledTimes(1);
     expect(host.end.mock.calls[0][1].outcome).toBe('incomplete');
     expect(host.end.mock.calls[0][0]).toHaveLength(4);
-    expect(document.querySelector('h1').textContent).toBe('今回は、勝敗なし');
+    emit('players', [], null); watch(FINALE_MS, 90000);
+    expect(host.end).toHaveBeenCalledTimes(1);
+  });
+
+  // 実ホストでは end の直後にスマホの画面が結果のリモコンへ替わり、同じ瞬間に送った全役の画面が届かなかった。
+  it('終わりの見せ場は一時停止・非表示の間は数えず、見終えてから一度だけ end する', async ()=>{
+    await boot(); startNight();
+    const {FINALE_MS} = await import('./main.js');
+    emit('players', [host.players[0]], 1);
+    watch(FINALE_MS-2000);
+    host.paused = true; emit('pause');
+    watch(20000, 30000);
+    expect(host.end).not.toHaveBeenCalled();
+    expect(document.getElementById('stage').dataset.suspended).toBe('false');
+    host.paused = false; emit('resume');
+    host.environment = {connected:true, visible:false}; emit('environment', host.environment);
+    watch(20000, 60000);
+    expect(host.end).not.toHaveBeenCalled();
+    host.environment = {connected:true, visible:true}; emit('environment', host.environment);
+    watch(1000, 90000);
+    expect(host.end).not.toHaveBeenCalled();
+    watch(1000, 95000);
+    expect(host.end).toHaveBeenCalledTimes(1);
+    expect(raf).toBeNull();
+  });
+
+  it('本物のホストでは大画面の補助ボタンを出さない', async ()=>{
+    host.mode = 'host';
+    await boot(); dawn();
+    expect(document.querySelector('[data-action="day"]').hidden).toBe(true);
+    expect(document.querySelector('.guide').textContent).toBe('灯1さんのスマホで「つづける」');
   });
 
   it('cueがないホストでも続行し、返された振動だけを指定席へ送る', async ()=>{

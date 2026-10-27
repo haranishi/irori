@@ -490,6 +490,34 @@ describe('秘匿・入力・中断・退出',()=>{
     const s=deepFreeze(night());expect(()=>choose(s,1,5)).not.toThrow();expect(s.picks).toEqual({});
     expect(()=>updateGame(s,{t:'players',players:players(5),leader:2})).not.toThrow();
   });
+  // 実ホストの通しの疑い1：他席の投票で、まだ選んでいる人のスマホが作り直され選択が消える。
+  // スマホは同じ指定の再送では作り直さないので、判定が未決定の席へ送らず、token と札IDを変えなければ選択は残る。
+  it('投票中の他席の決定と時間経過では、未決定の席へ画面を送らず、tokenと札IDを保つ',()=>{
+    let s=toVote(decisions(night(['wolf','wolf','seer','knight','madman','villager','villager','villager']),{1:5,2:5,3:1,4:3,5:6,6:7,7:8,8:7}));
+    expect(s.phase).toBe('vote');
+    const kept=(t)=>Object.fromEntries(t.seats.map((p)=>[p.id,[token(t,p.id),id(t,p.id,p.id===1?2:1)]]));
+    const before=kept(s);
+    for(const p of [3,1,8,2,7]){
+      let tr=updateGame(s,{t:'tick',ms:500});expect(tr.effects).toEqual([]);s=tr.state;
+      tr=choose(s,p,p===4?5:4);
+      expect(tr.effects.filter((e)=>e.t==='pad').map((e)=>e.to)).toEqual([p]);
+      s=tr.state;
+      for(const q of s.seats.filter((q)=>!(q.id in s.picks)))expect(kept(s)[q.id]).toEqual(before[q.id]);
+    }
+  });
+  // 疑い2：終了の全役の画面が end のあとに送られて捨てられる。判定は全席の画面を end より前に出す（end は最後に1回）。
+  it('決着の遷移では、全席の全役の画面をendより前に出し、endは最後に1回だけ',()=>{
+    let s=toVote(decisions(night(['wolf','seer','villager','villager']),{1:3,2:1,3:1,4:1}));
+    for(const p of [2,3,4])s=choose(s,p,1).state;
+    const tr=choose(s,1,2);
+    expect(tr.state.phase).toBe('ended');
+    const kinds=tr.effects.map((e)=>e.t);
+    expect(kinds.filter((k)=>k==='end')).toHaveLength(1);
+    expect(kinds.indexOf('end')).toBe(kinds.length-1);
+    const pads=tr.effects.filter((e)=>e.t==='pad');
+    expect(pads.map((e)=>e.to).sort()).toEqual([1,2,3,4]);
+    for(const e of pads)expect(e.spec).toEqual({k:'wait',title:'勝負が終わりました',body:'席1：人狼、席2：占い師、席3：村人、席4：村人'});
+  });
   it('8人の長い名前でも終了本文を符号位置120文字に収め、全役は公開データに残す',()=>{
     const base=night(['wolf','wolf','seer','knight','madman','villager','villager','villager']);
     const seats=base.seats.map((p)=>({...p,name:'🌙'.repeat(12)}));

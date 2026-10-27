@@ -28,7 +28,7 @@ export function createGame(init) {
     players:init.players.map((p)=>({...p})),leader:init.leader,environment:init.environment ? {...init.environment} : null,
     paused:init.paused,resumeRequired:false,blockers:[],nonce:init.nonce,revision:0,epochs:{},seed:init.seed,rng:(init.seed ^ 0x9e3779b9) >>> 0,
     discussMs:init.discussMs ?? 180000,remaining:0,total:0,picks:{},checked:{},showRole:{},reports:{},
-    runoff:false,candidates:[],votes:null,announce:'役を確かめて、月夜の村を始めましょう',outcome:'complete',winner:null};
+    runoff:false,candidates:[],votes:null,announce:'役を確かめて、月あかりの寄り合いを始めましょう',outcome:'complete',winner:null};
   return transition(null, reconcile(state));
 }
 
@@ -227,7 +227,7 @@ function padContent(state,seat) {
   if (state.resumeRequired) return seat.id === state.leader ? emptyTiles('再開する','同じ場面から再開します。') : {k:'wait',title:'進行役の再開を待っています'};
   if (state.phase === 'intro') return canBegin(state) && seat.id === state.leader
     ? {k:'pad',stick:'none',buttons:[{id:tileId(state,seat.id,seat.id),label:'はじめる'}],hint:'4〜8人で、スマホに出る役を確かめます'}
-    : {k:'wait',title:'月夜の村',body:'4〜8人そろったら進行役が始めます。'};
+    : {k:'wait',title:'月あかりの寄り合い',body:'4〜8人そろったら進行役が始めます。'};
   if (state.phase === 'reveal' && seat.alive) {
     if (state.checked[seat.id] === 'done') return {k:'wait',title:'全員の役の確認を待っています'};
     return emptyTiles(state.checked[seat.id] === 'shown' ? 'かくす' : '役を見る',state.checked[seat.id] === 'shown' ? roleText(state,seat) : '自分の役を確認してください。');

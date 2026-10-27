@@ -1,0 +1,142 @@
+:root{color-scheme:dark;--bg:#1a1411;--panel:#2b211b;--line:#4a382c;--text:#f5ebe0;--dim:#c9b8a6;--glow:#ffd9a0;--ember:#ff8a3d;font-family:ui-rounded,"Hiragino Maru Gothic ProN","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% 46%,#4a2b1736,transparent 60%),var(--bg);color:var(--text);overflow-x:hidden}
+p,h1,ol,ul{margin:0}ul,ol{padding:0;list-style:none}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.game{width:min(100%,1600px);min-height:100dvh;margin:auto;padding:clamp(16px,2.2vw,32px);display:flex;flex-direction:column;gap:clamp(10px,1.5vw,22px)}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:6px 16px;flex-wrap:wrap}
+.brand{font-size:clamp(13px,1.05vw,15px);letter-spacing:.16em;color:var(--glow);font-weight:800}
+.edition{font-size:clamp(15px,1.3vw,20px);color:var(--dim)}
+.content{flex:1;display:flex;flex-direction:column;gap:clamp(10px,1.5vw,22px);min-height:0}
+.footer{display:flex;flex-direction:column;gap:4px}
+.progress-guide{color:var(--glow);font-size:clamp(16px,1.6vw,26px);font-weight:750;line-height:1.5;overflow-wrap:anywhere}
+.fine-print{color:var(--dim);font-size:clamp(14px,1.1vw,17px);line-height:1.6}
+.eyebrow{color:var(--glow);font-size:clamp(15px,1.5vw,22px);font-weight:700;letter-spacing:.04em}
+.who{display:inline-flex;align-items:center;gap:.3em;min-width:0}
+.seat-mark{display:inline-flex;flex:0 0 auto;width:1.05em;height:1.05em}
+.mark-svg{width:100%;height:100%}
+.who-name{font-weight:750;overflow-wrap:anywhere}
+
+/* 札。裏は自作の囲炉裏の模様（金の縁・炉の枠・中央の熾火）、表は数と柄の記号を文字で出す。 */
+.card{display:block;width:var(--card-w);height:var(--card-h);border-radius:calc(var(--card-w)*.14);font-size:calc(var(--card-w)*.44)}
+.card--back{position:relative;background:linear-gradient(155deg,#87562f,#4b2d1b);box-shadow:inset 0 0 0 1px #2a170d,inset 0 0 0 calc(var(--card-w)*.07) #c5975c,inset 0 0 0 calc(var(--card-w)*.1) #5a361f,0 2px 7px #00000052}
+.card--back::before{content:"";position:absolute;left:23%;right:23%;top:50%;aspect-ratio:1;translate:0 -50%;border-radius:14%;background:radial-gradient(circle,#ffe2a6 0 10%,#ff9b47 25%,#b4501f 44%,#3a2214 68%);box-shadow:0 0 0 1px #2a170d,0 0 0 calc(var(--card-w)*.05) #c5975c99}
+.card--face{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%;background:linear-gradient(170deg,#fbf0dc,#eedbbd);color:#2a1a10;box-shadow:inset 0 0 0 1px #fff7e8,0 2px 7px #0000004d;font-weight:850;line-height:1}
+.card-rank{font-size:1.05em;letter-spacing:-.04em}
+.card-suit{font-size:.95em}
+.card--red{color:#a3301b}
+.card--joker{position:relative;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 64%,#74401d,#26160e 72%);box-shadow:inset 0 0 0 1px #1a0f09,inset 0 0 0 calc(var(--card-w)*.07) #e3b26e,0 2px 9px #0000005c}
+.joker-art{width:68%;height:auto;margin-top:14%}
+.flame--0{fill:#e8612a}.flame--1{fill:#ffa04a}.flame--2{fill:#ffe5ad}
+.card-corner{position:absolute;left:11%;top:6%;font-size:.5em;font-weight:850;color:var(--glow);line-height:1}
+
+/* 導入 */
+.content--intro{justify-content:center}
+.hero{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px;align-items:center}
+.title{font-size:clamp(40px,6vw,88px);line-height:1.2;letter-spacing:.04em;margin:8px 0 12px}
+.tagline{font-size:clamp(17px,2vw,30px);line-height:1.6;color:var(--dim)}
+.hero-art{display:grid;place-items:center}
+.art-fan{position:relative;--card-w:clamp(46px,5.6vw,88px);--card-h:calc(var(--card-w)*1.42);--step:12deg;width:calc(var(--card-w)*3.1);height:calc(var(--card-h)*1.5)}
+.art-fan .card{position:absolute;left:calc(50% - var(--card-w)/2);bottom:4%;transform-origin:50% 210%;rotate:calc((var(--i) - (var(--n) - 1) / 2) * var(--step))}
+.art-fan .card--joker{translate:0 -14%;filter:drop-shadow(0 0 14px #ff8a3d66)}
+.rules{display:grid;gap:10px}
+.rule{display:flex;align-items:center;gap:14px;padding:clamp(12px,1.3vw,18px);border:1px solid var(--line);border-radius:12px;background:#2b211b8f}
+.rule-number{display:grid;place-items:center;flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#563b25;color:var(--glow);font-size:17px;font-weight:800}
+.rule-copy{font-size:clamp(16px,1.6vw,23px);line-height:1.5}
+.intro-players{display:flex;flex-wrap:wrap;gap:10px 22px;font-size:clamp(16px,1.6vw,23px)}
+
+/* 机：席を楕円に並べ、中央に捨て札。幅が足りないときは2列（view.js が data-layout を決める）。 */
+.content--table{gap:clamp(8px,1.1vw,16px)}
+.turn{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.turn .eyebrow{font-size:clamp(15px,1.2vw,18px);letter-spacing:.14em}
+.turn-line{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.1em .3em;font-size:clamp(20px,2.4vw,38px);font-weight:800;line-height:1.35;min-height:1.35em}
+.turn-verb{color:var(--dim);font-weight:700}
+.table{position:relative;flex:1 1 auto;min-height:clamp(280px,48vh,900px);container-type:inline-size}
+/* 札と席の大きさは view.js が机の広さと人数から選び直す（ここは最初の値）。 */
+.table-inner{position:absolute;inset:0;--card-w:36px;--card-h:calc(var(--card-w)*1.42);--seat-w:158px}
+.reach{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:1}
+.reach-line{fill:none;stroke:var(--glow);stroke-width:3;stroke-linecap:round;filter:drop-shadow(0 0 5px #ff8a3d99);animation:om-breathe 2.8s ease-in-out infinite}
+.reach-tip{fill:var(--glow);filter:drop-shadow(0 0 4px #ff8a3d99)}
+@keyframes om-breathe{0%,100%{opacity:1}50%{opacity:.55}}
+.pile{position:absolute;left:50%;top:50%;translate:-50% -50%;display:flex;flex-direction:column;align-items:center;gap:6px;z-index:0}
+.pile-cards{position:relative;width:calc(var(--card-w)*3.4);height:calc(var(--card-h)*1.45)}
+.pile-cards .card{position:absolute;left:calc(50% - var(--card-w)/2 + var(--px)*var(--card-w));top:calc(50% - var(--card-h)/2 + var(--py)*var(--card-h));rotate:var(--pr)}
+.pile-count{display:flex;align-items:baseline;gap:4px;color:var(--dim);font-size:clamp(16px,1.2vw,19px);white-space:nowrap}
+.pile-number{color:var(--glow);font-size:1.3em}
+.seats{position:absolute;inset:0;z-index:2}
+.seat{position:absolute;translate:-50% -50%;width:var(--seat-w);display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 10px 10px;border-radius:16px;border:1.5px solid var(--line);background:linear-gradient(160deg,#35271fee,#241b16ee);text-align:center;transition:border-color .2s,box-shadow .25s}
+.seat-tag{position:absolute;top:0;left:50%;translate:-50% -55%;white-space:nowrap;padding:3px 12px;border-radius:999px;font-size:clamp(15px,1.05vw,17px);font-weight:800;line-height:1.3}
+.seat-tag:empty{display:none}
+/* 扇：札の根元を扇の箱の下から 0.3 枚ぶん上げ、端の札が傾いても名前の行に掛からないようにする。 */
+.seat-fan{position:relative;width:100%;height:calc(var(--card-h)*1.42);--step:min(8deg,calc(48deg / var(--n)));transition:translate .25s,opacity .3s}
+.seat-fan .card{position:absolute;left:calc(50% - var(--card-w)/2);bottom:calc(var(--card-h)*.3);transform-origin:50% 230%;rotate:calc((var(--i) - (var(--n) - 1) / 2) * var(--step));transition:rotate .28s cubic-bezier(.3,.7,.3,1.25)}
+.seat-who{display:flex;align-items:center;justify-content:center;gap:6px;max-width:100%;font-size:clamp(16px,calc(var(--card-w)*.4),21px);font-weight:750;line-height:1.3}
+.seat-name{overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.seat-meta{color:var(--dim);font-size:clamp(16px,calc(var(--card-w)*.34),18px);line-height:1.3}
+.seat-rank{position:absolute;right:-10px;top:-14px;display:grid;place-items:center;min-width:2.5em;height:2.5em;padding:0 6px;border-radius:999px;background:radial-gradient(circle at 35% 30%,#ffe6b8,#f2b766);color:#2a1a10;font-weight:850;font-size:clamp(15px,1.15vw,19px);box-shadow:0 2px 10px #ff8a3d55;border:2px solid #fff1d6;z-index:2}
+.seat-rank:empty{display:none}
+.seat[data-role=from]{border:2.5px solid var(--glow);box-shadow:0 0 0 4px #ffd9a026,0 0 30px #ff8a3d40}
+.seat[data-role=from] .seat-tag{background:var(--glow);color:#2a1a10}
+.seat[data-role=to]{border:2.5px dashed var(--glow)}
+.seat[data-role=to] .seat-tag{background:var(--panel);color:var(--glow);border:1.5px solid var(--glow)}
+.seat[data-role=to] .seat-fan{translate:0 -4px}
+.seat[data-out]{background:linear-gradient(160deg,#2c211a,#1f1813)}
+.seat[data-left]{border-style:dotted}
+.seat[data-left] .seat-name{color:var(--dim)}
+.seat[data-offline]{border-style:dashed;border-color:#8a7a6a}
+.seat[data-offline] .seat-fan,[data-blocked] .seat-fan{opacity:.5}
+.is-finale .seat:not([data-last]) .seat-fan{opacity:.3}
+.seat[data-last]{border:2.5px solid var(--ember);box-shadow:0 0 34px #ff8a3d40}
+/* ジョーカーの絵は、扇の根元に下端をそろえて上へ伸ばす（名前の行に掛けない）。 */
+.seat .seat-joker{position:absolute;left:50%;top:calc(16px + var(--card-h)*1.12);translate:-50% -100%;width:calc(var(--card-w)*1.7);height:calc(var(--card-h)*1.7);font-size:calc(var(--card-w)*.75);z-index:3;filter:drop-shadow(0 0 10px #ff8a3d77)}
+.fx{position:absolute;inset:0;pointer-events:none;z-index:4}
+.fx .fly{position:absolute;left:0;top:0;transform-origin:50% 50%;will-change:transform}
+[data-blocked] .reach-line{animation:none;opacity:.5}
+
+/* 幅が狭いとき（スマホ幅で大画面を開いたとき）は、席を2列に並べ、捨て札を上に置く。
+   隣の席が上下に詰まり線が隠れるので、誰が誰から引くかは見出しと席の札（ひく番・ひかれています）で示す。 */
+.table[data-layout=columns]{flex:0 0 auto;min-height:0;margin-block:auto}
+.table[data-layout=columns] .reach{display:none}
+.table[data-layout=columns] .table-inner{position:relative;inset:auto;display:flex;flex-direction:column;gap:18px;--seat-w:auto}
+.table[data-layout=columns] .seats{position:relative;inset:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 12px;padding-top:12px}
+.table[data-layout=columns] .seat{position:relative;translate:none;width:auto}
+.table[data-layout=columns] .pile{position:relative;left:auto;top:auto;translate:none;flex-direction:row;justify-content:center;gap:14px}
+
+.game--message{justify-content:center;align-items:center;text-align:center;gap:16px}
+.message-title{font-size:clamp(26px,3.6vw,48px);line-height:1.5}
+.message-copy{font-size:clamp(16px,1.7vw,24px);color:var(--dim);line-height:1.7}
+
+@media(max-width:640px){
+  .hero{grid-template-columns:minmax(0,1fr) auto;gap:12px}
+  .art-fan{--card-w:40px}
+  .title{font-size:40px;margin:6px 0 8px}
+  .rule{padding:12px;gap:10px}
+  .rule-number{width:28px;height:28px;font-size:15px}
+}
+/* 低い画面（ホストの帯を除いた高さ・棚の画像の 640×480）では、余白と補足を詰めて机を広く取る。 */
+@media(max-height:620px){
+  .game{padding:14px 20px;gap:8px}
+  .content{gap:8px}
+  .fine-print{display:none}
+  .table{min-height:220px}
+  .turn-line{font-size:clamp(18px,2.2vw,28px)}
+  .progress-guide{font-size:16px}
+  .hero-art .art-fan{--card-w:clamp(44px,4.4vw,64px)}
+  .title{font-size:clamp(44px,4.6vw,64px);margin:4px 0 6px}
+  .tagline{font-size:clamp(17px,1.6vw,22px)}
+  .rules{gap:6px}
+  .rule{padding:8px 12px;gap:10px}
+  .rule-number{width:26px;height:26px;font-size:15px}
+  .rule-copy{font-size:16px}
+}
+/* 横に広くて低い画面（ノートPCのホスト）だけ、規則を3つ横に並べる。 */
+@media(min-width:901px) and (max-height:620px){
+  .rules{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .rule{align-items:flex-start;padding:10px}
+}
+@media(prefers-reduced-motion:reduce){
+  .seat-fan .card,.seat,.seat-fan{transition:opacity .18s!important}
+  .reach-line{animation:none}
+}
+/* 一時停止・切断・非表示の間は、CSS の動きも止める（view.js が WAAPI の動きを止める）。 */
+[data-frozen] *,[data-frozen] *::before{animation-play-state:paused!important}

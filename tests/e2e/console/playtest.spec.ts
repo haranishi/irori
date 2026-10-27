@@ -59,7 +59,7 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
     const pad = async (n: number) => (await state()).pads.find((p) => p.n === n)!;
     /** 棚の選択の輪を、/state の focused を見ながら id のカードへ動かし、2回の決定で始める。 */
     const choose = async (id: string, order: string[]) => {
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < order.length; i++) {
         const f = (await state()).host.focused ?? '';
         if (f === `game:${id}`) break;
         const at = order.indexOf(f.replace('game:', ''));

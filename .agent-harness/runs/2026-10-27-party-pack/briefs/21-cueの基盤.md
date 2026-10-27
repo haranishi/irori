@@ -6,6 +6,7 @@
 `packages/sdk`（`dist` を除く）、`packages/host-bridge`、`apps/web/src/host/{console,audio}.ts` と関連、`apps/web/tests/host`、`docs/{sdk,protocol,security}.md`。`README.md`・`README.ja.md` は触らない。B1 が足した tiles の部分は壊さない。
 
 ## 作るもの（順に）
+0. **tiles の token**（古い入力の見分け。型と検証は `packages/protocol/src` に**実装済み**。変えない）：`tiles` の指定に `token`（任意・24文字までの小文字英数と `_` `-`）、`tiles` の入力に `t`（任意）を足した。`pad-ui` は、いま出している画面の `token` を、決定とパスの入力の `t` にそのまま載せる（`token` が無ければ `t` を載せない）。仮想プレイヤーも同じ。手書きの `irori.d.ts`・`tests/types/api-match.ts`・`packages/protocol/tests/{validate,fuzz}.test.ts`（独立検証器にも）・`packages/pad-ui/tests`・`packages/sdk/tests/mock.test.ts`・`docs/{pad,protocol,sdk}.md` を同じ形に直す。新しい画面で `token` が変わったとき、古い `t` の入力はゲームが捨てる（ゲーム側は別の担当が直す）。
 1. **SDK**：`irori.cue(name, v?)`。能力 `cue-v1` が無ければ何もしない（例外を出さない）。同じ名前は50ms以内に重ねて送らない。全体で毎秒20件まで（超過は黙って捨てる）。`v` は0〜1に丸め、省略時は0.7。`packages/sdk/src/{core,types,index,mock}.ts` と `irori.d.ts`。仮想プレイヤーでは何もしない。
 2. **橋**：`packages/host-bridge/src/validate.ts` の `validateGameToHost` に `cue` を足す（名前は `CUES` に含まれる、`v` は数で範囲内、余分なキーは不正）。形式の誤りは `setPad` や `vibrate` と同じ扱いで違反として数える。`frame.ts` の能力の申告に `cue-v1`。受け取った `cue` をコンソールへ渡す経路は、`vibrate` の経路を手本にする。
 3. **コンソール**：`apps/web/src/host/console.ts` が `cue` を受け、`Sounds` に渡す。鳴らす条件は、消音でなく、AudioContext が使え、ゲームが前面（一時停止やメニューが無い）のとき。条件に合わなければ黙って捨てる。

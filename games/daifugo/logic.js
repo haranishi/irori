@@ -11,7 +11,7 @@ import {buildDeck, classify, isLegal, legalPlays, makeRng, shuffle, strength} fr
 /** @typedef {{cards:string[], n:number, by:PlayerId}} Table */
 /** @typedef {{seq:number, type:'play'|'pass'|'sweep'|'revolution'|'finish', p:PlayerId, cards?:string[], revolution?:boolean, reason?:string, rank?:number}} PublicEvent */
 /** @typedef {{p:PlayerId, id:string, label:string}} Control */
-/** @typedef {{phase:'intro'|'play'|'ended', seats:Seat[], players:PlayerInfo[], leader:PlayerId|null, nonce:string, revision:number, seed:number, rngState:number, stock:string[], discard:string[], excluded:string[], table:Table|null, turn:PlayerId|null, revolution:boolean, finishOrder:PlayerId[], events:PublicEvent[], seq:number, environment:HostEnvironment|null, paused:boolean, control:Control|null, outcome:'complete'|'incomplete'}} GameState */
+/** @typedef {{phase:'intro'|'play'|'ended', seats:Seat[], players:PlayerInfo[], leader:PlayerId|null, nonce:string, revision:number, refused:Record<number,number>, seed:number, rngState:number, stock:string[], discard:string[], excluded:string[], table:Table|null, turn:PlayerId|null, revolution:boolean, finishOrder:PlayerId[], events:PublicEvent[], seq:number, environment:HostEnvironment|null, paused:boolean, control:Control|null, outcome:'complete'|'incomplete'}} GameState */
 /** @typedef {{players:readonly PlayerInfo[], leader:PlayerId|null, environment:Readonly<HostEnvironment>|null, paused:boolean, nonce:string, seed:number}} GameInit */
 /** @typedef {{t:'input',p:PlayerId,input:GameInput}|{t:'players',players:readonly PlayerInfo[],leader:PlayerId|null}|{t:'menu',paused:boolean}|{t:'environment',value:Readonly<HostEnvironment>|null}} GameEvent */
 /** @typedef {{t:'pad',to:PlayerId,spec:PadSpec}|{t:'cue',name:'deal'|'place'|'sweep'|'revolution'|'win'|'lose',v?:number}|{t:'vibrate',to:PlayerId,ms:number[]}|{t:'end',results:import('./irori.js').GameResult[],options:import('./irori.js').GameEndOptions}} GameEffect */
@@ -24,7 +24,7 @@ export function createGame(init) {
   if (!/^[a-z0-9]{1,8}$/.test(init.nonce)) throw new RangeError('Invalid game nonce');
   /** @type {GameState} */
   const state = {phase:'intro',seats:init.players.map(newSeat),players:init.players.map((p)=>({...p})),leader:init.leader,
-    nonce:init.nonce,revision:0,seed:init.seed >>> 0,rngState:init.seed >>> 0,stock:buildDeck(),discard:[],excluded:[],
+    nonce:init.nonce,revision:0,refused:{},seed:init.seed >>> 0,rngState:init.seed >>> 0,stock:buildDeck(),discard:[],excluded:[],
     table:null,turn:null,revolution:false,finishOrder:[],events:[],seq:0,
     environment:init.environment ? {...init.environment} : null,paused:init.paused,control:null,outcome:'complete'};
   setControl(state);
@@ -44,10 +44,10 @@ function canBegin(state) {
 function setControl(state) {
   state.control = canBegin(state) ? {p:/** @type {number} */ (state.leader),id:`d${state.nonce}_${state.revision.toString(36)}_start`,label:'はじめる'} : null;
 }
-/** @param {GameState} state @param {string} card */
-export function cardId(state, card) { return `${tilesToken(state)}_${card}`; }
-/** @param {GameState} state */
-function tilesToken(state) { return `d${state.nonce}_${state.revision.toString(36)}`; }
+/** @param {GameState} state @param {PlayerId} p @param {string} card */
+export function cardId(state, p, card) { return `${tilesToken(state,p)}_${card}`; }
+/** @param {GameState} state @param {PlayerId} p */
+function tilesToken(state, p) { return `d${state.nonce}_${state.revision.toString(36)}_${(state.refused[p] ?? 0).toString(36)}`; }
 
 /** @param {GameState} state @param {GameEvent} event @returns {Transition} */
 export function updateGame(state, event) {
@@ -58,7 +58,12 @@ export function updateGame(state, event) {
     if (event.t === 'environment') next.environment = event.value ? {...event.value} : null;
     if (event.t === 'players') {
       next.players = event.players.map((p)=>({...p})); next.leader = event.leader;
-      if (next.phase === 'intro') next.seats = event.players.map(newSeat);
+      if (next.phase === 'intro') {
+        if (!event.players.length && next.seats.length) {
+          next.seats.forEach((s)=>{ s.left = true; s.online = false; });
+          settle(next);
+        } else next.seats = event.players.map(newSeat);
+      }
       else {
         const roster = new Map(event.players.map((p)=>[p.id,p]));
         for (const seat of next.seats) {
@@ -96,9 +101,11 @@ export function updateGame(state, event) {
     return transition(next,state,[{t:'cue',name:'deal'}]);
   }
   if (input.k !== 'tiles') return {state,effects:[]};
-  if (input.t !== tilesToken(state)) return {state,effects:[]};
+  if (input.t !== tilesToken(state,p)) return {state,effects:[]};
   const seat = state.seats.find((s)=>s.id === p && !s.left);
   if (!seat) return {state,effects:[]};
+  // 旧画面の札は、現在のtokenと混ぜて送られても再送や拒否回数の更新をしない。
+  if (input.ids.some((id)=>!id.startsWith(`${tilesToken(state,p)}_`))) return {state,effects:[]};
   if (blocked(state) || !state.seats.find((s)=>s.id === state.turn)?.online) return reject(state,seat,'接続と再開を待っています');
   if (state.turn !== p || !seat.online || seat.rank !== null) return reject(state,seat,'あなたの番を待ってください');
   if (input.pass === true) {
@@ -109,7 +116,7 @@ export function updateGame(state, event) {
     next.turn = nextSeat(next,p); sweepIfPassed(next); next.revision++;
     return transition(next,state);
   }
-  const cards = input.ids.map((id)=>seat.hand.find((card)=>cardId(state,card) === id));
+  const cards = input.ids.map((id)=>seat.hand.find((card)=>cardId(state,p,card) === id));
   if (cards.some((c)=>c === undefined) || new Set(input.ids).size !== input.ids.length) return reject(state,seat,'今の手札から重複せず選んでください');
   const play = /** @type {string[]} */ (cards);
   if (!isLegal(play,state.table,state.revolution)) return reject(state,seat,'同じ数を1〜4枚、場より強く出してください');
@@ -182,7 +189,7 @@ function padFor(state, seat, reason) {
   const table = state.table ? state.table.cards.map(cardLabel).join(' ') : 'なし';
   const note = `${reason ? reason + '｜' : ''}${blocked(state) ? '再開待ち' : state.turn === seat.id ? 'あなたの番' : `${name}の番`}｜場 ${table}${state.revolution ? '｜革命中' : ''}`;
   const count = seat.hand.filter((c)=>playable.has(c)).length;
-  return {k:'tiles',token:tilesToken(state),tiles:seat.hand.map((c)=>({id:cardId(state,c),label:cardLabel(c),color:/** @type {'red'|'gray'} */ (c[0] === 'h' || c[0] === 'd' ? 'red' : 'gray'),off:!playable.has(c)})),
+  return {k:'tiles',token:tilesToken(state,seat.id),tiles:seat.hand.map((c)=>({id:cardId(state,seat.id,c),label:cardLabel(c),color:/** @type {'red'|'gray'} */ (c[0] === 'h' || c[0] === 'd' ? 'red' : 'gray'),off:!playable.has(c)})),
     min:count ? 1 : 0,max:Math.min(4,count),ok:'出す',...(state.table ? {pass:'パス'} : {}),disabled,note:[...note].slice(0,120).join('')};
 }
 /** @param {string} card */
@@ -192,7 +199,10 @@ export function cardLabel(card) {
   return `${symbols[card[0] ?? ''] ?? ''}${card.slice(1).toUpperCase()}`;
 }
 /** @param {GameState} state @param {Seat} seat @param {string} reason @returns {Transition} */
-function reject(state, seat, reason) { return {state,effects:[{t:'pad',to:seat.id,spec:padFor(state,seat,reason)}]}; }
+function reject(state, seat, reason) {
+  const next = {...state,refused:{...state.refused,[seat.id]:(state.refused[seat.id] ?? 0) + 1}};
+  return {state:next,effects:[{t:'pad',to:seat.id,spec:padFor(next,seat,reason)}]};
+}
 
 /** @param {number} rank @param {number} count */
 function rankLabel(rank, count) {

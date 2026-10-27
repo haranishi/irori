@@ -208,3 +208,35 @@ describe('公開モデルと席ごとの秘密',() => {
     const again=draw(next.state);expect(again.state.events[0].seq).toBe(next.state.seq+1);
   });
 });
+
+
+describe('introの全員退出',()=>{
+  it.each([1, 2, 8])('%i席が開始前に全員退出しても名簿を残しendをちょうど1回送る',(n)=>{
+    // introで空の名簿から席を作り直すと、退出者の記録も終了経路も消えていた。
+    const before=freeze(createGame(init({players:players(n)})).state);
+    const next=updateGame(before,{t:'players',players:[],leader:null});
+    expect(next.state.phase).toBe('ended');expect(next.state.outcome).toBe('incomplete');
+    expect(next.state.seats.map((s)=>s.id)).toEqual(before.seats.map((s)=>s.id));
+    expect(next.state.seats.every((s)=>s.left && !s.online && s.rank === null)).toBe(true);
+    expect(before.seats.every((s)=>!s.left)).toBe(true);
+    const ends=next.effects.filter((e)=>e.t === 'end');expect(ends).toHaveLength(1);
+    expect(ends[0]).toMatchObject({options:{outcome:'incomplete'},results:before.seats.map((s)=>({p:s.id,score:0,ranked:false,label:'退出'}))});
+    expect(publicView(next.state).canBegin).toBe(false);
+    for(const event of [
+      {t:'players',players:[],leader:null},{t:'players',players:players(n),leader:1},
+      {t:'input',p:1,input:{k:'btn',id:'old_start',d:1}},
+      {t:'input',p:1,input:{k:'tiles',ids:[]}},
+    ]) expect(updateGame(freeze(next.state),event)).toEqual({state:next.state,effects:[]});
+  });
+  it('最初から席がない名簿では終了せず、後から席ができて全員退出した場合だけ終了する',()=>{
+    let next=createGame(init({players:[],leader:null}));
+    for(let i=0;i<3;i++) {
+      expect(next.state.phase).toBe('intro');expect(next.effects.filter((e)=>e.t === 'end')).toHaveLength(0);
+      next=updateGame(freeze(next.state),{t:'players',players:[],leader:null});
+    }
+    expect(next.effects.filter((e)=>e.t === 'end')).toHaveLength(0);
+    next=updateGame(next.state,{t:'players',players:players(),leader:1});
+    next=updateGame(next.state,{t:'players',players:[],leader:null});
+    expect(next.effects.filter((e)=>e.t === 'end')).toHaveLength(1);
+  });
+});

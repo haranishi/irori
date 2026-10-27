@@ -93,7 +93,7 @@ describe('公開モデルの全段階',()=>{
     const output=`${stage.outerHTML}${status.outerHTML}`;
     for (const seat of state.seats) for (const id of seat.hand) {
       expect(output).not.toContain(logic.cardLabel(id));
-      expect(output).not.toContain(logic.cardId(state,id));
+      expect(output).not.toContain(logic.cardId(state,seat.id,id));
     }
     expect(output).not.toContain('秘密の手札');expect(output).not.toContain('secret_control');
   });
@@ -334,7 +334,7 @@ describe('mainと画面・判定・SDKの接続',()=>{
       const seat=state.seats.find((item)=>item.id === id);
       const choices=legalPlays(seat.hand,state.table,state.revolution);
       const play=choices.at(-1);
-      host.emit('input',id,play ? {k:'tiles',t:pad.token,ids:play.map((card)=>logic.cardId(state,card))} : {k:'tiles',t:pad.token,ids:[],pass:true});
+      host.emit('input',id,play ? {k:'tiles',t:pad.token,ids:play.map((card)=>logic.cardId(state,id,card))} : {k:'tiles',t:pad.token,ids:[],pass:true});
     }
     expect(turns).toBeLessThan(2000);expect(document.documentElement.dataset.phase).toBe('ended');
     expect(host.end).toHaveBeenCalledTimes(1);expect(host.end.mock.calls[0][1].outcome).toBe('complete');

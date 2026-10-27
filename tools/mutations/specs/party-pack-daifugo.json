@@ -102,9 +102,36 @@
     "id": "party-pack-daifugo-tiles-token",
     "note": "画面tokenの検査を外し、旧画面やtなしの入力を受ける",
     "file": "games/daifugo/logic.js",
-    "find": "if (input.t !== tilesToken(state)) return {state,effects:[]};",
+    "find": "if (input.t !== tilesToken(state,p)) return {state,effects:[]};",
     "replace": "if (false) return {state,effects:[]};",
     "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "token検査"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-refusal-count",
+    "note": "断るたびに回数を増やさず画面が同一になる",
+    "file": "games/daifugo/logic.js",
+    "find": "(state.refused[seat.id] ?? 0) + 1",
+    "replace": "(state.refused[seat.id] ?? 0)",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "同じ不正出札を5回"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-refusal-token",
+    "note": "席の拒否回数をtokenに含めず再送を見分けられない",
+    "file": "games/daifugo/logic.js",
+    "find": "_${(state.refused[p] ?? 0).toString(36)}",
+    "replace": "",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "同じ不正出札を5回"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-intro-end",
+    "note": "開始前の全員退出で終了通知を送らない",
+    "file": "games/daifugo/logic.js",
+    "find": "s.left = true; s.online = false; });\n          settle(next);",
+    "replace": "s.left = true; s.online = false; });",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "introの全員退出"],
     "timeoutMs": 30000
   }
 ]

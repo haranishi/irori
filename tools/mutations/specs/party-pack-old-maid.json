@@ -236,5 +236,22 @@
       "配札だけで上がった席"
     ],
     "timeoutMs": 180000
+  },
+  {
+    "id": "party-pack-old-maid-intro-end",
+    "note": "開始前の全員退出で終了通知を送らない",
+    "file": "games/old-maid/logic.js",
+    "find": "s.left = true; s.online = false; });\n          openTurn(next,0,true);",
+    "replace": "s.left = true; s.online = false; });",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/old-maid/logic.test.js",
+      "-t",
+      "introの全員退出"
+    ],
+    "timeoutMs": 30000
   }
 ]

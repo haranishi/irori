@@ -47,7 +47,12 @@ export function updateGame(state,event) {
     if (event.t === 'players') {
       next.players = event.players.map((p) => ({...p}));
       next.leader = event.leader;
-      if (next.phase === 'intro') next.seats = next.players.map((p) => ({...p,left:false,hand:[],rank:null})).sort((a,b) => a.id-b.id);
+      if (next.phase === 'intro') {
+        if (!next.players.length && next.seats.length) {
+          next.seats.forEach((s) => { s.left = true; s.online = false; });
+          openTurn(next,0,true);
+        } else next.seats = next.players.map((p) => ({...p,left:false,hand:[],rank:null})).sort((a,b) => a.id-b.id);
+      }
       else {
         for (const seat of next.seats) {
           const player = next.players.find((p) => p.id === seat.id);

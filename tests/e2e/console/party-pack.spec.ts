@@ -1,8 +1,8 @@
 // 実ホスト・実Worker・席ごとの独立文脈を通す下書き。実行はメインに引き継ぐ。
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, test, type Host, type Pad } from './fixtures';
-import { HOST } from './lib/tags';
+import { expect, test, type Host, type Pad, type Rig } from './fixtures';
+import { HOST, ONLY_DC } from './lib/tags';
 import type { PadSpec } from '../../../packages/protocol/src/types';
 
 type Tiles = Extract<PadSpec, { k: 'tiles' }>;
@@ -223,9 +223,15 @@ test('ストライク横丁：2台で投球・字幕・次の席まで進む', H
   await pads[1]!.expectKind('touch');
 });
 
-test('ストライク横丁：1人の5フレーム満点150・結果・再戦', HOST, async ({ rig }) => {
+/** CDP で、ページの CPU を rate 倍遅くする（Chromium だけ）。要件6.4：描画が遅くても、判定の結果は変わらない。 */
+async function slowDown(pages: Page[], rate: number): Promise<void> {
+  for (const page of pages) await (await page.context().newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate });
+}
+
+async function soloBowling(rig: Rig, cpuRate: number): Promise<void> {
   const host = await rig.openHost({ clock: true });
   const [pad] = await rig.join(host, NAMES.slice(0, 1));
+  if (cpuRate > 1) await slowDown([host.page, pad!.page], cpuRate);
   await host.choose('strike-alley', pad);
   await shortMode(pad!);
   for (let ball = 0; ball < 7; ball++) {
@@ -234,7 +240,9 @@ test('ストライク横丁：1人の5フレーム満点150・結果・再戦', 
   }
   expect((await host.results()).map(({ seat, rank, score }) => ({ seat, rank, score }))).toEqual([{ seat: 1, rank: 1, score: 150 }]);
   await replay(host, pad!);
-});
+}
+test('ストライク横丁：1人の5フレーム満点150・結果・再戦', HOST, ({ rig }) => soloBowling(rig, 1));
+test('ストライク横丁：CPUを4倍遅くしても、同じ5フレーム満点150になる', ONLY_DC, ({ rig }) => soloBowling(rig, 4));
 
 test('ストライク横丁：番の切断・再接続・一時停止・退出の未成立', HOST, async ({ rig }) => {
   rig.allowSocketErrors();
@@ -478,11 +486,12 @@ async function nightShape(host: Host, pads: Pad[]): Promise<void> {
   for (const shape of shapes) expect(shape).toEqual(shapes[0]);
 }
 
-test('月あかりの寄り合い：5台で役確認・夜・再接続・議論・投票・処刑・全役公開・再戦', HOST, async ({ rig }) => {
-  test.setTimeout(175_000);
+async function playWerewolf(rig: Rig, cpuRate: number): Promise<void> {
+  test.setTimeout(cpuRate > 1 ? 290_000 : 175_000);
   rig.allowSocketErrors();
   const host = await rig.openHost({ clock: true });
   const pads = await rig.join(host, NAMES, { line: true });
+  if (cpuRate > 1) await slowDown([host.page, ...pads.map((pad) => pad.page)], cpuRate);
   await host.choose('moon-village', pads[0]);
   const privacy = new RolePrivacy(pads);
   await privacy.scan(host, 'intro');
@@ -581,7 +590,9 @@ test('月あかりの寄り合い：5台で役確認・夜・再接続・議論�
   await privacy.scan(host, 'ended');
   await replay(host, pads);
   await new RolePrivacy(pads).scan(host, 'intro');
-});
+}
+test('月あかりの寄り合い：5台で役確認・夜・再接続・議論・投票・処刑・全役公開・再戦', HOST, ({ rig }) => playWerewolf(rig, 1));
+test('月あかりの寄り合い：CPUを4倍遅くしても、同じ流れで勝敗と全役公開まで終わる', ONLY_DC, ({ rig }) => playWerewolf(rig, 4));
 
 // 「はじめる」の前に全員が席を立つと、結果は1回だけ・順位なしで出る（以前は intro のまま、終わりの合図が一度も出なかった）。
 const ABANDON_IN_INTRO = [

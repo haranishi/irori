@@ -22,6 +22,9 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 /** apps/web/public/_headers の /games/* と同じ。インラインのスクリプトや外部の読み込みがあれば、ここで動かなくなる。 */
 const CSP = "sandbox allow-scripts; default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'";
 
+/** 仮想プレイヤーの人数（既定は3）。人狼は4人以上が要る。 */
+const PLAYERS = { 'blade-duel': 2, 'moon-village': 5 };
+
 /** ゲームごとの撮る前の手順。page は Playwright のページ。 */
 const SCENES = {
   'blade-duel': async (page) => {
@@ -52,6 +55,36 @@ const SCENES = {
     await hold(page, ['KeyD', 'ArrowRight', 'ArrowDown'], 600);
   },
   'ten-seconds': async (page) => {
+    await phase(page, 'intro');
+  },
+  // ボウリング：10フレームを選び、1人目が引いてはなす。ピンが舞う瞬間を撮る（強さ0.7・曲がり0.6でストライクが続く幅の中ほど）。
+  'strike-alley': async (page) => {
+    await phase(page, 'intro');
+    await page.keyboard.press('Space');
+    await phase(page, 'aim');
+    await page.waitForTimeout(500);
+    const box = await page.locator('.irori-mock__seat[data-p="1"] .irori-pad__touch').boundingBox();
+    if (!box) throw new Error('make-thumbs: strike-alley の touch の枠がありません');
+    const at = (fx, fy) => [box.x + box.width * fx, box.y + box.height * fy];
+    await page.mouse.move(...at(0.1, 0.15));
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) {
+      await page.mouse.move(...at(0.1 + (0.21 * i) / 8, 0.15 + (0.561 * i) / 8));
+      await page.waitForTimeout(25);
+    }
+    await page.waitForTimeout(80);
+    await page.mouse.up();
+    await phase(page, 'rolling');
+    await page.waitForTimeout(2650);
+  },
+  // 札と人狼：いまは説明の場面（見どころの場面は、画面の仕上げのあとに差し替える）。
+  daifugo: async (page) => {
+    await phase(page, 'intro');
+  },
+  'old-maid': async (page) => {
+    await phase(page, 'intro');
+  },
+  'moon-village': async (page) => {
     await phase(page, 'intro');
   },
 };
@@ -119,7 +152,7 @@ export async function makeThumbs(root, ids, env = process.env) {
       page.on('pageerror', (e) => errors.push(e.message));
       // canvas に描く文字（hello-pad・tap-race・dot-grab）は、CSS では替わらない。ctx.font への代入を、ページの最初から差し替える。
       await page.addInitScript(canvasFontPatchScript());
-      await page.goto(`http://127.0.0.1:${srv.port}/${id}/?mock=${id === 'blade-duel' ? 2 : 3}`);
+      await page.goto(`http://127.0.0.1:${srv.port}/${id}/?mock=${PLAYERS[id] ?? 3}`);
       await page.waitForSelector('.irori-mock[data-ready]', { state: 'attached', timeout: 15_000 });
       await scene(page);
       await page.addStyleTag({

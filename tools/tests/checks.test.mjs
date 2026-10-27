@@ -112,6 +112,12 @@ describe('check-deps', () => {
     assert.equal(checkDeps(fixture({ ...base, 'games/g/main.js': "import x from '../h/a.js';\n" })).length, 1);
     assert.equal(checkDeps(fixture({ ...base, 'games/g/main.js': "import x from 'lodash';\n" })).length, 1);
   });
+  it('文字列の \'from\' や、プロパティの from を、読み込みと誤認しない（ババ抜きの画面で起きた誤検知）', () => {
+    const code = "const role = t.from === id ? 'from' : t.to === id ? 'to' : '';\nconst x = a.from + \"from\" + \"y\";\n";
+    assert.deepEqual(checkDeps(fixture({ ...base, 'games/g/view.js': code })), []);
+    // 本物の import は、これまでどおり拒む。
+    assert.equal(checkDeps(fixture({ ...base, 'games/g/view.js': code + "import x from 'lodash';\n" })).length, 1);
+  });
   it('ゲームの試験（*.test.js）だけは vitest を読める。ゲーム本体は読めない', () => {
     const test = "import { describe, it } from 'vitest';\nimport { rule } from './logic.js';\n";
     assert.deepEqual(checkDeps(fixture({ ...base, 'games/g/logic.test.js': test })), []);

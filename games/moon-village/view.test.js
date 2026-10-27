@@ -60,7 +60,7 @@ describe('公開モデルだけで全段階を描く', ()=>{
     const {stage,status,view}=mount();
     const value=publicView(createGame(init(5)).state);
     view.render(value);
-    expect(stage.textContent).toContain('勝ち方：人狼を全員見つければ村の勝ち。人狼が村人と同じ数になれば人狼の勝ち');
+    expect(stage.textContent).toContain('勝ち方：人狼を全員見つければ村の勝ち。人狼が生きている人間と同じ数になれば人狼の勝ち');
     expect(stage.textContent).toContain('いまの人数の役：人狼1・占い師1・騎士1・村人2');
     expect(stage.querySelectorAll('.role-card')).toHaveLength(0);
     expect(status.textContent).not.toContain('。。');

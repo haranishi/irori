@@ -128,7 +128,7 @@ export function createView(stage, status) {
     heading.dataset.tone = phase === 'dawn' || phase === 'exec' || phase === 'ended' ? 'news' : 'plain';
     hide(rules, phase !== 'intro');
     hide(introDetails, phase !== 'intro');
-    text(victory, phase === 'intro' ? '勝ち方：人狼を全員見つければ村の勝ち。人狼が村人と同じ数になれば人狼の勝ち' : '');
+    text(victory, phase === 'intro' ? '勝ち方：人狼を全員見つければ村の勝ち。人狼が生きている人間と同じ数になれば人狼の勝ち' : '');
     text(composition, phase !== 'intro' ? '' : model.roleCounts ? `いまの人数の役：${Object.entries(model.roleCounts).map(([role,n])=>`${ROLES[/** @type {keyof typeof ROLES} */ (role)]}${n}`).join('・')}` : '4〜8人そろうと、役の内訳が決まります');
     hide(scene, !['intro', 'reveal', 'night', 'dawn'].includes(phase));
     hide(clock, phase !== 'day');

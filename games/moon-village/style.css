@@ -120,7 +120,10 @@ html[data-phase="ended"] .role-card { font-size: clamp(18px, 3.4vmin, 38px); }
 .continue:focus-visible { outline: 3px solid var(--text); outline-offset: 5px; }
 .continue:disabled { cursor: wait; background: var(--panel); color: var(--dim); border-style: dashed; transform: none; }
 .suspension { display: none; max-width: 52ch; padding: 16px; border: 2px dashed var(--glow); border-radius: 12px; font-size: clamp(16px, 2.4vmin, 26px); line-height: 1.6; }
-.game[data-suspended="true"] .suspension { display: block; }
+/* 中断のお知らせは、画面の高さからはみ出さない上端に重ねる（夜や導入は内容が高く、流れの最後に置くと見えない）。 */
+/* 段階の切り替えのフェード（.content--enter）に載せない。表示された瞬間にフェードが頭から始まり、止める規則で透明のまま固まる（実ブラウザの評価で見えなかった）。 */
+.game .suspension { animation: none !important; opacity: 1; }
+.game[data-suspended="true"] .suspension { display: block; position: fixed; z-index: 20; top: clamp(8px, 2vmin, 24px); left: 50%; width: min(92vw, 52ch); transform: translateX(-50%); background: var(--panel); box-shadow: 0 8px 28px rgb(0 0 0 / 55%); }
 .game[data-suspended="true"] *, .game[data-suspended="true"] *::before, .game[data-suspended="true"] *::after { animation-play-state: paused !important; transition: none !important; }
 .game--message { display: grid; align-content: center; justify-items: center; gap: 24px; text-align: center; }
 .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }

@@ -522,6 +522,13 @@ async function playWerewolf(rig: Rig, cpuRate: number): Promise<void> {
   reconnecting.cut();
   await reconnecting.expectLink('lost');
   await host.advance(500); // ゲーム中のホスト画面には座席の一覧が出ない。切断中は待つ（段階が変わらない）ことを、続く確認で見る。
+  // 中断のお知らせが、実際に見えている。以前は、表示された瞬間にフェードが頭から始まり、止める規則で透明のまま固まっていた
+  // （Playwright の toBeVisible は透明を「見える」と数えるので、不透明度も見る）。
+  const notice = (await host.gameFrame())!.locator('.suspension');
+  await expect.poll(() => notice.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return { opacity: getComputedStyle(el).opacity, inView: box.height > 0 && box.top >= 0 && box.bottom <= innerHeight };
+  }), { message: '夜の中断のお知らせが、大画面の中に見えている' }).toEqual({ opacity: '1', inView: true });
   await privacy.scan(host, 'night');
   reconnecting.restore();
   await reconnecting.expectLink('open');

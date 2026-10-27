@@ -74,15 +74,15 @@ describe('引く・ペア・上がり・結果',() => {
     // 2席とも同じ手で空になるとき、引かれた側の上がりを落とすバグを防ぐ。
     const s=scenario([['s7'],['h7'],['jk']]);const next=draw(s);
     expect(next.state.order).toEqual([2,1,3]);expect(next.state.seats.map((s) => s.rank)).toEqual([2,1,3]);
-    expect(next.effects.find((e) => e.t==='end')).toMatchObject({results:[{p:1,score:2,label:'2位',ranked:true},{p:2,score:3,label:'1位',ranked:true},{p:3,score:1,label:'最下位',ranked:true}],options:{display:'record',outcome:'complete'}});
+    expect(next.effects.find((e) => e.t==='end')).toMatchObject({results:[{p:1,score:2,label:'2番目に上がり',ranked:true},{p:2,score:3,label:'1番目に上がり',ranked:true},{p:3,score:1,label:'ジョーカーが残った',ranked:true}],options:{display:'record',outcome:'complete'}});
     expect(next.state.events.map((e) => e.type)).toEqual(['draw','pair','out','out','out']);conserved(next.state);
     expect(next.effects.filter((e) => e.t==='cue').map((e) => e.name)).toEqual(expect.arrayContaining(['flip','place','win','lose']));
-    expect(next.effects.filter((e) => e.t==='pad')).toMatchObject([{to:1,spec:{k:'wait',title:'ひいた札：♥7。ペア成立！'}}]);
+    expect(next.effects.filter((e) => e.t==='pad')).toMatchObject([1,2,3].map((to)=>({to,spec:{k:'wait',title:'勝負が終わりました'}})));
   });
   it('ジョーカーを引くと本人にだけ振動し、番号では札の中身を示さない',() => {
     const s=scenario([['s7'],['jk','h7'],['s3','h3']]);const next=draw(s);
     expect(next.effects.filter((e) => e.t==='vibrate')).toEqual([{t:'vibrate',to:1,ms:[60]}]);
-    expect(next.effects.find((e) => e.t==='pad' && e.to===1).spec).toMatchObject({k:'wait',title:'ひいた札：JK。'});
+    expect(next.effects.find((e) => e.t==='pad' && e.to===1).spec).toMatchObject({k:'wait',title:'ジョーカーをひきました'});
     expect(next.state.turn).toEqual({from:2,to:3});conserved(next.state);
   });
   it('空の席を飛ばし席順の末尾から先頭に戻り、引かれる手札を毎番並べ替える',() => {
@@ -153,18 +153,18 @@ describe('接続・中断・退出',() => {
   it('2人から1人になり上がり済みが無ければ全員順位なしで未成立',() => {
     const s=scenario([['s3'],['jk']]);const next=updateGame(s,{t:'players',players:players(1),leader:1});
     expect(next.state.outcome).toBe('incomplete');conserved(next.state);
-    expect(next.effects.find((e) => e.t==='end')).toMatchObject({results:[{ranked:false,label:'未成立'},{ranked:false,label:'退出'}],options:{outcome:'incomplete'}});
+    expect(next.effects.find((e) => e.t==='end')).toMatchObject({results:[{ranked:false,label:'未成立'},{ranked:false,label:'記録なし'}],options:{outcome:'incomplete'}});
   });
   it('上がった席と最後の席が残るなら成立。退出済みの上がり順位を詰める',() => {
     const s=scenario([[],['s3'],['jk'],[]],[4,1]);
     const next=updateGame(s,{t:'players',players:players(4).filter((p) => ![2,4].includes(p.id)),leader:1});conserved(next.state);
     expect(next.state.order).toEqual([1,3]);expect(next.state.outcome).toBe('complete');
-    expect(next.effects.find((e) => e.t==='end').results.map((r) => [r.p,r.label,r.ranked])).toEqual([[1,'1位',true],[2,'退出',false],[3,'最下位',true],[4,'退出',false]]);
+    expect(next.effects.find((e) => e.t==='end').results.map((r) => [r.p,r.label,r.ranked])).toEqual([[1,'1番目に上がり',true],[2,'記録なし',false],[3,'ジョーカーが残った',true],[4,'記録なし',false]]);
   });
   it('全席同時消失でも札は失わず未成立、endは1回',() => {
     const next=updateGame(start().state,{t:'players',players:[],leader:null});conserved(next.state);
     expect(next.state.outcome).toBe('incomplete');expect(next.effects.filter((e) => e.t==='end')).toHaveLength(1);
-    expect(next.effects.find((e) => e.t==='end').results.every((r) => !r.ranked && r.label==='退出')).toBe(true);
+    expect(next.effects.find((e) => e.t==='end').results.every((r) => !r.ranked && r.label==='記録なし')).toBe(true);
     expect(updateGame(next.state,{t:'players',players:[],leader:null}).effects).toEqual([]);
   });
   it('退出で相方が除外された通常札は最後の人の手札に残して終了する',() => {
@@ -220,7 +220,7 @@ describe('introの全員退出',()=>{
     expect(next.state.seats.every((s)=>s.left && !s.online && s.rank === null)).toBe(true);
     expect(before.seats.every((s)=>!s.left)).toBe(true);
     const ends=next.effects.filter((e)=>e.t === 'end');expect(ends).toHaveLength(1);
-    expect(ends[0]).toMatchObject({options:{outcome:'incomplete'},results:before.seats.map((s)=>({p:s.id,score:0,ranked:false,label:'退出'}))});
+    expect(ends[0]).toMatchObject({options:{outcome:'incomplete'},results:before.seats.map((s)=>({p:s.id,score:0,ranked:false,label:'記録なし'}))});
     expect(publicView(next.state).canBegin).toBe(false);
     for(const event of [
       {t:'players',players:[],leader:null},{t:'players',players:players(n),leader:1},
@@ -238,5 +238,84 @@ describe('introの全員退出',()=>{
     next=updateGame(next.state,{t:'players',players:players(),leader:1});
     next=updateGame(next.state,{t:'players',players:[],leader:null});
     expect(next.effects.filter((e)=>e.t === 'end')).toHaveLength(1);
+  });
+});
+
+describe('追補D3：待機・空の手札・終了の案内',()=>{
+  const pad=(result,p)=>result.effects.find((e)=>e.t==='pad' && e.to===p)?.spec;
+  it('第三者は開始・再接続・再開のたびに誰が誰から引くかと自分の手札で待つ',()=>{
+    // 第三者にも番号だけのdisabled tilesを送り、何を待つかが分からなかった。
+    const first=start();
+    const observer=first.state.seats.find((s)=>s.id!==first.state.turn.from && s.id!==first.state.turn.to);
+    expect(pad(first,observer.id).k).toBe('wait');
+    let result={state:scenario([['s3'],['h4','h5'],['jk','d6']]),effects:[]};
+    for(const event of [
+      {t:'players',players:players(3,[3]),leader:1}, {t:'players',players:players(),leader:1},
+      {t:'menu',paused:true},{t:'menu',paused:false},
+      {t:'environment',value:null},{t:'environment',value:{connected:true,visible:true}},
+    ]) {
+      result=updateGame(freeze(result.state),event);
+      const spec=pad(result,3);expect(spec.k).toBe('wait');expect(spec.body).toBe('あなた：JK ♦6');
+      if(!result.state.paused && result.state.environment?.visible && result.state.seats.every((s)=>s.online)) {
+        expect(spec.title).toBe('P1さんがP2さんから札をひいています');
+        expect(result.effects.filter((e)=>e.t==='pad' && e.spec.k==='tiles').map((e)=>e.to)).toEqual([1]);
+      }
+      for(const card of ['s3','h4','h5']) expect(JSON.stringify(spec)).not.toContain(cardText(card));
+    }
+  });
+  it('第三者の長い名前は24文字に収め、引かれる札を入れ替えても待機文を変えない',()=>{
+    const s=scenario([['s3'],['h4','h5'],['jk','d6']]);
+    const roster=players().map((p)=>({...p,name:(p.id===1?'あ':'😀').repeat(24)}));
+    const a=updateGame(s,{t:'players',players:roster,leader:1});
+    const other=structuredClone(s);[other.seats[1].hand[0],other.seats[2].hand[0]]=['jk','h4'];
+    const b=updateGame(other,{t:'players',players:roster,leader:1});
+    expect(pad(a,3).k).toBe('wait');expect([...pad(a,3).title].length).toBeLessThanOrEqual(24);
+    expect(pad(a,3).title).toContain('あ');expect(pad(a,3).title).toContain('😀');
+    expect(pad(a,3).title).toBe(pad(b,3).title);expect(publicView(a.state)).toEqual(publicView(b.state));
+  });
+  it('空の手札は札なしと表示し、引いて上がった本人に1位で上がりましたと伝える',()=>{
+    // 空の手札を連結すると「あなた：。1位」になっていた。
+    const result=draw(scenario([['s7'],['h7','h3'],['jk','s3']]));
+    expect(pad(result,1)).toMatchObject({k:'wait',body:'あなた：札なし。1位で上がりました'});
+    expect(pad(result,1).title).toBe('ひいた札：♥7。ペア成立！');
+    const stopped=updateGame(result.state,{t:'menu',paused:true});
+    expect(pad(stopped,1).body).toBe('あなた：札なし');
+    const resumed=updateGame(stopped.state,{t:'menu',paused:false});
+    expect(pad(resumed,1)).toMatchObject({k:'wait',title:'1位で上がりました'});
+    expect(pad(resumed,1).body).toContain('あなた：札なし');conserved(result.state);
+  });
+  it('退出で終了するとfeedbackがなくても在席全員の最終waitをendより前に送る',()=>{
+    // 上がり済み1人＋2人の局面でジョーカー持ちが退出すると、旧「ひく」が残っていた。
+    const s=scenario([[],['s3'],['h3','jk']],[1]);
+    const result=updateGame(freeze(s),{t:'players',players:players().filter((p)=>p.id!==3),leader:1});
+    expect(result.state.phase).toBe('ended');expect(result.state.order).toEqual([1,2]);
+    expect(result.state.feedback).toBeNull();expect(result.state.seats[1].hand).toEqual(['s3','jk']);
+    const pads=result.effects.filter((e)=>e.t==='pad');expect(pads.map((e)=>e.to)).toEqual([1,2]);
+    expect(pads.map((e)=>e.spec)).toEqual([
+      {k:'wait',title:'勝負が終わりました',body:'あなた：札なし。1位で上がりました'},
+      {k:'wait',title:'勝負が終わりました',body:'あなた：♠3 JK。2位'},
+    ]);
+    const end=result.effects.findIndex((e)=>e.t==='end');
+    expect(result.effects.filter((e)=>e.t==='end')).toHaveLength(1);
+    for(const effect of pads) expect(result.effects.indexOf(effect)).toBeLessThan(end);
+    expect(updateGame(result.state,{t:'players',players:[],leader:null}).effects).toEqual([]);conserved(result.state);
+  });
+  it('ジョーカーの通知と振動は引いた本人だけに届き、公開モデルには所在を加えない',()=>{
+    // JKだけの通常通知ではジョーカーを引いたことが目立たなかった。
+    const s=scenario([['s7'],['jk','h7'],['s3','h3']]);const result=draw(s);
+    expect(pad(result,1)).toMatchObject({k:'wait',title:'ジョーカーをひきました'});
+    expect(result.effects.filter((e)=>e.t==='vibrate')).toEqual([{t:'vibrate',to:1,ms:[60]}]);
+    for(const e of result.effects.filter((e)=>e.t==='pad' && e.to!==1)) expect(JSON.stringify(e.spec)).not.toMatch(/ジョーカー|JK/);
+    expect(JSON.stringify(publicView(result.state))).not.toMatch(/ジョーカー|jk|feedback/);conserved(result.state);
+  });
+  it('結果の記録は上がり順・ジョーカー残り・退出の記録なしを順位と別に伝える',()=>{
+    // 旧labelは順位を繰り返し、退出印にも「退出」を重ねていた。
+    const result=draw(scenario([['s7'],['h7'],['jk']]));
+    expect(result.effects.find((e)=>e.t==='end').results.map((r)=>r.label)).toEqual(['2番目に上がり','1番目に上がり','ジョーカーが残った']);
+    const left=updateGame(scenario([[],['s3'],['jk']],[1]),{t:'players',players:players().filter((p)=>p.id!==2),leader:1});
+    expect(left.effects.find((e)=>e.t==='end').results.map((r)=>r.label)).toEqual(['1番目に上がり','記録なし','ジョーカーが残った']);
+    const incomplete=updateGame(scenario([['s3'],['jk']]),{t:'players',players:players(1),leader:1});
+    expect(incomplete.effects.find((e)=>e.t==='end').results.map((r)=>r.label)).toEqual(['未成立','記録なし']);
+    for(const r of result.effects.find((e)=>e.t==='end').results) expect([...r.label].length).toBeLessThanOrEqual(12);
   });
 });

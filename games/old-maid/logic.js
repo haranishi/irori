@@ -113,7 +113,7 @@ export function updateGame(state,event) {
   emit(next,{type:'draw',from:p,to:to.id});
   if (paired.discard.length) emit(next,{type:'pair',p,cards:paired.discard});
   markOut(next,to); markOut(next,from);
-  next.feedback = {p,text:`ひいた札：${cardText(card)}。${paired.discard.length ? 'ペア成立！' : ''}`};
+  next.feedback = {p,text:card === 'jk' ? 'ジョーカーをひきました' : `ひいた札：${cardText(card)}。${paired.discard.length ? 'ペア成立！' : ''}`};
   openTurn(next,p,false);
   /** @type {GameEffect[]} */
   const effects = [{t:'cue',name:'flip'}];
@@ -155,18 +155,22 @@ function openTurn(state,after,keep) {
 
 /** @param {GameState} state @param {Seat} seat @returns {PadSpec} */
 function padFor(state,seat) {
-  const hand = `あなた：${seat.hand.map(cardText).join(' ')}`;
+  const hand = `あなた：${seat.hand.map(cardText).join(' ') || '札なし'}`;
+  const record = `${hand}${seat.rank ? `。${seat.rank}位${seat.hand.length ? '' : 'で上がりました'}` : '。今回は未成立'}`;
+  if (state.phase === 'ended') return {k:'wait',title:'勝負が終わりました',body:record};
   if (blocked(state)) return {k:'wait',title:'再開を待っています',body:hand};
   if (state.phase === 'intro') {
     if (seat.id === state.leader && canBegin(state)) return {k:'pad',stick:'none',buttons:[{id:beginId(state),label:'はじめる'}]};
     return {k:'wait',title:'ババ抜き',body:state.seats.length >= 2 && state.seats.length <= 8 ? '進行役がはじめます' : '2〜8人で遊べます'};
   }
-  if (state.feedback?.p === seat.id) return {k:'wait',title:state.feedback.text,body:`${hand}${seat.rank ? `。${seat.rank}位` : ''}`};
-  if (seat.rank !== null) return {k:'wait',title:`${seat.rank}位`,body:'大画面で勝負を見守ろう'};
+  if (state.feedback?.p === seat.id) return {k:'wait',title:state.feedback.text,body:seat.rank ? record : hand};
+  if (seat.rank !== null) return {k:'wait',title:`${seat.rank}位で上がりました`,body:`${hand}。大画面で勝負を見守ろう`};
   const from = state.seats.find((s) => s.id === state.turn?.from);
   const to = state.seats.find((s) => s.id === state.turn?.to);
   if (seat.id === to?.id) return {k:'wait',title:`${[...(from?.name ?? '')].slice(0,12).join('')}さんが札をひいています`,body:hand};
-  return {k:'tiles',tiles:(to?.hand ?? []).map((_,i) => ({id:drawId(state,i),label:String(i+1)})),max:1,ok:'ひく',note:hand,...(seat.id !== from?.id ? {disabled:true} : {})};
+  // 固定文15文字＋名前各4文字で、長い名前でも見出し24文字以内。
+  if (seat.id !== from?.id) return {k:'wait',title:`${[...(from?.name ?? '')].slice(0,4).join('')}さんが${[...(to?.name ?? '')].slice(0,4).join('')}さんから札をひいています`,body:hand};
+  return {k:'tiles',tiles:(to?.hand ?? []).map((_,i) => ({id:drawId(state,i),label:String(i+1)})),max:1,ok:'ひく',note:hand};
 }
 
 /** @param {GameState|null} before @param {GameState} state @param {GameEffect[]} extra @returns {Transition} */
@@ -174,12 +178,10 @@ function transition(before,state,extra=[]) {
   const effects = [...extra];
   for (const event of state.events) if (event.type === 'out' && !state.seats.find((s) => s.id === event.p)?.hand.length) effects.push({t:'cue',name:'win'});
   if (state.phase === 'ended') {
-    if (state.feedback) {
-      const seat = state.seats.find((s) => s.id === state.feedback?.p);
-      if (seat) effects.push({t:'pad',to:seat.id,spec:padFor(state,seat)});
-    }
+    // 最終padは結果のリモコンで置き換わり得るが、古い操作画面は残さない。
+    for (const seat of state.seats.filter((s) => !s.left)) effects.push({t:'pad',to:seat.id,spec:padFor(state,seat)});
     if (state.outcome === 'complete') effects.push({t:'cue',name:'lose'});
-    effects.push({t:'end',results:state.seats.map((s) => ({p:s.id,score:s.rank === null ? 0 : state.order.length-s.rank+1,ranked:!s.left && state.outcome === 'complete',label:s.left ? '退出' : s.rank === null ? '未成立' : s.rank === state.order.length ? '最下位' : `${s.rank}位`})),options:{display:'record',outcome:state.outcome}});
+    effects.push({t:'end',results:state.seats.map((s) => ({p:s.id,score:s.rank === null ? 0 : state.order.length-s.rank+1,ranked:!s.left && state.outcome === 'complete',label:s.left ? '記録なし' : s.rank === null ? '未成立' : s.rank === state.order.length ? 'ジョーカーが残った' : `${s.rank}番目に上がり`})),options:{display:'record',outcome:state.outcome}});
     return {state,effects};
   }
   for (const seat of state.seats.filter((s) => !s.left)) effects.push({t:'pad',to:seat.id,spec:padFor(state,seat)});

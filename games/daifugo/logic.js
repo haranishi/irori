@@ -116,6 +116,7 @@ export function updateGame(state, event) {
     next.turn = nextSeat(next,p); sweepIfPassed(next); next.revision++;
     return transition(next,state);
   }
+  if (!input.ids.length) return reject(state,seat,state.table ? '出せる札がありません。パスしてください' : '出す札を選んでください');
   const cards = input.ids.map((id)=>seat.hand.find((card)=>cardId(state,p,card) === id));
   if (cards.some((c)=>c === undefined) || new Set(input.ids).size !== input.ids.length) return reject(state,seat,'今の手札から重複せず選んでください');
   const play = /** @type {string[]} */ (cards);
@@ -190,7 +191,7 @@ function padFor(state, seat, reason) {
   const note = `${reason ? reason + '｜' : ''}${blocked(state) ? '再開待ち' : state.turn === seat.id ? 'あなたの番' : `${name}の番`}｜場 ${table}${state.revolution ? '｜革命中' : ''}`;
   const count = seat.hand.filter((c)=>playable.has(c)).length;
   return {k:'tiles',token:tilesToken(state,seat.id),tiles:seat.hand.map((c)=>({id:cardId(state,seat.id,c),label:cardLabel(c),color:/** @type {'red'|'gray'} */ (c[0] === 'h' || c[0] === 'd' ? 'red' : 'gray'),off:!playable.has(c)})),
-    min:count ? 1 : 0,max:Math.min(4,count),ok:'出す',...(state.table ? {pass:'パス'} : {}),disabled,note:[...note].slice(0,120).join('')};
+    min:count ? 1 : 0,max:Math.min(4,count),ok:count ? '出す' : '出せません',...(state.table ? {pass:'パス'} : {}),disabled,note:[...note].slice(0,120).join('')};
 }
 /** @param {string} card */
 export function cardLabel(card) {
@@ -224,7 +225,7 @@ function transition(next, before, initial = []) {
     // 残る手札が一斉に退出した場合も、在席の上がり順から最下位が確定する。
     if (next.outcome === 'complete') effects.push({t:'cue',name:'lose'});
     effects.push({t:'end',results:next.seats.map((s)=>({p:s.id,score:s.rank === null ? 0 : count-s.rank+1,
-      ranked:!s.left && next.outcome === 'complete',label:s.left ? '退出' : s.rank === null ? '未成立' : rankLabel(s.rank,count)})),
+      ranked:!s.left && next.outcome === 'complete',label:s.left ? '記録なし' : s.rank === null ? '未成立' : rankLabel(s.rank,count)})),
     options:{display:'record',outcome:next.outcome,note:next.outcome === 'incomplete' ? '順位を付けられる人が2人未満のため未成立です' : '手札を出し切った順の順位です'}});
   } else {
     for (const seat of next.seats.filter((s)=>!s.left)) effects.push({t:'pad',to:seat.id,spec:padFor(next,seat)});

@@ -133,5 +133,32 @@
     "replace": "s.left = true; s.online = false; });",
     "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "introの全員退出"],
     "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-empty-rejection",
+    "note": "空送信のパス案内と札の選択案内を旧文へ戻す",
+    "file": "games/daifugo/logic.js",
+    "find": "if (!input.ids.length) return reject(state,seat,state.table ? '出せる札がありません。パスしてください' : '出す札を選んでください');",
+    "replace": "",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo", "-t", "出せる札0枚|場がない空送信"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-unplayable-button",
+    "note": "出せる札がなくても出すボタンを表示する",
+    "file": "games/daifugo/logic.js",
+    "find": "ok:count ? '出す' : '出せません'",
+    "replace": "ok:'出す'",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo", "-t", "出せる札0枚"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-departure-label",
+    "note": "退出者のlabelを退出へ戻し印と重複させる",
+    "file": "games/daifugo/logic.js",
+    "find": "label:s.left ? '記録なし'",
+    "replace": "label:s.left ? '退出'",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo", "-t", "退出者の結果label|退出した席の結果"],
+    "timeoutMs": 30000
   }
 ]

@@ -336,7 +336,7 @@ describe('中断・接続・退出・順位・終了',()=>{
     const next=event(s,{t:'players',players:players().filter((p)=>p.id !== 2),leader:1});
     expect(next.state.phase).toBe('ended');expect(next.state.finishOrder).toEqual([1,3]);
     expect(next.effects.find((e)=>e.t === 'end').results).toEqual([
-      {p:1,score:2,ranked:true,label:'大富豪'},{p:2,score:0,ranked:false,label:'退出'},{p:3,score:1,ranked:true,label:'大貧民'}]);conservation(next.state);
+      {p:1,score:2,ranked:true,label:'大富豪'},{p:2,score:0,ranked:false,label:'記録なし'},{p:3,score:1,ranked:true,label:'大貧民'}]);conservation(next.state);
   });
   it.each([[],[1]])('順位を付けられる人が2人未満なら全員順位なしで一度だけ終了: %j',(...remaining)=>{
     const s=start().state;const next=event(s,{t:'players',players:players().filter((p)=>remaining.includes(p.id)),leader:remaining[0] ?? null});
@@ -393,7 +393,7 @@ describe('introの全員退出',()=>{
     expect(next.state.seats.every((s)=>s.left && !s.online && s.rank === null)).toBe(true);
     expect(before.seats.every((s)=>!s.left)).toBe(true);
     const ends=next.effects.filter((e)=>e.t === 'end');expect(ends).toHaveLength(1);
-    expect(ends[0]).toMatchObject({options:{outcome:'incomplete'},results:before.seats.map((s)=>({p:s.id,score:0,ranked:false,label:'退出'}))});
+    expect(ends[0]).toMatchObject({options:{outcome:'incomplete'},results:before.seats.map((s)=>({p:s.id,score:0,ranked:false,label:'記録なし'}))});
     expect(publicView(next.state).canBegin).toBe(false);
     for(const event of [
       {t:'players',players:[],leader:null},{t:'players',players:players(n),leader:1},
@@ -411,5 +411,41 @@ describe('introの全員退出',()=>{
     next=updateGame(next.state,{t:'players',players:players(),leader:1});
     next=updateGame(next.state,{t:'players',players:[],leader:null});
     expect(next.effects.filter((e)=>e.t === 'end')).toHaveLength(1);
+  });
+});
+
+describe('追補D3：出せない番と退出の記録',()=>{
+  it('出せる札0枚の番は出せませんと表示し、空送信を5回断ってもパスを案内して画面を更新する',()=>{
+    // 選べる札がなくても出すボタンが現れ、一般的な出札規則しか返していなかった。
+    let s=scenario([['s3','h3'],['s4','h4'],['s5','h5']],{table:{cards:['jk1'],n:1,by:3}});
+    s=event(s,{t:'menu',paused:true}).state;
+    let next=event(s,{t:'menu',paused:false});s=next.state;
+    const seen=new Set();
+    for(let i=0;i<5;i++) {
+      const spec=next.effects.find((e)=>e.t==='pad' && e.to===1).spec;
+      expect(spec).toMatchObject({k:'tiles',ok:'出せません',pass:'パス',min:0,max:0,disabled:false});
+      expect(spec.tiles.every((t)=>t.off)).toBe(true);
+      expect(seen.has(spec.token)).toBe(false);seen.add(spec.token);
+      const before=freeze(s);next=play(s,[]);s=next.state;unchangedGame(before,s);
+      expect(s.refused[1]).toBe(i+1);expect(next.effects).toHaveLength(1);
+      expect(next.effects[0].spec.note).toContain('出せる札がありません。パスしてください');
+      expect(next.effects[0].spec.token).not.toBe(spec.token);checkPrivacy(s,next.effects);conservation(s);
+    }
+    expect(pass(s).state.seats[0].passed).toBe(true);
+  });
+  it('場がない空送信は出す札を選んでくださいと断り、現在の札を選び直せる',()=>{
+    // 空配列も一般的な組合せエラーに入り、何をすればよいか分からなかった。
+    const s=freeze(scenario([['s3','h3'],['s4','h4'],['s5','h5']]));const next=play(s,[]);
+    unchangedGame(s,next.state);expect(next.effects[0].spec.note).toContain('出す札を選んでください');
+    expect(next.effects[0].spec).toMatchObject({ok:'出す',min:1});expect(next.effects[0].spec.pass).toBeUndefined();
+    expect(next.effects[0].spec.token).not.toBe(token(s));
+    expect(play(next.state,['s3']).state.table.cards).toEqual(['s3']);checkPrivacy(next.state,next.effects);
+  });
+  it('退出者の結果labelは記録なしとし、退出の印と重ねない',()=>{
+    // 結果の共通画面が退出印を付けるため、label「退出」は重複していた。
+    const result=event(start().state,{t:'players',players:players(1),leader:1});
+    const end=result.effects.find((e)=>e.t==='end');
+    expect(end.results.map((r)=>[r.ranked,r.label])).toEqual([[false,'未成立'],[false,'記録なし'],[false,'記録なし']]);
+    conservation(result.state);
   });
 });

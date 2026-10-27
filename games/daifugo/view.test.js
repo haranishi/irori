@@ -393,3 +393,30 @@ describe('mainと画面・判定・SDKの接続',()=>{
     input(1,{k:'btn',id:'unused',d:1});expect(hooks.updateGame).not.toHaveBeenCalled();
   });
 });
+
+describe('追補D3：スマホへの案内と結果の接続',()=>{
+  it('出せる札0枚の空送信でも5回とも新しい画面でパスを案内する',async()=>{
+    // 判定が案内を返してもmainが同じ画面を渡すと「送りました」で固まる。
+    const host=fakeHost();await boot(host);startHost(host);
+    const next=structuredClone(hooks.updateGame.mock.results.at(-1).value.state);
+    next.turn=1;next.table={cards:['jk1'],n:1,by:3};next.seats[0].hand=['s3','h3'];
+    next.paused=true;
+    const result=logic.updateGame(next,{t:'menu',paused:false});hooks.updateGame.mockReturnValueOnce(result);
+    host.emit('resume');const seen=new Set();
+    for(let i=0;i<5;i++) {
+      const spec=host.pads.get(1);expect(spec.ok).toBe('出せません');expect(spec.pass).toBe('パス');
+      expect(seen.has(spec.token)).toBe(false);seen.add(spec.token);
+      host.emit('input',1,{k:'tiles',t:spec.token,ids:[]});
+      expect(host.pads.get(1).note).toContain('出せる札がありません。パスしてください');
+    }
+    const spec=host.pads.get(1);host.emit('input',1,{k:'tiles',t:spec.token,ids:[],pass:true});
+    expect(hooks.updateGame.mock.results.at(-1).value.state.seats[0].passed).toBe(true);
+  });
+  it('退出した席の結果に記録なしを渡し、退出印を重複させない',async()=>{
+    // 退出印はホストが持つため、ゲームからは記録なしを渡す。
+    const host=fakeHost();await boot(host);startHost(host);
+    host.emit('players',host.players.slice(0,1),1);
+    expect(host.end).toHaveBeenCalledTimes(1);
+    expect(host.end.mock.calls[0][0].map((r)=>r.label)).toEqual(['未成立','記録なし','記録なし']);
+  });
+});

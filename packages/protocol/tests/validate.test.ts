@@ -272,3 +272,40 @@ describe('バイト数', () => {
     expect(LIMITS.FRAME_MAX_BYTES).toEqual({ pad: 512, host: 16_384 });
   });
 });
+
+describe('tilesの境界', () => {
+  const tiles = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `t${i}`, label: '札', sub: '補助', color: 'red', off: false }));
+  const spec = { k: 'tiles', tiles: tiles(20), ok: '出す', pass: 'パス', min: 1, max: 8, note: '状況', hint: '選ぶ' };
+  it('20枚・8枚選択・空札・全offを通し、任意キーを補わない', () => {
+    expect(ok(validatePadSpec(spec))).toEqual(spec);
+    expect(ok(parseHostFrame(J({ t: 'pad', to: 1, spec })))).toEqual({ t: 'pad', to: 1, spec });
+    for (const list of [[], tiles(1).map((t) => ({ ...t, off: true }))]) {
+      expect(ok(validatePadSpec({ k: 'tiles', tiles: list, ok: '確認' }))).toEqual({ k: 'tiles', tiles: list, ok: '確認' });
+    }
+    for (const i of [{ k: 'tiles', ids: tiles(8).map((t) => t.id) }, { k: 'tiles', ids: [], pass: true }, { k: 'tiles', ids: [] }]) {
+      expect(ok(parsePadFrame(J({ t: 'in', i })))).toEqual({ t: 'in', i });
+    }
+  });
+  it.each([
+    { tiles: tiles(21) }, { tiles: [tiles(1)[0], tiles(1)[0]] }, { max: 9 }, { min: 9 }, { min: -1 }, { max: 1.5 },
+    { tiles: [{ id: 'a', label: 'A', off: true }], max: 1 }, { tiles: [], min: 1 }, { min: 2, max: 1 },
+    { ok: 'あ'.repeat(13) }, { pass: 'あ'.repeat(13) }, { note: 'あ'.repeat(121) }, { hint: 'あ'.repeat(41) },
+    { tiles: [{ id: 'A', label: 'A' }] }, { tiles: [{ id: 'a'.repeat(25), label: 'A' }] },
+    { tiles: [{ id: 'a', label: 'あ'.repeat(13) }] }, { tiles: [{ id: 'a', label: 'A', sub: 'あ'.repeat(13) }] },
+    { tiles: [{ id: 'a', label: 'A', color: 'pink' }] }, { tiles: [{ id: 'a', label: 'A', off: 1 }] },
+    { tiles: [{ id: 'a', label: 'A', html: 'x' }] }, { disabled: 'yes' }, { extra: 1 },
+  ])('不正な指定を拒む %j', (patch) => {
+    expect(validatePadSpec({ ...spec, ...patch }).ok).toBe(false);
+  });
+  it.each([
+    { ids: ['a', 'a'] }, { ids: tiles(9).map((t) => t.id) }, { ids: ['A'] }, { ids: ['a'.repeat(25)] }, { ids: 'a' },
+    { ids: [], pass: false }, { ids: ['a'], pass: true }, { ids: [], pass: 1 }, { ids: [], x: 1 },
+  ])('不正な入力を拒む %j', (patch) => {
+    expect(parsePadFrame(J({ t: 'in', i: { k: 'tiles', ...patch } })).ok).toBe(false);
+  });
+  it('最長の8識別子の入力も512バイト以内', () => {
+    const raw = J({ t: 'in', i: { k: 'tiles', ids: tiles(8).map((_, i) => `t${i}`.padEnd(24, 'a')) } });
+    expect(utf8Length(raw)).toBeLessThanOrEqual(512);
+    expect(parsePadFrame(raw).ok).toBe(true);
+  });
+});

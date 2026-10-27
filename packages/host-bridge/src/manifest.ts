@@ -28,7 +28,7 @@ export interface GameManifest {
 
 export type ManifestResult = { ok: true; manifest: GameManifest } | { ok: false; reason: string };
 
-const PADS: readonly string[] = ['wait', 'pad', 'buzzer', 'choices', 'touch', 'tilt'];
+const PADS: readonly string[] = ['wait', 'pad', 'buzzer', 'choices', 'tiles', 'touch', 'tilt'];
 const HTTPS = /^https:\/\/[^\s]+$/;
 
 const str = (v: unknown, min: number, max: number) => typeof v === 'string' && v.length >= min && v.length <= max;

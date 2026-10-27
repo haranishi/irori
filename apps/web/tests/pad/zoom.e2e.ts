@@ -48,6 +48,11 @@ test('viewport は拡大を止めない（user-scalable=no・maximum-scale を�
 
 const SCENES: { name: string; spec: PadSpec; fingers: (page: Page) => Promise<[Pt, Pt]> }[] = [
   {
+    name: '札の格子を2本指で広げる',
+    spec: { k: 'tiles', tiles: [{ id: 'a', label: '札A' }, { id: 'b', label: '札B' }], ok: '出す' },
+    fingers: async (page) => [await center(page.locator('[data-id="a"]')), await center(page.locator('[data-id="b"]'))],
+  },
+  {
     name: '十字とボタンを同時に押す',
     spec: { k: 'pad', stick: 'dpad', buttons: [{ id: 'hop', label: 'ぴょん' }, { id: 'end', label: 'おわる', color: 'gray' }] },
     fingers: async (page) => [await center(page.locator('.irori-pad__dpad')), await center(page.locator('.irori-pad__btn[data-id="hop"]'))],

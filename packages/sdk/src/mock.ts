@@ -19,7 +19,7 @@ const TEXT = {
     resume: '再開',
     drop: '切断する',
     join: 'つなぐ',
-    keys: '1人目: WASD・Space・E　2人目: 矢印・Enter・Shift',
+    keys: '1人目: WASD・Space・E　2人目: 矢印・Enter・Shift。札: 席をクリック、矢印・Spaceで選択・Enterで決定・Pでパス',
     results: '結果',
     incomplete: '勝敗なし',
     again: 'もう一度',
@@ -35,7 +35,7 @@ const TEXT = {
     resume: 'Resume',
     drop: 'Disconnect',
     join: 'Connect',
-    keys: 'P1: WASD, Space, E — P2: arrows, Enter, Shift',
+    keys: 'P1: WASD, Space, E — P2: arrows, Enter, Shift. Tiles: click a seat, arrows, Space to select, Enter to submit, P to pass',
     results: 'Results',
     incomplete: 'No contest',
     again: 'Play again',
@@ -183,9 +183,9 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
 
   const markCursor = (s: Seat) => {
     for (const el of s.box.querySelectorAll('[data-cursor]')) el.removeAttribute('data-cursor');
-    if (s.spec.k !== 'choices') return;
+    if (s.spec.k !== 'choices' && s.spec.k !== 'tiles') return;
     // id は検査で英小文字・数字・_- に限っているので、そのままセレクタに使える。
-    const id = s.spec.options[s.cursor]?.id;
+    const id = (s.spec.k === 'tiles' ? s.spec.tiles : s.spec.options)[s.cursor]?.id;
     if (id) s.box.querySelector(`[data-id="${id}"]`)?.setAttribute('data-cursor', '');
   };
 
@@ -216,6 +216,42 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
 
   const onKey = (e: KeyboardEvent) => {
     const hit = KEYS[e.code];
+    // 押している途中で別席がtilesになったり、フォーカスが移っても離しを返す。
+    if (e.type === 'keyup' && hit) {
+      const s = seats[hit[0]];
+      const key = hit[1];
+      if (s && (key === 'a' || key === 'b' ? s.held.has(key) : s.dirs.has(key))) {
+        e.preventDefault();
+        if (key === 'a' || key === 'b') release(s, key);
+        else { s.dirs.delete(key); steer(s); }
+        return;
+      }
+    }
+    const target = e.target as HTMLElement | null;
+    if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+    // 接続切替などの管理用ボタンは、Enter・Spaceの標準操作に任せる。
+    if (target?.closest?.('.irori-mock__btn')) return;
+    const focused = seats.find((s) => target instanceof Node && s.card.contains(target));
+    const tileSeat = focused ?? seats.find((s) => s.spec.k === 'tiles' && s.info.online);
+    if (tileSeat?.spec.k === 'tiles' && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter', 'NumpadEnter', 'KeyP'].includes(e.code)) {
+      e.preventDefault();
+      if (e.type !== 'keydown' || e.repeat || !tileSeat.info.online) return;
+      const buttons = [...tileSeat.box.querySelectorAll<HTMLButtonElement>('.irori-pad__tile')];
+      const active = buttons.indexOf(doc.activeElement as HTMLButtonElement);
+      if (active >= 0) tileSeat.cursor = active;
+      if (e.code.startsWith('Arrow')) {
+        if (buttons.length === 0) return;
+        const step = e.code === 'ArrowLeft' || e.code === 'ArrowUp' ? -1 : 1;
+        for (let n = 0; n < buttons.length; n++) {
+          tileSeat.cursor = (tileSeat.cursor + step + buttons.length) % buttons.length;
+          if (!buttons[tileSeat.cursor]?.disabled) break;
+        }
+        markCursor(tileSeat);
+        buttons[tileSeat.cursor]?.focus();
+      } else if (e.code === 'Space') buttons[tileSeat.cursor]?.click();
+      else tileSeat.box.querySelector<HTMLButtonElement>(`[data-action="${e.code === 'KeyP' ? 'pass' : 'ok'}"]`)?.click();
+      return;
+    }
     if (!hit) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -330,6 +366,8 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
           case 'end':
             showResults(msg.results ?? [], msg.options);
             return;
+          case 'cue':
+            return;
           case 'ready':
             root.dataset.ready = '';
             return;
@@ -350,12 +388,12 @@ export function createMock(win: Window, opts: { mockPlayers?: number | undefined
     const toggle = h('button', { type: 'button', class: 'irori-mock__btn irori-mock__online' }, tx.drop);
     const card = h(
       'section',
-      { class: 'irori-mock__seat', 'data-p': String(info.id), 'aria-label': `${info.name}（${l.label}）` },
+      { class: 'irori-mock__seat', tabindex: '0', 'data-p': String(info.id), 'aria-label': `${info.name}（${l.label}）` },
       h('div', { class: 'irori-mock__who' }, shapeSvg(l.shape, 20, l.color), h('span', { class: 'irori-mock__name' }, info.name), toggle),
       box,
     );
     card.style.setProperty('--seat', l.color);
-    const pad = mountPad(box, { send: (i) => input(info.id, i), strings: locale === 'ja' ? PAD_STRINGS_JA : PAD_STRINGS_EN });
+    const pad = mountPad(box, { send: (i) => { if (seat.info.online) input(info.id, i); }, strings: locale === 'ja' ? PAD_STRINGS_JA : PAD_STRINGS_EN });
     const seat: Seat = { info, spec: { k: 'wait' }, pad, card, box, dirs: new Set(), held: new Map(), aim: null, repeat: undefined, cursor: 0, picked: false };
     toggle.addEventListener('click', () => {
       releaseKeys(seat);

@@ -7,7 +7,7 @@ import type { ConnectOptions, Irori } from './types';
 export { IroriError } from './errors';
 export type { IroriErrorCode } from './errors';
 export type { ConnectOptions, GameInput, Irori, IroriEvents, IroriStorage, Target } from './types';
-export type { ButtonSpec, ChoiceSpec, ColorName, GameEndOptions, GamePadSpec as PadSpec, GameResult, HostCapability, HostEnvironment, PlayerId, PlayerInfo } from '@irori/protocol';
+export type { ButtonSpec, ChoiceSpec, TileSpec, ColorName, GameEndOptions, GamePadSpec as PadSpec, GameResult, HostCapability, HostEnvironment, PlayerId, PlayerInfo } from '@irori/protocol';
 export type { Look, ShapeName } from '@irori/pad-ui';
 
 const HANDSHAKE_TIMEOUT_MS = 3_000;

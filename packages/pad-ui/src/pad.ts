@@ -23,9 +23,13 @@ export interface PadStrings {
   tiltDenied: string;
   tiltInsecure: string;
   tiltOn: string;
+  tilesLimit: string;
+  tilesSent: string;
 }
 
 export const PAD_STRINGS_JA: PadStrings = {
+  tilesLimit: 'これ以上選べません',
+  tilesSent: '送りました',
   waiting: '待っています',
   dpad: '十字キー',
   stick: 'スティック',
@@ -44,6 +48,8 @@ export const PAD_STRINGS_JA: PadStrings = {
 };
 
 export const PAD_STRINGS_EN: PadStrings = {
+  tilesLimit: 'You cannot select any more',
+  tilesSent: 'Sent',
   waiting: 'Waiting',
   dpad: 'D-pad',
   stick: 'Stick',
@@ -444,6 +450,80 @@ class TouchArea extends Surface {
   }
 }
 
+/** 選択はこの画面だけで保持し、決定時にだけ送る。クリックはスクロール終了後に発火する。 */
+class Tiles implements Control {
+  readonly el: HTMLDivElement;
+  private dead = false;
+  private readonly timers = new Set<ReturnType<typeof setTimeout>>();
+
+  constructor(spec: Extract<PadSpec, { k: 'tiles' }>, out: Out, s: PadStrings) {
+    const selected = new Set<string>();
+    const max = spec.max ?? Math.min(1, spec.tiles.filter((t) => !t.off).length);
+    const min = spec.min ?? Math.min(1, max);
+    let sent = false;
+    const status = h('p', { class: 'irori-pad__status', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
+    const grid = h('div', { class: 'irori-pad__tiles-grid' });
+    const ok = h('button', { type: 'button', class: 'irori-pad__btn', 'data-action': 'ok' }, spec.ok);
+    const pass = h('button', { type: 'button', class: 'irori-pad__btn', 'data-action': 'pass' }, spec.pass ?? '');
+    const actions = h('div', { class: 'irori-pad__tiles-actions' }, ok, spec.pass === undefined ? null : pass);
+    const update = () => {
+      ok.disabled = sent || selected.size < min || selected.size > max;
+      ok.setAttribute('aria-disabled', String(ok.disabled));
+      for (const b of grid.querySelectorAll<HTMLButtonElement>('button')) {
+        const on = selected.has(b.dataset.id!);
+        b.setAttribute('aria-pressed', String(on));
+        if (sent) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); }
+      }
+    };
+    const submit = (passing: boolean) => {
+      if (this.dead || sent || spec.disabled || (!passing && ok.disabled)) return;
+      sent = true;
+      this.el.dataset.sent = '';
+      pass.disabled = true;
+      pass.setAttribute('aria-disabled', 'true');
+      status.textContent = s.tilesSent;
+      update();
+      out(passing ? { k: 'tiles', ids: [], pass: true } : { k: 'tiles', ids: [...selected] });
+    };
+    for (const tile of spec.tiles) {
+      const b = h('button', { type: 'button', class: 'irori-pad__btn irori-pad__tile', 'data-id': tile.id,
+        'aria-pressed': 'false', 'aria-disabled': String(!!spec.disabled || !!tile.off) },
+        h('span', { class: 'irori-pad__tile-label' }, tile.label),
+        tile.sub === undefined ? null : h('small', {}, tile.sub),
+        h('span', { class: 'irori-pad__tile-check', 'aria-hidden': 'true' }, '✓'));
+      if (tile.color) b.dataset.color = tile.color;
+      b.disabled = !!spec.disabled || !!tile.off;
+      b.addEventListener('click', () => {
+        if (this.dead || sent || b.disabled) return;
+        delete b.dataset.limit;
+        if (selected.has(tile.id)) selected.delete(tile.id);
+        else if (max === 1) { selected.clear(); selected.add(tile.id); }
+        else if (selected.size >= max) {
+          status.textContent = '';
+          status.append(document.createTextNode(s.tilesLimit));
+          b.dataset.limit = '';
+          const timer = setTimeout(() => { delete b.dataset.limit; this.timers.delete(timer); }, 300);
+          this.timers.add(timer);
+          return;
+        } else selected.add(tile.id);
+        status.textContent = '';
+        update();
+      });
+      b.addEventListener('animationend', () => delete b.dataset.limit);
+      grid.append(b);
+    }
+    ok.addEventListener('click', () => submit(false));
+    pass.addEventListener('click', () => submit(true));
+    this.el = h('div', { class: 'irori-pad__tiles' },
+      spec.note === undefined ? null : h('p', { class: 'irori-pad__text' }, spec.note),
+      grid, status, spec.disabled ? null : actions);
+    update();
+  }
+
+  release(): void {}
+  dispose(): void { this.dead = true; for (const timer of this.timers) clearTimeout(timer); this.timers.clear(); }
+}
+
 type PermissionApi = { requestPermission?: () => Promise<string> };
 /** 一度許可されたら、同じページの次の tilt では聞き直さない。 */
 let tiltGranted = false;
@@ -573,6 +653,11 @@ function build(spec: PadSpec, out: Out, s: PadStrings): View {
       const c = new Choices(choices(spec.options), spec.disabled === true, out);
       controls.push(c);
       return view('choices', hint(spec.hint), body(c.el));
+    }
+    case 'tiles': {
+      const tiles = new Tiles(spec, out, s);
+      controls.push(tiles);
+      return view('tiles', hint(spec.hint), tiles.el);
     }
     case 'touch': {
       const t = new TouchArea(out, s, spec.mode === 'swipe' ? 'swipe' : 'area');

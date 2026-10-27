@@ -248,3 +248,73 @@ test('orient：横向きが要る画面を縦で開くと案内を重ね、横�
   await expect(cover).toBeVisible();
   await expect(cover).toContainText('縦向きがおすすめです');
 });
+
+test('tiles：上限・off・選択の印・決定1回・パス・見るだけを守る', async ({ page, line, makeHost }) => {
+  const host = await makeHost();
+  const you = await joinRoom(page, line, host);
+  const spec: PadSpec = { k: 'tiles', tiles: [{ id: 'a', label: '札A' }, { id: 'b', label: '札B' }, { id: 'c', label: '札C' }, { id: 'd', label: '不可', off: true }], min: 2, max: 2, ok: '出す', pass: 'パス', note: '手札' };
+  host.setPad(you.id, spec);
+  const ok = page.locator('[data-action="ok"]');
+  await expect(ok).toBeDisabled();
+  await page.locator('[data-id="a"]').tap(); await page.locator('[data-id="b"]').tap();
+  await expect(page.locator('[data-id="a"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('[data-id="c"]').tap();
+  await expect(page.locator('[role="status"]').filter({ hasText: 'これ以上選べません' })).toBeVisible();
+  await expect(page.locator('[data-id="c"]')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('[data-id="d"]')).toBeDisabled();
+  expect(host.events(you.id)).toEqual([]);
+  await ok.tap(); await host.eventsAtLeast(you.id, 1);
+  await expect(ok).toBeDisabled();
+  expect(host.events(you.id)).toEqual([{ k: 'tiles', ids: ['a', 'b'] }]);
+  host.setPad(you.id, { ...spec, note: '次の番' });
+  await expect(page.locator('.irori-pad__text')).toHaveText('次の番');
+  await page.locator('[data-action="pass"]').tap(); await host.eventsAtLeast(you.id, 2);
+  expect(host.events(you.id).at(-1)).toEqual({ k: 'tiles', ids: [], pass: true });
+  host.setPad(you.id, { ...spec, disabled: true });
+  await expect(page.locator('[data-action]')).toHaveCount(0);
+  await expect(page.locator('[data-id="a"]')).toBeDisabled();
+});
+
+test('tiles：Tab・Space・Enterで選択と決定ができる', async ({ page, line, makeHost }) => {
+  const host = await makeHost(); const you = await joinRoom(page, line, host);
+  host.setPad(you.id, { k: 'tiles', tiles: [{ id: 'a', label: '札A' }, { id: 'b', label: '札B' }], ok: '出す' });
+  await page.locator('[data-id="a"]').focus(); await page.keyboard.press('Space');
+  await page.keyboard.press('Tab'); await expect(page.locator('[data-id="b"]')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-id="a"]')).toHaveAttribute('aria-pressed', 'false');
+  await page.keyboard.press('Tab'); await expect(page.locator('[data-action="ok"]')).toBeFocused();
+  await page.keyboard.press('Enter'); await host.eventsAtLeast(you.id, 1);
+  expect(host.events(you.id)).toEqual([{ k: 'tiles', ids: ['b'] }]);
+});
+
+for (const width of [390, 768, 1440]) {
+  test(`tiles：20枚を${width}pxで表示し、札のスクロール中も下部の操作が動かない`, async ({ page, line, makeHost }) => {
+    await page.setViewportSize({ width, height: 600 });
+    const host = await makeHost(); const you = await joinRoom(page, line, host);
+    host.setPad(you.id, { k: 'tiles', tiles: Array.from({ length: 20 }, (_, i) => ({ id: `t${i}`, label: `札${i + 1}`, sub: '手札' })), ok: '出す', pass: 'パス', note: '札を選ぶ' });
+    const grid = page.locator('.irori-pad__tiles-grid');
+    await expect(grid).toBeVisible();
+    const metrics = await grid.evaluate((el) => ({ columns: getComputedStyle(el).gridTemplateColumns.split(' ').length, overflow: el.scrollWidth > el.clientWidth, scroll: el.scrollHeight > el.clientHeight }));
+    expect(metrics.columns).toBeGreaterThanOrEqual(3); expect(metrics.columns).toBeLessThanOrEqual(5);
+    expect(metrics.overflow).toBe(false);
+    if (width === 390) expect(metrics.scroll).toBe(true);
+    const ok = page.locator('[data-action="ok"]'); const before = await ok.boundingBox();
+    await grid.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    expect(await ok.boundingBox()).toEqual(before);
+    await expect(ok).toBeInViewport(); await expect(page.locator('[data-action="pass"]')).toBeInViewport();
+    await expect(page.locator('[data-id="t19"]')).toBeInViewport();
+    expect(await page.locator('.irori-pad__tile').last().evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(56);
+  });
+}
+
+
+test('tiles：動きを減らす設定では上限の通知を揺らさない', async ({ page, line, makeHost }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const host = await makeHost(); const you = await joinRoom(page, line, host);
+  host.setPad(you.id, { k: 'tiles', tiles: [{ id: 'a', label: 'A' }], min: 0, max: 0, ok: '確認' });
+  const a = page.locator('[data-id="a"]'); await a.tap();
+  await expect(page.locator('.irori-pad__status')).toHaveText('これ以上選べません');
+  expect(await a.evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+  expect(await a.evaluate((el) => getComputedStyle(el).transform)).toBe('none');
+  await expect(a).not.toHaveAttribute('data-limit', '');
+});

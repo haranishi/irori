@@ -51,7 +51,7 @@ describe('GameFrameと実SDKの追加契約', () => {
     f.post({ m: 'environment', environment: { connected: false, visible: false } });
     f.post({ m: 'environment', environment: { connected: true, visible: 'broken' } } as never);
     const irori = await connect();
-    expect(irori.capabilities).toEqual(['result-options-v1', 'host-environment-v1']);
+    expect(irori.capabilities).toEqual(['result-options-v1', 'host-environment-v1', 'pad-tiles-v1']);
     expect(irori.environment).toEqual({ connected: false, visible: false });
     expect(irori.players.map((p) => p.id)).toEqual([2]);
     expect(irori.leader).toBe(2);

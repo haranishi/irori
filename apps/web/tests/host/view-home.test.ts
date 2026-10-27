@@ -331,3 +331,10 @@ describe('音の案内（ブラウザが音を止めているあいだ）', () =
     expect(document.querySelector('[data-action="sound"] .btn__label')?.textContent).toBe('音：オン');
   });
 });
+
+it('tiles対応のゲームは棚に札のアイコンと日本語の名称を出す', () => {
+  view({ games: games().map((game) => ({ ...game, pads: ['tiles'] })) });
+  const pad = document.querySelector('.hero [data-pad="tiles"]');
+  expect(pad?.textContent).toBe('札の選択');
+  expect(pad?.querySelector('svg')).not.toBeNull();
+});

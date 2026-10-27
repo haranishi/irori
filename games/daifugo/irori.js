@@ -525,6 +525,8 @@ var Throttle = class {
 //#endregion
 //#region ../pad-ui/src/pad.ts
 var PAD_STRINGS_JA = {
+	tilesLimit: "これ以上選べません",
+	tilesSent: "送りました",
 	waiting: "待っています",
 	dpad: "十字キー",
 	stick: "スティック",
@@ -542,6 +544,8 @@ var PAD_STRINGS_JA = {
 	tiltOn: "スマホを傾けて操作します"
 };
 var PAD_STRINGS_EN = {
+	tilesLimit: "You cannot select any more",
+	tilesSent: "Sent",
 	waiting: "Waiting",
 	dpad: "D-pad",
 	stick: "Stick",
@@ -968,6 +972,111 @@ var TouchArea = class extends Surface {
 		this.t.cancel();
 	}
 };
+var Tiles = class {
+	el;
+	dead = false;
+	timers = new Set();
+	constructor(spec, out, s) {
+		const selected = new Set();
+		const max = spec.max ?? Math.min(1, spec.tiles.filter((t) => !t.off).length);
+		const min = spec.min ?? Math.min(1, max);
+		let sent = false;
+		const status = h$1("p", {
+			class: "irori-pad__status",
+			role: "status",
+			"aria-live": "polite",
+			"aria-atomic": "true"
+		});
+		const grid = h$1("div", { class: "irori-pad__tiles-grid" });
+		const ok = h$1("button", {
+			type: "button",
+			class: "irori-pad__btn",
+			"data-action": "ok"
+		}, spec.ok);
+		const pass = h$1("button", {
+			type: "button",
+			class: "irori-pad__btn",
+			"data-action": "pass"
+		}, spec.pass ?? "");
+		const actions = h$1("div", { class: "irori-pad__tiles-actions" }, ok, spec.pass === void 0 ? null : pass);
+		const update = () => {
+			ok.disabled = sent || selected.size < min || selected.size > max;
+			ok.setAttribute("aria-disabled", String(ok.disabled));
+			for (const b of grid.querySelectorAll("button")) {
+				const on = selected.has(b.dataset.id);
+				b.setAttribute("aria-pressed", String(on));
+				if (sent) {
+					b.disabled = true;
+					b.setAttribute("aria-disabled", "true");
+				}
+			}
+		};
+		const submit = (passing) => {
+			if (this.dead || sent || spec.disabled || !passing && ok.disabled) return;
+			sent = true;
+			this.el.dataset.sent = "";
+			pass.disabled = true;
+			pass.setAttribute("aria-disabled", "true");
+			status.textContent = s.tilesSent;
+			update();
+			out(passing ? {
+				k: "tiles",
+				ids: [],
+				pass: true
+			} : {
+				k: "tiles",
+				ids: [...selected]
+			});
+		};
+		for (const tile of spec.tiles) {
+			const b = h$1("button", {
+				type: "button",
+				class: "irori-pad__btn irori-pad__tile",
+				"data-id": tile.id,
+				"aria-pressed": "false",
+				"aria-disabled": String(!!spec.disabled || !!tile.off)
+			}, h$1("span", { class: "irori-pad__tile-label" }, tile.label), tile.sub === void 0 ? null : h$1("small", {}, tile.sub), h$1("span", {
+				class: "irori-pad__tile-check",
+				"aria-hidden": "true"
+			}, "✓"));
+			if (tile.color) b.dataset.color = tile.color;
+			b.disabled = !!spec.disabled || !!tile.off;
+			b.addEventListener("click", () => {
+				if (this.dead || sent || b.disabled) return;
+				delete b.dataset.limit;
+				if (selected.has(tile.id)) selected.delete(tile.id);
+				else if (max === 1) {
+					selected.clear();
+					selected.add(tile.id);
+				} else if (selected.size >= max) {
+					status.textContent = "";
+					status.append(document.createTextNode(s.tilesLimit));
+					b.dataset.limit = "";
+					const timer = setTimeout(() => {
+						delete b.dataset.limit;
+						this.timers.delete(timer);
+					}, 300);
+					this.timers.add(timer);
+					return;
+				} else selected.add(tile.id);
+				status.textContent = "";
+				update();
+			});
+			b.addEventListener("animationend", () => delete b.dataset.limit);
+			grid.append(b);
+		}
+		ok.addEventListener("click", () => submit(false));
+		pass.addEventListener("click", () => submit(true));
+		this.el = h$1("div", { class: "irori-pad__tiles" }, spec.note === void 0 ? null : h$1("p", { class: "irori-pad__text" }, spec.note), grid, status, spec.disabled ? null : actions);
+		update();
+	}
+	release() {}
+	dispose() {
+		this.dead = true;
+		for (const timer of this.timers) clearTimeout(timer);
+		this.timers.clear();
+	}
+};
 var tiltGranted = false;
 var Tilt = class {
 	s;
@@ -1095,6 +1204,11 @@ function build(spec, out, s) {
 			const c = new Choices(choices(spec.options), spec.disabled === true, out);
 			controls.push(c);
 			return view("choices", hint(spec.hint), body(c.el));
+		}
+		case "tiles": {
+			const tiles = new Tiles(spec, out, s);
+			controls.push(tiles);
+			return view("tiles", hint(spec.hint), tiles.el);
 		}
 		case "touch": {
 			const t = new TouchArea(out, s, spec.mode === "swipe" ? "swipe" : "area");
@@ -1361,7 +1475,11 @@ var IroriError = class extends Error {
 //#endregion
 //#region src/core.ts
 var STORAGE_TIMEOUT_MS = 5e3;
-var CAPS = ["result-options-v1", "host-environment-v1"];
+var CAPS = [
+	"result-options-v1",
+	"host-environment-v1",
+	"pad-tiles-v1"
+];
 function report(err) {
 	if (typeof reportError === "function") reportError(err);
 	else console.error(err);
@@ -1434,6 +1552,7 @@ var IroriCore = class {
 		const dest = this.target(to);
 		const bad = checkPadSpec(spec);
 		if (bad) throw new IroriError("bad-pad", bad);
+		if (spec.k === "tiles" && !this.caps.includes("pad-tiles-v1")) throw new IroriError("unsupported-feature");
 		this.t.send({
 			m: "setPad",
 			to: dest,
@@ -1617,10 +1736,10 @@ function connectHost(win, timeoutMs) {
 }
 //#endregion
 //#region ../pad-ui/src/pad.css?inline
-var pad_default = ".irori-pad{--pad-red:#9e3329;--pad-blue:#285a99;--pad-green:#24653f;--pad-yellow:#e8c547;--pad-gray:#5b4f47;--pad-ink:var(--bg,#1a1411);--pad-edge:var(--text-dim,#c9b8a6);--pad-face:var(--bg-card,#2f241d);--pad-on:var(--glow,#ffd9a0);--pad-size:clamp(144px, 40cqi, 240px);box-sizing:border-box;width:100%;height:100%;min-height:220px;color:var(--text,#f5ebe0);font-family:var(--font,ui-rounded, system-ui, sans-serif);overscroll-behavior:contain;touch-action:none;-webkit-tap-highlight-color:transparent;flex-direction:column;gap:12px;padding:12px;font-size:16px;line-height:1.4;display:flex;position:relative;container-type:inline-size}.irori-pad,.irori-pad *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}.irori-pad *,.irori-pad :before{box-sizing:border-box}.irori-pad__hint{text-align:center;color:var(--pad-edge);margin:0}.irori-pad__body{flex:1;justify-content:center;align-items:center;gap:16px;min-height:0;display:flex}.irori-pad[data-kind=pad] .irori-pad__body,.irori-pad[data-kind=tilt] .irori-pad__body,.irori-pad[data-kind=remote] .irori-pad__body{justify-content:space-between;align-items:flex-end;padding-bottom:8px}.irori-pad__btn,.irori-pad__arrow{appearance:none;border:2px solid var(--pad-edge);background:var(--pad-face);min-width:48px;min-height:48px;color:var(--text,#f5ebe0);font:inherit;cursor:pointer;border-radius:14px;margin:0;padding:8px 14px;font-size:18px;font-weight:700;line-height:1.2;transition:transform .12s,background-color .12s}.irori-pad__btn[data-color=red]{background:var(--pad-red)}.irori-pad__btn[data-color=blue]{background:var(--pad-blue)}.irori-pad__btn[data-color=green]{background:var(--pad-green)}.irori-pad__btn[data-color=yellow]{background:var(--pad-yellow);color:var(--pad-ink)}.irori-pad__btn[data-color=gray]{background:var(--pad-gray)}.irori-pad__btn[data-pressed],.irori-pad__arrow[data-pressed],.irori-pad__choice[data-picked]{background:var(--pad-on);border-color:var(--pad-on);color:var(--pad-ink);transform:scale(.96)}.irori-pad__btn:disabled{opacity:.45;cursor:default}.irori-pad__btn:focus-visible,.irori-pad__arrow:focus-visible{outline:3px solid var(--pad-on);outline-offset:2px}.irori-pad__btns{flex:none;grid-template-columns:repeat(2,minmax(64px,1fr));gap:12px;display:grid}.irori-pad__btns[data-count=\"0\"]{display:none}.irori-pad__btns[data-count=\"1\"]{grid-template-columns:minmax(88px,1fr)}.irori-pad__btns .irori-pad__btn{min-width:max(64px,18cqi);min-height:max(64px,15cqi)}.irori-pad__dpad,.irori-pad__cross{width:var(--pad-size);aspect-ratio:1;flex:none;grid-template:repeat(3,1fr)/repeat(3,1fr);gap:4px;display:grid}.irori-pad__arrow{border-radius:12px;padding:0}.irori-pad__arrow--up{grid-area:1/2}.irori-pad__arrow--left{grid-area:2/1}.irori-pad__arrow--right{grid-area:2/3}.irori-pad__arrow--down{grid-area:3/2}.irori-pad__arrow:before{content:\"\";aspect-ratio:1;clip-path:polygon(50% 12%,92% 82%,8% 82%);background:currentColor;width:42%;margin:auto;display:block}.irori-pad__arrow--down:before{transform:rotate(180deg)}.irori-pad__arrow--left:before{transform:rotate(-90deg)}.irori-pad__arrow--right:before{transform:rotate(90deg)}.irori-pad__stick{width:var(--pad-size);aspect-ratio:1;border:2px solid var(--pad-edge);background:radial-gradient(circle, var(--pad-face) 55%, var(--line,#4a382c));border-radius:50%;flex:none;position:relative}.irori-pad__knob{background:var(--pad-edge);pointer-events:none;border-radius:50%;width:44%;height:44%;position:absolute;top:28%;left:28%}.irori-pad__buzzer{aspect-ratio:1;border-width:4px;border-radius:50%;width:clamp(160px,70cqi,320px);font-size:28px}.irori-pad__choices{grid-template-columns:repeat(2,1fr);gap:12px;width:100%;display:grid}.irori-pad__choices[data-count=\"3\"]{grid-template-columns:1fr}.irori-pad__choice{min-height:72px;font-size:20px}.irori-pad__choices[data-picked] .irori-pad__choice:not([data-picked]){opacity:.45}.irori-pad__touch{border:2px dashed var(--pad-edge);background:var(--pad-face);border-radius:14px;width:100%;height:100%;min-height:160px;position:relative;overflow:hidden}.irori-pad__dot{background:var(--pad-on);opacity:0;pointer-events:none;border-radius:50%;width:56px;height:56px;margin:-28px 0 0 -28px;position:absolute;top:50%;left:50%}.irori-pad__dot[data-on]{opacity:.85}.irori-pad__tilt{text-align:center;flex-direction:column;align-items:center;gap:12px;display:flex}.irori-pad__status{max-width:28em;color:var(--pad-edge);margin:0}.irori-pad__allow{min-height:56px}.irori-pad__wait{text-align:center;flex-direction:column;flex:1;justify-content:center;align-items:center;gap:8px;display:flex}.irori-pad__title{margin:0;font-size:24px;font-weight:700}.irori-pad__text{max-width:32em;color:var(--pad-edge);white-space:pre-line;margin:0}.irori-pad__keys{grid-template-columns:1fr}.irori-pad__ok{min-width:120px;min-height:72px}@media (prefers-reduced-motion:reduce){.irori-pad__btn,.irori-pad__arrow{transition:none}.irori-pad__btn[data-pressed],.irori-pad__arrow[data-pressed],.irori-pad__choice[data-picked]{transform:none}}";
+var pad_default = ".irori-pad{--pad-red:#9e3329;--pad-blue:#285a99;--pad-green:#24653f;--pad-yellow:#e8c547;--pad-gray:#5b4f47;--pad-ink:var(--bg,#1a1411);--pad-edge:var(--text-dim,#c9b8a6);--pad-face:var(--bg-card,#2f241d);--pad-on:var(--glow,#ffd9a0);--pad-size:clamp(144px, 40cqi, 240px);box-sizing:border-box;width:100%;height:100%;min-height:220px;color:var(--text,#f5ebe0);font-family:var(--font,ui-rounded, system-ui, sans-serif);overscroll-behavior:contain;touch-action:none;-webkit-tap-highlight-color:transparent;flex-direction:column;gap:12px;padding:12px;font-size:16px;line-height:1.4;display:flex;position:relative;container-type:inline-size}.irori-pad,.irori-pad *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}.irori-pad *,.irori-pad :before{box-sizing:border-box}.irori-pad__hint{text-align:center;color:var(--pad-edge);margin:0}.irori-pad__body{flex:1;justify-content:center;align-items:center;gap:16px;min-height:0;display:flex}.irori-pad[data-kind=pad] .irori-pad__body,.irori-pad[data-kind=tilt] .irori-pad__body,.irori-pad[data-kind=remote] .irori-pad__body{justify-content:space-between;align-items:flex-end;padding-bottom:8px}.irori-pad__btn,.irori-pad__arrow{appearance:none;border:2px solid var(--pad-edge);background:var(--pad-face);min-width:48px;min-height:48px;color:var(--text,#f5ebe0);font:inherit;cursor:pointer;border-radius:14px;margin:0;padding:8px 14px;font-size:18px;font-weight:700;line-height:1.2;transition:transform .12s,background-color .12s}.irori-pad__btn[data-color=red]{background:var(--pad-red)}.irori-pad__btn[data-color=blue]{background:var(--pad-blue)}.irori-pad__btn[data-color=green]{background:var(--pad-green)}.irori-pad__btn[data-color=yellow]{background:var(--pad-yellow);color:var(--pad-ink)}.irori-pad__btn[data-color=gray]{background:var(--pad-gray)}.irori-pad__btn[data-pressed],.irori-pad__arrow[data-pressed],.irori-pad__choice[data-picked]{background:var(--pad-on);border-color:var(--pad-on);color:var(--pad-ink);transform:scale(.96)}.irori-pad__btn:disabled{opacity:.45;cursor:default}.irori-pad__btn:focus-visible,.irori-pad__arrow:focus-visible{outline:3px solid var(--pad-on);outline-offset:2px}.irori-pad__btns{flex:none;grid-template-columns:repeat(2,minmax(64px,1fr));gap:12px;display:grid}.irori-pad__btns[data-count=\"0\"]{display:none}.irori-pad__btns[data-count=\"1\"]{grid-template-columns:minmax(88px,1fr)}.irori-pad__btns .irori-pad__btn{min-width:max(64px,18cqi);min-height:max(64px,15cqi)}.irori-pad__dpad,.irori-pad__cross{width:var(--pad-size);aspect-ratio:1;flex:none;grid-template:repeat(3,1fr)/repeat(3,1fr);gap:4px;display:grid}.irori-pad__arrow{border-radius:12px;padding:0}.irori-pad__arrow--up{grid-area:1/2}.irori-pad__arrow--left{grid-area:2/1}.irori-pad__arrow--right{grid-area:2/3}.irori-pad__arrow--down{grid-area:3/2}.irori-pad__arrow:before{content:\"\";aspect-ratio:1;clip-path:polygon(50% 12%,92% 82%,8% 82%);background:currentColor;width:42%;margin:auto;display:block}.irori-pad__arrow--down:before{transform:rotate(180deg)}.irori-pad__arrow--left:before{transform:rotate(-90deg)}.irori-pad__arrow--right:before{transform:rotate(90deg)}.irori-pad__stick{width:var(--pad-size);aspect-ratio:1;border:2px solid var(--pad-edge);background:radial-gradient(circle, var(--pad-face) 55%, var(--line,#4a382c));border-radius:50%;flex:none;position:relative}.irori-pad__knob{background:var(--pad-edge);pointer-events:none;border-radius:50%;width:44%;height:44%;position:absolute;top:28%;left:28%}.irori-pad__buzzer{aspect-ratio:1;border-width:4px;border-radius:50%;width:clamp(160px,70cqi,320px);font-size:28px}.irori-pad__choices{grid-template-columns:repeat(2,1fr);gap:12px;width:100%;display:grid}.irori-pad__choices[data-count=\"3\"]{grid-template-columns:1fr}.irori-pad__choice{min-height:72px;font-size:20px}.irori-pad__choices[data-picked] .irori-pad__choice:not([data-picked]){opacity:.45}.irori-pad__touch{border:2px dashed var(--pad-edge);background:var(--pad-face);border-radius:14px;width:100%;height:100%;min-height:160px;position:relative;overflow:hidden}.irori-pad__dot{background:var(--pad-on);opacity:0;pointer-events:none;border-radius:50%;width:56px;height:56px;margin:-28px 0 0 -28px;position:absolute;top:50%;left:50%}.irori-pad__dot[data-on]{opacity:.85}.irori-pad__tilt{text-align:center;flex-direction:column;align-items:center;gap:12px;display:flex}.irori-pad__status{max-width:28em;color:var(--pad-edge);margin:0}.irori-pad__allow{min-height:56px}.irori-pad__wait{text-align:center;flex-direction:column;flex:1;justify-content:center;align-items:center;gap:8px;display:flex}.irori-pad__title{margin:0;font-size:24px;font-weight:700}.irori-pad__text{max-width:32em;color:var(--pad-edge);white-space:pre-line;margin:0}.irori-pad__keys{grid-template-columns:1fr}.irori-pad__ok{min-width:120px;min-height:72px}@media (prefers-reduced-motion:reduce){.irori-pad__btn,.irori-pad__arrow{transition:none}.irori-pad__btn[data-pressed],.irori-pad__arrow[data-pressed],.irori-pad__choice[data-picked]{transform:none}}.irori-pad[data-kind=tiles]{touch-action:pan-y;min-height:0;overflow:hidden}.irori-pad__tiles{touch-action:pan-y;flex-direction:column;flex:1;gap:8px;min-height:0;display:flex}.irori-pad__tiles-grid{overscroll-behavior:contain;flex:1;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(72px,max-content);align-content:start;gap:8px;min-height:0;padding:4px;display:grid;overflow-y:auto}.irori-pad__tiles-grid,.irori-pad__tiles-grid *{touch-action:pan-y}.irori-pad__tile{overflow-wrap:anywhere;min-width:56px;min-height:56px;padding:8px 4px 20px;position:relative}.irori-pad__tile-label,.irori-pad__tile small{display:block}.irori-pad__tile small{font-size:16px}.irori-pad__tile-check{visibility:hidden;position:absolute;bottom:0;right:5px}.irori-pad__tile[aria-pressed=true]{box-shadow:inset 0 0 0 2px var(--pad-on);border-width:4px}.irori-pad__tile[aria-pressed=true] .irori-pad__tile-check{visibility:visible}.irori-pad__tile[data-limit]{outline:3px solid var(--pad-on);outline-offset:-3px;animation:.2s irori-tiles-limit}.irori-pad__tiles-actions{flex:none;gap:8px;display:flex}.irori-pad__tiles-actions button{overflow-wrap:anywhere;flex:1;min-width:0}.irori-pad__tiles .irori-pad__text{overflow-wrap:anywhere;max-width:none}.irori-pad__tiles .irori-pad__status{min-height:1.4em;font-size:16px}.irori-pad__tiles[data-sent] .irori-pad__status{color:var(--pad-on);font-weight:700}@container (width>=480px){.irori-pad__tiles-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}@container (width>=640px){.irori-pad__tiles-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}@keyframes irori-tiles-limit{50%{transform:translate(3px)}}@media (prefers-reduced-motion:reduce){.irori-pad__tile[data-limit]{animation:none}}";
 //#endregion
 //#region src/mock.css?inline
-var mock_default = ".irori-mock{--m-bg:#1a1411;--m-card:#2f241d;--m-line:#4a382c;--m-text:#f5ebe0;--m-dim:#c9b8a6;--m-glow:#ffd9a0;color:var(--m-text);font:14px/1.4 ui-rounded,system-ui,sans-serif}.irori-mock__btn{border:1px solid var(--m-dim);background:var(--m-card);min-height:32px;color:var(--m-text);font:inherit;cursor:pointer;border-radius:8px;padding:4px 10px}.irori-mock__btn:focus-visible{outline:3px solid var(--m-glow);outline-offset:2px}.irori-mock__banner{z-index:2147483000;border:1px solid var(--m-line);background:#1a1411eb;border-radius:999px;align-items:center;gap:8px;padding:3px 4px 3px 12px;font-size:13px;display:flex;position:fixed;top:6px;left:50%;transform:translate(-50%)}.irori-mock__panel{z-index:2147483000;border-left:1px solid var(--m-line);background:#1a1411f5;width:min(320px,92vw);max-height:100vh;position:fixed;top:0;right:0;overflow:auto;box-shadow:-4px 0 16px #0006}.irori-mock__panel[data-folded]{width:auto}.irori-mock__panel[data-folded]>:not(.irori-mock__head){display:none}.irori-mock__head{z-index:1;background:var(--m-bg);align-items:center;gap:6px;padding:8px;display:flex;position:sticky;top:0}.irori-mock__head h2{flex:1;margin:0;font-size:14px}.irori-mock__keys{color:var(--m-dim);margin:0 8px 8px;font-size:12px}.irori-mock__seat{border:2px solid var(--seat,var(--m-line));background:var(--m-bg);border-radius:12px;margin:8px}.irori-mock__seat[data-offline]{opacity:.5}.irori-mock__seat[data-buzz]{animation:.1s linear infinite irori-mock-buzz}@keyframes irori-mock-buzz{50%{transform:translate(2px)}}.irori-mock__who{align-items:center;gap:6px;padding:6px 8px;display:flex}.irori-mock__name{flex:1;font-weight:700}.irori-mock__pad{height:190px}.irori-mock__pad .irori-pad{--pad-size:clamp(96px, 38cqi, 136px);gap:8px;min-height:0;padding:8px}.irori-mock__pad .irori-pad__btns .irori-pad__btn{min-width:56px;min-height:48px}.irori-mock__pad .irori-pad__buzzer{width:120px}.irori-mock__pad .irori-pad__touch{min-height:0}.irori-mock__pad .irori-pad__choice{min-height:48px;font-size:16px}.irori-mock__pad [data-cursor]{outline:3px solid var(--m-glow);outline-offset:2px}.irori-mock__results{z-index:2147483001;background:#0009;place-items:center;display:grid;position:fixed;inset:0}.irori-mock__card{border:1px solid var(--m-dim);background:var(--m-card);border-radius:14px;min-width:min(360px,90vw);padding:20px}.irori-mock__card h2{margin:0 0 12px;font-size:20px}.irori-mock__card ol{gap:6px;margin:0 0 16px;padding:0;list-style:none;display:grid}.irori-mock__card li{align-items:center;gap:8px;font-size:16px;display:flex}.irori-mock__rank{min-width:2em;font-weight:700}.irori-mock__score{font-variant-numeric:tabular-nums;margin-left:auto}.irori-mock__again{border-color:var(--m-glow);background:var(--m-glow);min-height:44px;color:var(--m-bg);padding:8px 20px;font-weight:700}@media (prefers-reduced-motion:reduce){.irori-mock__seat[data-buzz]{outline:2px solid var(--m-glow);animation:none}}";
+var mock_default = ".irori-mock{--m-bg:#1a1411;--m-card:#2f241d;--m-line:#4a382c;--m-text:#f5ebe0;--m-dim:#c9b8a6;--m-glow:#ffd9a0;color:var(--m-text);font:14px/1.4 ui-rounded,system-ui,sans-serif}.irori-mock__btn{border:1px solid var(--m-dim);background:var(--m-card);min-height:32px;color:var(--m-text);font:inherit;cursor:pointer;border-radius:8px;padding:4px 10px}.irori-mock__btn:focus-visible{outline:3px solid var(--m-glow);outline-offset:2px}.irori-mock__banner{z-index:2147483000;border:1px solid var(--m-line);background:#1a1411eb;border-radius:999px;align-items:center;gap:8px;padding:3px 4px 3px 12px;font-size:13px;display:flex;position:fixed;top:6px;left:50%;transform:translate(-50%)}.irori-mock__panel{z-index:2147483000;border-left:1px solid var(--m-line);background:#1a1411f5;width:min(320px,92vw);max-height:100vh;position:fixed;top:0;right:0;overflow:auto;box-shadow:-4px 0 16px #0006}.irori-mock__panel[data-folded]{width:auto}.irori-mock__panel[data-folded]>:not(.irori-mock__head){display:none}.irori-mock__head{z-index:1;background:var(--m-bg);align-items:center;gap:6px;padding:8px;display:flex;position:sticky;top:0}.irori-mock__head h2{flex:1;margin:0;font-size:14px}.irori-mock__keys{color:var(--m-dim);margin:0 8px 8px;font-size:12px}.irori-mock__seat{border:2px solid var(--seat,var(--m-line));background:var(--m-bg);border-radius:12px;margin:8px}.irori-mock__seat[data-offline]{opacity:.5}.irori-mock__seat[data-buzz]{animation:.1s linear infinite irori-mock-buzz}@keyframes irori-mock-buzz{50%{transform:translate(2px)}}.irori-mock__who{align-items:center;gap:6px;padding:6px 8px;display:flex}.irori-mock__name{flex:1;font-weight:700}.irori-mock__pad{height:190px}.irori-mock__pad .irori-pad{--pad-size:clamp(96px, 38cqi, 136px);gap:8px;min-height:0;padding:8px}.irori-mock__pad .irori-pad__btns .irori-pad__btn{min-width:56px;min-height:48px}.irori-mock__pad .irori-pad__buzzer{width:120px}.irori-mock__pad .irori-pad__touch{min-height:0}.irori-mock__pad .irori-pad__choice{min-height:48px;font-size:16px}.irori-mock__pad [data-cursor]{outline:3px solid var(--m-glow);outline-offset:2px}.irori-mock__results{z-index:2147483001;background:#0009;place-items:center;display:grid;position:fixed;inset:0}.irori-mock__card{border:1px solid var(--m-dim);background:var(--m-card);border-radius:14px;min-width:min(360px,90vw);padding:20px}.irori-mock__card h2{margin:0 0 12px;font-size:20px}.irori-mock__card ol{gap:6px;margin:0 0 16px;padding:0;list-style:none;display:grid}.irori-mock__card li{align-items:center;gap:8px;font-size:16px;display:flex}.irori-mock__rank{min-width:2em;font-weight:700}.irori-mock__score{font-variant-numeric:tabular-nums;margin-left:auto}.irori-mock__again{border-color:var(--m-glow);background:var(--m-glow);min-height:44px;color:var(--m-bg);padding:8px 20px;font-weight:700}@media (prefers-reduced-motion:reduce){.irori-mock__seat[data-buzz]{outline:2px solid var(--m-glow);animation:none}}.irori-mock__pad:has([data-kind=tiles]){height:380px}";
 //#endregion
 //#region src/mock.ts
 var TEXT = {
@@ -1634,7 +1753,7 @@ var TEXT = {
 		resume: "再開",
 		drop: "切断する",
 		join: "つなぐ",
-		keys: "1人目: WASD・Space・E　2人目: 矢印・Enter・Shift",
+		keys: "1人目: WASD・Space・E　2人目: 矢印・Enter・Shift。札: 席をクリック、矢印・Spaceで選択・Enterで決定・Pでパス",
 		results: "結果",
 		incomplete: "勝敗なし",
 		again: "もう一度",
@@ -1650,7 +1769,7 @@ var TEXT = {
 		resume: "Resume",
 		drop: "Disconnect",
 		join: "Connect",
-		keys: "P1: WASD, Space, E — P2: arrows, Enter, Shift",
+		keys: "P1: WASD, Space, E — P2: arrows, Enter, Shift. Tiles: click a seat, arrows, Space to select, Enter to submit, P to pass",
 		results: "Results",
 		incomplete: "No contest",
 		again: "Play again",
@@ -1830,8 +1949,8 @@ function createMock(win, opts = {}) {
 	};
 	const markCursor = (s) => {
 		for (const el of s.box.querySelectorAll("[data-cursor]")) el.removeAttribute("data-cursor");
-		if (s.spec.k !== "choices") return;
-		const id = s.spec.options[s.cursor]?.id;
+		if (s.spec.k !== "choices" && s.spec.k !== "tiles") return;
+		const id = (s.spec.k === "tiles" ? s.spec.tiles : s.spec.options)[s.cursor]?.id;
 		if (id) s.box.querySelector(`[data-id="${id}"]`)?.setAttribute("data-cursor", "");
 	};
 	const press = (s, key) => {
@@ -1870,6 +1989,51 @@ function createMock(win, opts = {}) {
 	};
 	const onKey = (e) => {
 		const hit = KEYS[e.code];
+		if (e.type === "keyup" && hit) {
+			const s = seats[hit[0]];
+			const key = hit[1];
+			if (s && (key === "a" || key === "b" ? s.held.has(key) : s.dirs.has(key))) {
+				e.preventDefault();
+				if (key === "a" || key === "b") release(s, key);
+				else {
+					s.dirs.delete(key);
+					steer(s);
+				}
+				return;
+			}
+		}
+		const target = e.target;
+		if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+		if (target?.closest?.(".irori-mock__btn")) return;
+		const tileSeat = seats.find((s) => target instanceof Node && s.card.contains(target)) ?? seats.find((s) => s.spec.k === "tiles" && s.info.online);
+		if (tileSeat?.spec.k === "tiles" && [
+			"ArrowUp",
+			"ArrowDown",
+			"ArrowLeft",
+			"ArrowRight",
+			"Space",
+			"Enter",
+			"NumpadEnter",
+			"KeyP"
+		].includes(e.code)) {
+			e.preventDefault();
+			if (e.type !== "keydown" || e.repeat || !tileSeat.info.online) return;
+			const buttons = [...tileSeat.box.querySelectorAll(".irori-pad__tile")];
+			const active = buttons.indexOf(doc.activeElement);
+			if (active >= 0) tileSeat.cursor = active;
+			if (e.code.startsWith("Arrow")) {
+				if (buttons.length === 0) return;
+				const step = e.code === "ArrowLeft" || e.code === "ArrowUp" ? -1 : 1;
+				for (let n = 0; n < buttons.length; n++) {
+					tileSeat.cursor = (tileSeat.cursor + step + buttons.length) % buttons.length;
+					if (!buttons[tileSeat.cursor]?.disabled) break;
+				}
+				markCursor(tileSeat);
+				buttons[tileSeat.cursor]?.focus();
+			} else if (e.code === "Space") buttons[tileSeat.cursor]?.click();
+			else tileSeat.box.querySelector(`[data-action="${e.code === "KeyP" ? "pass" : "ok"}"]`)?.click();
+			return;
+		}
 		if (!hit) return;
 		const t = e.target;
 		if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -1982,6 +2146,7 @@ function createMock(win, opts = {}) {
 			case "end":
 				showResults(msg.results ?? [], msg.options);
 				return;
+			case "cue": return;
 			case "ready":
 				root.dataset.ready = "";
 				return;
@@ -2004,6 +2169,7 @@ function createMock(win, opts = {}) {
 		}, tx.drop);
 		const card = h("section", {
 			class: "irori-mock__seat",
+			tabindex: "0",
 			"data-p": String(info.id),
 			"aria-label": `${info.name}（${l.label}）`
 		}, h("div", { class: "irori-mock__who" }, shapeSvg(l.shape, 20, l.color), h("span", { class: "irori-mock__name" }, info.name), toggle), box);
@@ -2012,7 +2178,9 @@ function createMock(win, opts = {}) {
 			info,
 			spec: { k: "wait" },
 			pad: mountPad(box, {
-				send: (i) => input(info.id, i),
+				send: (i) => {
+					if (seat.info.online) input(info.id, i);
+				},
 				strings: locale === "ja" ? PAD_STRINGS_JA : PAD_STRINGS_EN
 			}),
 			card,

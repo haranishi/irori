@@ -85,7 +85,7 @@ export class GameFrame {
 
   constructor(private readonly opts: GameFrameOptions) {
     this.init = { m: 'init', sdk: BRIDGE_VERSION, players: [...opts.init.players], leader: opts.init.leader, locale: opts.init.locale, paused: opts.init.paused === true,
-      capabilities: ['result-options-v1', 'host-environment-v1'] };
+      capabilities: ['result-options-v1', 'host-environment-v1', 'pad-tiles-v1'] };
     const env = environment(opts.init.environment);
     if (env) this.init.environment = env;
   }

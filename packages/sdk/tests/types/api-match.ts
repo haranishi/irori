@@ -13,6 +13,7 @@ export type ApiMatches = [
   Expect<Equal<D.ColorName, I.ColorName>>,
   Expect<Equal<D.ButtonSpec, I.ButtonSpec>>,
   Expect<Equal<D.ChoiceSpec, I.ChoiceSpec>>,
+  Expect<Equal<D.TileSpec, I.TileSpec>>,
   Expect<Equal<D.PadSpec, I.PadSpec>>,
   Expect<Equal<D.GameResult, I.GameResult>>,
   Expect<Equal<D.GameEndOptions, I.GameEndOptions>>,

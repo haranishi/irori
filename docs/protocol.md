@@ -36,7 +36,7 @@
 ## ゲームとコンソールの間
 
 iframeの握手とMessagePortの型は [bridge.ts](../packages/protocol/src/bridge.ts)。WebSocketの形式とは別に管理する。
-握手の版は1を保ち、追加機能は `result-options-v1` と `host-environment-v1` で通知する。旧SDKの結果形式は変えない。
+握手の版は1を保ち、追加機能は `result-options-v1` と `host-environment-v1` で通知する。旧SDKの結果形式は変えない。`tiles` は能力 `pad-tiles-v1` で通知し、旧ホストへは送らない。
 結果と表示オプションの検査は [end.ts](../packages/protocol/src/end.ts) を送信前・受信時で共用する。[使い方](sdk.md#記録の表示と環境の通知)。
 復帰時は参加者の照合・通知を先に行ってから、接続中の環境をゲームへ送る。環境通知はメニューの一時停止を置き換えない。
 
@@ -52,3 +52,6 @@ iframeの握手とMessagePortの型は [bridge.ts](../packages/protocol/src/brid
 - iOSのSafariは、画面ロックやタブの切替でWebSocketを黙って切る。再接続は例外ではなく通常の経路として設計した。
 - Durable Objectは、接続が静かなときにメモリを手放す。名簿は接続ごとの付属情報から組み直し、再開の札だけを保存に書く。
 - `T` はサーバーの受信時刻で、押した時刻ではない。回線の遅れが違う人の間では、早押しの公平さを保証しない。
+
+
+`tiles` 入力は `{t:'in',i:{k:'tiles',ids:['a']}}`。選択は重複なし8識別子まで、パスは `ids:[]` と `pass:true`。余分なキー・不正な識別子・空でないパスは拒む。仕様と操作は [pad.md](pad.md#tiles-の指定と操作)。

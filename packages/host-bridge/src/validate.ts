@@ -7,7 +7,7 @@ import { isPlainObject, unknownKey } from './text';
 
 export type ValidateResult = { ok: true; msg: GameToHost } | { ok: false; reason: string };
 
-const KEYS: Record<GameToHost['m'], readonly string[]> = {
+const KEYS = {
   ready: ['m'],
   setPad: ['m', 'to', 'spec'],
   vibrate: ['m', 'to', 'ms'],
@@ -39,10 +39,10 @@ export function validateGameToHost(raw: unknown): ValidateResult {
   if (!isPlainObject(raw)) return reject('オブジェクトではありません');
   const m = raw.m;
   if (typeof m !== 'string' || !Object.hasOwn(KEYS, m)) return reject('知らない種類です');
-  const extra = unknownKey(raw, KEYS[m as GameToHost['m']]);
+  const extra = unknownKey(raw, KEYS[m as keyof typeof KEYS]);
   if (extra) return reject(`知らないキー ${extra.slice(0, 24)} があります`);
 
-  switch (m as GameToHost['m']) {
+  switch (m as keyof typeof KEYS) {
     case 'ready':
       return accept({ m: 'ready' });
     case 'setPad': {

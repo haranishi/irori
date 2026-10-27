@@ -48,7 +48,7 @@ export interface JoinState {
   full: { n: number; max: number } | null;
 }
 
-const PAD_ICON: Record<string, IconName> = { pad: 'pad', buzzer: 'buzzer', choices: 'choices', touch: 'touch', tilt: 'tilt', wait: 'wait' };
+const PAD_ICON: Record<string, IconName> = { pad: 'pad', buzzer: 'buzzer', choices: 'choices', tiles: 'tiles', touch: 'touch', tilt: 'tilt', wait: 'wait' };
 
 export function playersText(g: GameEntry): string {
   return g.players.min === g.players.max ? t('host.game.playersOne', { n: g.players.min }) : t('host.game.players', { min: g.players.min, max: g.players.max });

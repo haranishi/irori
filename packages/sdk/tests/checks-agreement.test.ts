@@ -15,6 +15,11 @@ const results: unknown[] = [
   Array.from({ length: 8 }, (_, i) => ({ p: i + 1, score: i })), Array.from({ length: 9 }, (_, i) => ({ p: (i % 8) + 1, score: i })), 'x', null,
 ];
 const specs: unknown[] = [
+  { k: 'tiles', tiles: [], ok: '確認' },
+  { k: 'tiles', tiles: [{ id: 'a', label: 'A', sub: '札', off: true }], ok: '確認', disabled: true },
+  { k: 'tiles', tiles: [{ id: 'a', label: 'A' }], ok: '出す', max: 2 },
+  { k: 'tiles', tiles: [{ id: 'a', label: 'A' }, { id: 'a', label: 'B' }], ok: '出す' },
+  { k: 'tiles', tiles: [{ id: 'a', label: 'A', style: 'x' }], ok: '出す' },
   { k: 'wait' }, { k: 'remote' }, { k: 'pad', buttons: [{ id: 'a', label: 'A' }] }, { k: 'pad', buttons: [{ id: 'A', label: 'A' }] },
   { k: 'buzzer', label: 'x', color: 'pink' }, { k: 'choices', options: [{ id: 'a', label: 'A' }] }, { k: 'touch', mode: 'swipe', x: 1 },
 ];

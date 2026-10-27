@@ -12,6 +12,7 @@
 //   curl -s -X POST localhost:PORT/pad/1/hold -d '{"id":"hop","ms":800}'      … 押し続ける
 //   curl -s -X POST localhost:PORT/pad/1/stick -d '{"x":1,"y":0,"ms":1500}'   … スティックを倒し続ける（-1〜1）
 //   curl -s -X POST localhost:PORT/pad/1/choose -d '{"index":0}'               … 選択肢を選ぶ（0から数える）
+//   POST /pad/:n/tiles {"ids":["a"]} または {"pass":true} … 札の選択をそろえて決定・パス
 //   curl -s -X POST localhost:PORT/pad/1/menu -d '{"item":"leave"}'            … 長押しのメニュー（pause か leave）
 //   curl -s -X POST localhost:PORT/pad/1/disconnect   /   .../reconnect           … 回線を切る・戻す
 //   curl -s -X POST localhost:PORT/host/key -d '{"key":"Escape"}'              … ホストのキー（ArrowRight・Enter・Escape・m）
@@ -245,6 +246,28 @@ export class Playtest {
     return { chosen: id ?? (Number(index) || 0) };
   }
 
+  async tiles(n, { ids = [], pass = false } = {}) {
+    if (!Array.isArray(ids) || ids.length > 8 || ids.some((id) => typeof id !== 'string' || !/^[a-z0-9_-]{1,24}$/.test(id)) || new Set(ids).size !== ids.length || typeof pass !== 'boolean' || (pass && ids.length)) {
+      throw new HttpError(400, 'ids は重複しない8個まで。pass は選択なしのときだけ');
+    }
+    const { page } = this.pad(n);
+    const pad = page.locator('.irori-pad[data-kind="tiles"]');
+    await pad.waitFor({ state: 'visible', timeout: 5_000 });
+    if (!pass) {
+      const available = await pad.locator('.irori-pad__tile:not(:disabled)').evaluateAll((els) => els.map((el) => el.getAttribute('data-id')));
+      if (ids.some((id) => !available.includes(id))) throw new HttpError(400, '選べない札です');
+      for (const el of await pad.locator('.irori-pad__tile[aria-pressed="true"]').all()) await el.tap();
+      for (const id of ids) await pad.locator(`.irori-pad__tile[data-id="${id}"]`).tap();
+      const selected = await pad.locator('.irori-pad__tile[aria-pressed="true"]').evaluateAll((els) => els.map((el) => el.getAttribute('data-id')));
+      if (selected.length !== ids.length || ids.some((id) => !selected.includes(id))) throw new HttpError(400, '選択数が上限を超えています');
+    }
+    const action = pad.locator(`[data-action="${pass ? 'pass' : 'ok'}"]`);
+    if (await action.count() !== 1 || !await action.isEnabled()) throw new HttpError(400, 'いまは決定できません');
+    await action.tap();
+    await this.settle();
+    return { ids: pass ? [] : ids, pass };
+  }
+
   /** 左上の札の長押しで開くメニュー。item は pause（一時停止を頼む）か leave（退出）。 */
   async menu(n, { item = 'pause' } = {}) {
     if (item !== 'pause' && item !== 'leave') throw new HttpError(400, 'item は pause か leave');
@@ -358,8 +381,9 @@ export class Playtest {
               seat: play ? Number(play.getAttribute('data-seat')) : null,
               link: play?.getAttribute('data-link') ?? null,
               kind: pad?.getAttribute('data-kind') ?? null,
-              buttons: [...document.querySelectorAll('.irori-pad__btn[data-id]:not(.irori-pad__choice)')].map((b) => ({ id: b.getAttribute('data-id'), label: b.getAttribute('aria-label') ?? b.textContent, disabled: b.disabled })),
+              buttons: [...document.querySelectorAll('.irori-pad__btn[data-id]:not(.irori-pad__choice):not(.irori-pad__tile)')].map((b) => ({ id: b.getAttribute('data-id'), label: b.getAttribute('aria-label') ?? b.textContent, disabled: b.disabled })),
               choices: [...document.querySelectorAll('.irori-pad__choice')].map((b, index) => ({ index, id: b.getAttribute('data-id'), label: b.textContent, disabled: b.disabled })),
+              tiles: [...document.querySelectorAll('.irori-pad__tile')].map((b) => ({ id: b.getAttribute('data-id'), label: b.textContent, selected: b.getAttribute('aria-pressed') === 'true', disabled: b.disabled })),
               stick: document.querySelector('.irori-pad__stick') ? 'stick' : document.querySelector('.irori-pad__dpad') ? 'dpad' : null,
               text: (document.body?.innerText ?? '').replace(/\n{2,}/g, '\n').trim(),
             };
@@ -425,7 +449,7 @@ export function serve(pt, { port = 0 } = {}) {
       if (req.headers.origin !== undefined) throw new HttpError(403, 'ブラウザからの要求（Origin つき）は受けません。curl で操作してください');
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const body = req.method === 'POST' ? await readJson(req) : {};
-      const m = /^\/pad\/(\d+)\/(join|tap|hold|stick|choose|menu|disconnect|reconnect)$/.exec(url.pathname);
+      const m = /^\/pad\/(\d+)\/(join|tap|hold|stick|choose|tiles|menu|disconnect|reconnect)$/.exec(url.pathname);
       const route = `${req.method} ${m ? `/pad/:n/${m[2]}` : url.pathname}`;
       const n = m ? Number(m[1]) : 0;
       const handlers = {
@@ -436,6 +460,7 @@ export function serve(pt, { port = 0 } = {}) {
         'POST /pad/:n/hold': () => pt.hold(n, body),
         'POST /pad/:n/stick': () => pt.stick(n, body),
         'POST /pad/:n/choose': () => pt.choose(n, body),
+        'POST /pad/:n/tiles': () => pt.tiles(n, body),
         'POST /pad/:n/menu': () => pt.menu(n, body),
         'POST /pad/:n/disconnect': () => pt.disconnect(n),
         'POST /pad/:n/reconnect': () => pt.reconnect(n),

@@ -353,11 +353,11 @@ describe('実物のGameFrameへの結果と環境の連携', () => {
 
   const updates = (messages: HostToGame[]) => messages.filter((m) => m.m !== 'init');
 
-  it('非表示で開いた初期値と両capabilityを握手時に渡す', async () => {
+  it('非表示で開いた初期値とcapabilityを握手時に渡す', async () => {
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
     const { root } = await launched();
     const game = await connect(root);
-    expect(game.messages[0]).toMatchObject({ m: 'init', paused: false, capabilities: ['result-options-v1', 'host-environment-v1'], environment: { connected: true, visible: false } });
+    expect(game.messages[0]).toMatchObject({ m: 'init', paused: false, capabilities: ['result-options-v1', 'host-environment-v1', 'pad-tiles-v1'], environment: { connected: true, visible: false } });
   });
 
   it('握手前の切断と非表示を最新initへ保持する', async () => {

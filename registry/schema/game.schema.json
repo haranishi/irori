@@ -111,6 +111,7 @@
           "pad",
           "buzzer",
           "choices",
+          "tiles",
           "touch",
           "tilt"
         ]

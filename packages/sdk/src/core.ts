@@ -23,7 +23,7 @@ export interface CoreInit {
 
 /** 保存の応答を待つ時間。ホストが答えないときに、約束を宙に浮かせない。 */
 export const STORAGE_TIMEOUT_MS = 5_000;
-export const CAPS: readonly HostCapability[] = ['result-options-v1', 'host-environment-v1'];
+export const CAPS: readonly HostCapability[] = ['result-options-v1', 'host-environment-v1', 'pad-tiles-v1'];
 
 type Listener = (...args: never[]) => void;
 type Waiter = { resolve: (v: string | null) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> };
@@ -108,6 +108,7 @@ export class IroriCore implements Irori {
     const dest = this.target(to);
     const bad = checkPadSpec(spec);
     if (bad) throw new IroriError('bad-pad', bad);
+    if (spec.k === 'tiles' && !this.caps.includes('pad-tiles-v1')) throw new IroriError('unsupported-feature');
     this.t.send({ m: 'setPad', to: dest, spec });
   }
 

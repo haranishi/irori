@@ -24,6 +24,7 @@ export type GameInput =
   | { k: 'axis'; id: string; x: number; y: number }
   | { k: 'ptr'; id: string; x: number; y: number; ph: 's' | 'm' | 'e' }
   | { k: 'pick'; id: string }
+  | { k: 'tiles'; ids: string[]; pass?: true }
   | { k: 'tilt'; a: number; b: number; g: number };
 
 /** 色は名前だけ。任意のCSSは流し込めない。 */
@@ -43,9 +44,17 @@ export interface ChoiceSpec {
 }
 
 /**
- * スマホに出すコントローラーの画面（定型6種）。ヒント40・見出し24・本文120文字まで（書記素で数える）。
+ * スマホに出すコントローラーの画面（定型7種）。ヒント40・見出し24・本文120文字まで（書記素で数える）。
  * pad の stick は省略すると十字（'dpad'）。ボタンは4つまで、選択肢は2〜6個。
  */
+export interface TileSpec {
+  id: string;
+  label: string;
+  sub?: string;
+  color?: ColorName;
+  off?: boolean;
+}
+
 export type PadSpec =
   | { k: 'wait'; title?: string; body?: string }
   | {
@@ -57,6 +66,7 @@ export type PadSpec =
     }
   | { k: 'buzzer'; label: string; color?: ColorName; disabled?: boolean; hint?: string }
   | { k: 'choices'; options: ChoiceSpec[]; disabled?: boolean; hint?: string }
+  | { k: 'tiles'; tiles: TileSpec[]; ok: string; pass?: string; min?: number; max?: number; note?: string; hint?: string; disabled?: boolean }
   | { k: 'touch'; mode?: 'area' | 'swipe'; hint?: string }
   | { k: 'tilt'; buttons?: ButtonSpec[]; hint?: string };
 
@@ -76,7 +86,7 @@ export interface GameEndOptions {
 }
 
 export interface HostEnvironment { connected: boolean; visible: boolean }
-export type HostCapability = 'result-options-v1' | 'host-environment-v1';
+export type HostCapability = 'result-options-v1' | 'host-environment-v1' | 'pad-tiles-v1' | 'cue-v1';
 
 export type ShapeName = 'circle' | 'square' | 'triangle' | 'diamond' | 'star' | 'cross' | 'hexagon' | 'ring';
 

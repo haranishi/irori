@@ -185,7 +185,7 @@ describe('席・一時停止・振動・終わり・保存', () => {
   it('両能力とconnected=trueを示し、documentの表示変化をpause/resumeと別に知らせる', () => {
     Object.defineProperty(document, 'visibilityState', { get: () => 'hidden', configurable: true });
     const { irori } = start(1);
-    expect(irori.capabilities).toEqual(['result-options-v1', 'host-environment-v1']);
+    expect(irori.capabilities).toEqual(['result-options-v1', 'host-environment-v1', 'pad-tiles-v1']);
     expect(irori.environment).toEqual({ connected: true, visible: false });
     const log: unknown[] = [];
     irori.on('environment', (env) => log.push(env));
@@ -352,5 +352,72 @@ describe(`(f) 仮想プレイヤーの方向キーも、押したままなら HE
     key('keydown', 'KeyW');
     vi.advanceTimersByTime(R * 5);
     expect(inputs.filter(([, i]) => i.k === 'tilt')).toEqual([[1, { k: 'tilt', a: 0, b: -30, g: 0 }]]);
+  });
+});
+
+describe('仮想プレイヤーのtiles', () => {
+  it('別席がtilesに変わっても、押していた移動キーとボタンの離しを失わない', () => {
+    vi.useFakeTimers();
+    const { irori, inputs, key } = start(2);
+    irori.setPad({ k: 'pad', buttons: [{ id: 'a', label: 'A' }] });
+    key('keydown', 'ArrowRight'); key('keydown', 'Enter');
+    irori.setPad({ k: 'tiles', tiles: [], ok: '確認' }, 1);
+    // tilesへの分岐がkeyupまで奪い、2人目の移動が繰り返されていた。
+    key('keyup', 'ArrowRight'); key('keyup', 'Enter');
+    expect(inputs).toEqual([
+      [2, { k: 'axis', id: 'dpad', x: 1, y: 0 }],
+      [2, { k: 'btn', id: 'a', d: 1 }],
+      [2, { k: 'axis', id: 'dpad', x: 0, y: 0 }],
+      [2, { k: 'btn', id: 'a', d: 0 }],
+    ]);
+    vi.advanceTimersByTime(HELD_REPEAT_MS * 3);
+    expect(inputs).toHaveLength(4);
+  });
+  it('接続切替ボタン上のEnterとSpaceは札の操作にせず、ボタンの標準操作を保つ', () => {
+    const { irori, inputs, seat } = start(1);
+    irori.setPad({ k: 'tiles', tiles: [], ok: '確認' });
+    const toggle = seat(1).querySelector<HTMLButtonElement>('.irori-mock__online')!;
+    toggle.focus();
+    for (const code of ['Enter', 'Space']) {
+      const event = new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true });
+      toggle.dispatchEvent(event);
+      // 管理用ボタンのキーが席のtilesへ渡り、空の確認まで送っていた。
+      expect(inputs).toEqual([]);
+      expect(event.defaultPrevented).toBe(false);
+    }
+    toggle.click();
+    expect(irori.players[0]!.online).toBe(false);
+  });
+  it('矢印・Space・Enterで選び、クリックとの混在でも1回だけ送る。再設定で初期化する', () => {
+    const { irori, inputs, tap, seat } = start(2);
+    const spec = { k: 'tiles' as const, tiles: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C', off: true }], ok: '出す', pass: 'パス', max: 2 };
+    irori.setPad(spec);
+    tap('Space'); tap('ArrowRight'); tap('Space'); tap('Enter'); tap('Enter'); tap('KeyP');
+    expect(inputs).toEqual([[1, { k: 'tiles', ids: ['a', 'b'] }]]);
+    irori.setPad(spec, 1);
+    const card = seat(1);
+    (card.querySelector('[data-id="b"]') as HTMLButtonElement).click();
+    tap('KeyP');
+    expect(inputs.at(-1)).toEqual([1, { k: 'tiles', ids: [], pass: true }]);
+    // フォーカスした席を操作する。矢印の従来の2人目割り当てと二重送信しない。
+    (seat(2).querySelector('[data-id="a"]') as HTMLButtonElement).focus();
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', bubbles: true }));
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', bubbles: true }));
+    expect(inputs.at(-1)).toEqual([2, { k: 'tiles', ids: ['a'] }]);
+  });
+  it('offを飛ばし、disabledと空札と切断席を安全に扱う', () => {
+    const { irori, inputs, tap, seat } = start(1);
+    const spec = { k: 'tiles' as const, tiles: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B', off: true }, { id: 'c', label: 'C' }], ok: '出す' };
+    irori.setPad(spec); tap('ArrowRight'); tap('Space'); tap('Enter');
+    expect(inputs).toEqual([[1, { k: 'tiles', ids: ['c'] }]]);
+    irori.setPad({ ...spec, disabled: true }); tap('Space'); tap('Enter'); tap('KeyP');
+    expect(inputs).toHaveLength(1);
+    irori.setPad({ k: 'tiles', tiles: [], ok: '確認' }); tap('ArrowRight'); tap('Enter');
+    expect(inputs.at(-1)).toEqual([1, { k: 'tiles', ids: [] }]);
+    irori.setPad(spec);
+    (seat(1).querySelector('.irori-mock__online') as HTMLButtonElement).click();
+    (seat(1).querySelector('[data-id="a"]') as HTMLButtonElement).click();
+    (seat(1).querySelector('[data-action="ok"]') as HTMLButtonElement).click();
+    expect(inputs).toHaveLength(2);
   });
 });

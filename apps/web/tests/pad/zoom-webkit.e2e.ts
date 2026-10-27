@@ -33,3 +33,17 @@ test('WebKit：viewport は拡大を止めず、部屋の中の操作画面は�
     expect(await page.evaluate(() => window.visualViewport?.scale ?? 1), s.sel).toBe(1);
   }
 });
+
+
+test('WebKit：tilesの札は縦にスクロールでき、ダブルタップで拡大しない', async ({ page, line, makeHost }) => {
+  const host = await makeHost(); const you = await joinRoom(page, line, host);
+  host.setPad(you.id, { k: 'tiles', tiles: Array.from({ length: 20 }, (_, i) => ({ id: `t${i}`, label: `札${i}` })), ok: '出す', pass: 'パス' });
+  const grid = page.locator('.irori-pad__tiles-grid'); await expect(grid).toBeVisible();
+  expect(await grid.evaluate((el) => getComputedStyle(el).touchAction)).toBe('pan-y');
+  expect(await grid.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await page.locator('[data-id="t0"]').tap(); await page.locator('[data-id="t0"]').tap();
+  expect(await page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(1);
+  await grid.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  await expect(page.locator('[data-id="t19"]')).toBeInViewport();
+  await expect(page.locator('[data-action="ok"]')).toBeInViewport();
+});

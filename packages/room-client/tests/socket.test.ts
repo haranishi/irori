@@ -523,3 +523,16 @@ describe('URL', () => {
     expect(roomSocketUrl(origin, 'BCDF')).toBe(url);
   });
 });
+
+it('tilesの画面と入力を運び、不正な再送を捨てても接続を保つ', () => {
+  const { s, frames } = pad();
+  s.connect(); last().accept(); last().message(PAD_WELCOME('tok'));
+  const spec = { k: 'tiles', tiles: [{ id: 'a', label: '札' }], ok: '出す' };
+  last().message({ t: 'pad', spec });
+  expect(frames.at(-1)).toEqual({ t: 'pad', spec });
+  last().message({ t: 'pad', spec: { ...spec, max: 9 } });
+  expect(frames.at(-1)).toEqual({ t: 'pad', spec });
+  expect(s.send({ t: 'in', i: { k: 'tiles', ids: ['a'] } })).toBe(true);
+  expect(JSON.parse(last().sent.at(-1)!)).toEqual({ t: 'in', i: { k: 'tiles', ids: ['a'] } });
+  s.close();
+});

@@ -1,7 +1,7 @@
 # 設計：パーティーパック（第2弾）
 
 ## Overview
-4本のゲーム（ストライク横丁・大富豪・ババ抜き・月夜の村）と、手札・投票のための `tiles`、効果音の依頼 `cue-v1` を足す。ゲームは既存と同じく、隔離した枠の中の「純粋な判定（`logic.js`）＋ SDK への接続（`main.js`）＋ 描画（`view.js`）」で作る。背景は [brief.md](brief.md)、契約は [design-contracts.md](design-contracts.md)、規則は `game-*.md`、判断と出どころは [research.md](research.md)。
+4本のゲーム（ストライク横丁・大富豪・ババ抜き・月あかりの寄り合い）と、手札・投票のための `tiles`、効果音の依頼 `cue-v1` を足す。ゲームは既存と同じく、隔離した枠の中の「純粋な判定（`logic.js`）＋ SDK への接続（`main.js`）＋ 描画（`view.js`）」で作る。背景は [brief.md](brief.md)、契約は [design-contracts.md](design-contracts.md)、規則は `game-*.md`、判断と出どころは [research.md](research.md)。
 
 ### Goals / Non-Goals
 - Goals：7本から11本へ。8人が10分以上遊べる定番を足す。秘匿を試験で守る。既存7本を変えない。

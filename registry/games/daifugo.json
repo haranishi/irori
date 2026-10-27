@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "daifugo",
+  "title": { "ja": "大富豪", "en": "Hearth Daifugo" },
+  "summary": { "ja": "同じ数を重ねて、手札を先に出し切ろう。8切りと革命で流れが変わる札遊び。", "en": "Match ranks and empty your hand. Eights clear; four cards reverse the ranks." },
+  "authors": [{ "name": "irori contributors", "url": "https://github.com/haranishi/irori" }],
+  "license": { "code": "MIT OR Apache-2.0", "assets": "original" },
+  "players": { "min": 3, "max": 8 },
+  "pads": ["wait", "pad", "tiles"],
+  "entry": { "bundled": "games/daifugo/" },
+  "thumbnail": "daifugo.jpg",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-10-27"
+}

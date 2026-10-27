@@ -23,7 +23,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 const CSP = "sandbox allow-scripts; default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'";
 
 /** 仮想プレイヤーの人数（既定は3）。人狼は4人以上が要る。 */
-const PLAYERS = { 'blade-duel': 2, 'moon-village': 5 };
+const PLAYERS = { 'blade-duel': 2, 'moon-village': 8 };
 
 /** ゲームごとの撮る前の手順。page は Playwright のページ。 */
 const SCENES = {
@@ -105,8 +105,22 @@ const SCENES = {
     await page.waitForFunction(() => !document.getElementById('stage')?.hasAttribute('data-busy'), null, { timeout: 15_000 });
     await page.waitForTimeout(600);
   },
+  // 人狼：8人で、役の確認（見る→かくす）を済ませ、夜に3人が決める（月と8軒の家、窓が3つ消えた夜）。
   'moon-village': async (page) => {
     await phase(page, 'intro');
+    await page.keyboard.press('Space');
+    await phase(page, 'reveal');
+    const seatOf = (p) => page.locator(`.irori-mock__seat[data-p="${p}"]`);
+    for (let p = 1; p <= 8; p++) {
+      await seatOf(p).locator('[data-action="ok"]').click();
+      await seatOf(p).locator('[data-action="ok"]').click();
+    }
+    await phase(page, 'night');
+    for (let p = 1; p <= 3; p++) {
+      await seatOf(p).locator('.irori-pad__tile').first().click();
+      await seatOf(p).locator('[data-action="ok"]').click();
+    }
+    await page.waitForTimeout(1200);
   },
 };
 

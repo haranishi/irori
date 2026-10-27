@@ -179,14 +179,15 @@ function inputEvent(v: unknown, where: string): InputEvent {
       onlyKeys(o, ['k', 'id'], where);
       return { k: 'pick', id: ident(o.id, `${where}.id`) };
     case 'tiles': {
-      onlyKeys(o, ['k', 'ids', 'pass'], where);
+      onlyKeys(o, ['k', 'ids', 'pass', 't'], where);
       if (!Array.isArray(o.ids) || o.ids.length > LIMITS.TILES_SELECT_MAX) reject(`${where}.ids: array of at most ${LIMITS.TILES_SELECT_MAX}`);
       const ids = o.ids.map((id: unknown, i: number) => ident(id, `${where}.ids[${i}]`));
       if (new Set(ids).size !== ids.length) reject(`${where}.ids: duplicate`);
-      if (o.pass === undefined) return { k: 'tiles', ids };
+      const t = o.t === undefined ? undefined : ident(o.t, `${where}.t`);
+      if (o.pass === undefined) return t === undefined ? { k: 'tiles', ids } : { k: 'tiles', ids, t };
       if (o.pass !== true) reject(`${where}.pass: true`);
       if (ids.length > 0) reject(`${where}: pass with ids`);
-      return { k: 'tiles', ids, pass: true };
+      return t === undefined ? { k: 'tiles', ids, pass: true } : { k: 'tiles', ids, pass: true, t };
     }
     case 'tilt':
       onlyKeys(o, ['k', 'a', 'b', 'g'], where);
@@ -275,7 +276,7 @@ function padSpec(v: unknown, allowRemote: boolean, where: string): PadSpec {
       return s;
     }
     case 'tiles': {
-      onlyKeys(o, ['k', 'tiles', 'ok', 'pass', 'min', 'max', 'note', 'hint', 'disabled'], where);
+      onlyKeys(o, ['k', 'tiles', 'ok', 'pass', 'min', 'max', 'note', 'hint', 'disabled', 'token'], where);
       if (!Array.isArray(o.tiles) || o.tiles.length > LIMITS.TILES_MAX) reject(`${where}.tiles: array of at most ${LIMITS.TILES_MAX}`);
       const tiles = o.tiles.map((t: unknown, i: number) => tileSpec(t, `${where}.tiles[${i}]`));
       if (new Set(tiles.map((t) => t.id)).size !== tiles.length) reject(`${where}.tiles: duplicate id`);
@@ -291,6 +292,7 @@ function padSpec(v: unknown, allowRemote: boolean, where: string): PadSpec {
       const h = hint(o, where);
       if (h !== undefined) s.hint = h;
       if (o.disabled !== undefined) s.disabled = bool(o.disabled, `${where}.disabled`);
+      if (o.token !== undefined) s.token = ident(o.token, `${where}.token`);
       return s;
     }
     case 'touch': {

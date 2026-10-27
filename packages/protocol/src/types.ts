@@ -19,8 +19,11 @@ export type InputEvent =
   | { k: 'axis'; id: string; x: number; y: number }
   | { k: 'ptr'; id: string; x: number; y: number; ph: 's' | 'm' | 'e' }
   | { k: 'pick'; id: string }
-  /** `tiles` の「決定」か「パス」を押したときに1回だけ届く。`pass` が真なら `ids` は空。 */
-  | { k: 'tiles'; ids: string[]; pass?: true }
+  /**
+   * `tiles` の「決定」か「パス」を押したときに1回だけ届く。`pass` が真なら `ids` は空。
+   * `t` は、押した画面の `token` をそのまま返したもの。画面が替わったあとに遅れて届いた入力を、ゲームが見分ける。
+   */
+  | { k: 'tiles'; ids: string[]; pass?: true; t?: string }
   | { k: 'tilt'; a: number; b: number; g: number }
   | { k: 'menu' };
 
@@ -76,6 +79,8 @@ export type GamePadSpec =
       note?: string;
       hint?: string;
       disabled?: boolean;
+      /** この画面の識別子（任意）。入力の `t` にそのまま返る。画面を替えるたびに変える。 */
+      token?: string;
     }
   | { k: 'touch'; mode?: 'area' | 'swipe'; hint?: string }
   | { k: 'tilt'; buttons?: ButtonSpec[]; hint?: string };

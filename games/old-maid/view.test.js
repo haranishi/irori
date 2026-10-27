@@ -80,7 +80,7 @@ describe('追補D3：mainからスマホと大画面への接続',()=>{
     expect(document.documentElement.dataset.phase).toBe('ended');
     await vi.runAllTimersAsync();
     expect(host.end).toHaveBeenCalledTimes(1);
-    expect(host.end.mock.calls[0][0].map((r)=>r.label)).toEqual(['未成立','勝負なし','記録なし']);
+    expect(host.end.mock.calls[0][0].map((r)=>r.label)).toEqual(['1番目に上がり','勝負なし','記録なし']);
     expect(host.setPad.mock.invocationCallOrder.at(-1)).toBeLessThan(host.end.mock.invocationCallOrder[0]);
   });
 });

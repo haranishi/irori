@@ -343,7 +343,7 @@
     "id": "party-pack-old-maid-result-record",
     "note": "結果の記録を順位と退出の繰り返しへ戻す",
     "file": "games/old-maid/logic.js",
-    "find": "label:s.left ? '記録なし' : s.hand.length ? s.rank === null ? '勝負なし' : 'ジョーカーが残った' : s.rank === null ? '未成立' : `${s.rank}番目に上がり`",
+    "find": "label:s.left ? '記録なし' : s.hand.length ? s.rank === null ? '勝負なし' : 'ジョーカーが残った' : state.order.includes(s.id) ? `${state.order.indexOf(s.id)+1}番目に上がり` : '未成立'",
     "replace": "label:s.left ? '退出' : s.rank === null ? '未成立' : s.rank === state.order.length ? '最下位' : `${s.rank}位`",
     "command": [
       "npm",

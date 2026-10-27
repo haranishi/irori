@@ -310,7 +310,7 @@ describe('追補D3：待機・空の手札・終了の案内',()=>{
     expect(result.state.feedback).toBeNull();expect(result.state.seats[1].hand).toEqual(['jk']);
     const pads=result.effects.filter((e)=>e.t==='pad');expect(pads.map((e)=>e.to)).toEqual([1,2]);
     expect(pads.map((e)=>e.spec)).toEqual([
-      {k:'wait',title:'勝負が終わりました',body:'あなた：札なし。今回は未成立（順位なし）'},
+      {k:'wait',title:'勝負が終わりました',body:'あなた：札なし。1番目に上がりました（勝敗なし）'},
       {k:'wait',title:'退出した人の札が2枚、配られました',body:'あなた：JK。勝負なし（相手が退出）'},
     ]);
     const end=result.effects.findIndex((e)=>e.t==='end');
@@ -331,7 +331,7 @@ describe('追補D3：待機・空の手札・終了の案内',()=>{
     const result=draw(scenario([['s7'],['h7'],['jk']]));
     expect(result.effects.find((e)=>e.t==='end').results.map((r)=>r.label)).toEqual(['2番目に上がり','1番目に上がり','ジョーカーが残った']);
     const left=updateGame(scenario([[],['s3'],['h3','jk']],[1]),{t:'players',players:players().filter((p)=>p.id!==2),leader:1});
-    expect(left.effects.find((e)=>e.t==='end').results.map((r)=>r.label)).toEqual(['未成立','記録なし','勝負なし']);
+    expect(left.effects.find((e)=>e.t==='end').results.map((r)=>r.label)).toEqual(['1番目に上がり','記録なし','勝負なし']);
     const incomplete=updateGame(scenario([['s3'],['h3','jk']]),{t:'players',players:players(1),leader:1});
     expect(incomplete.effects.find((e)=>e.t==='end').results.map((r)=>r.label)).toEqual(['勝負なし','記録なし']);
     for(const r of result.effects.find((e)=>e.t==='end').results) expect([...r.label].length).toBeLessThanOrEqual(12);

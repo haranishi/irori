@@ -165,7 +165,7 @@ function openTurn(state,after,keep,forfeit = false) {
 function padFor(state,seat) {
   const hand = `あなた：${seat.hand.map(cardText).join(' ') || '札なし'}`;
   const notice = state.received[seat.id] ? `退出した人の札が${state.received[seat.id]}枚、配られました` : '';
-  const record = `${hand}。${seat.left ? '退出のため記録なし' : seat.hand.length ? seat.rank === null ? '勝負なし（相手が退出）' : 'ジョーカーが残りました' : seat.rank ? `${seat.rank}位で上がりました` : '今回は未成立（順位なし）'}`;
+  const record = `${hand}。${seat.left ? '退出のため記録なし' : seat.hand.length ? seat.rank === null ? '勝負なし（相手が退出）' : 'ジョーカーが残りました' : seat.rank ? `${seat.rank}位で上がりました` : state.order.includes(seat.id) ? `${state.order.indexOf(seat.id)+1}番目に上がりました（勝敗なし）` : '今回は未成立（順位なし）'}`;
   if (state.phase === 'ended') return {k:'wait',title:notice || '勝負が終わりました',body:record};
   if (blocked(state)) return {k:'wait',title:notice || '再開を待っています',body:hand};
   if (state.phase === 'intro') {
@@ -189,7 +189,7 @@ function transition(before,state,extra=[]) {
     // 最終padは結果のリモコンで置き換わり得るが、古い操作画面は残さない。
     for (const seat of state.seats.filter((s) => !s.left)) effects.push({t:'pad',to:seat.id,spec:padFor(state,seat)});
     if (state.seats.some((s) => s.rank !== null && s.hand.includes('jk'))) effects.push({t:'cue',name:'lose'});
-    effects.push({t:'end',results:state.seats.map((s) => ({p:s.id,score:s.rank === null ? 0 : state.order.length-s.rank+1,ranked:!s.left && s.rank !== null && state.outcome === 'complete',label:s.left ? '記録なし' : s.hand.length ? s.rank === null ? '勝負なし' : 'ジョーカーが残った' : s.rank === null ? '未成立' : `${s.rank}番目に上がり`})),options:{display:'record',outcome:state.outcome}});
+    effects.push({t:'end',results:state.seats.map((s) => ({p:s.id,score:s.rank === null ? 0 : state.order.length-s.rank+1,ranked:!s.left && s.rank !== null && state.outcome === 'complete',label:s.left ? '記録なし' : s.hand.length ? s.rank === null ? '勝負なし' : 'ジョーカーが残った' : state.order.includes(s.id) ? `${state.order.indexOf(s.id)+1}番目に上がり` : '未成立'})),options:{display:'record',outcome:state.outcome}});
     return {state,effects};
   }
   for (const seat of state.seats.filter((s) => !s.left)) effects.push({t:'pad',to:seat.id,spec:padFor(state,seat)});

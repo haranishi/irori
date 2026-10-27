@@ -17,6 +17,7 @@ import {
   type PadSpec,
   type PlayerId,
   type PlayerInfo,
+  type TileSpec,
   type ToHostFrame,
   type ToPadFrame,
 } from './types';
@@ -128,6 +129,11 @@ function clamp(v: number, lo: number, hi: number): number {
   return c === 0 ? 0 : c; // -0 を 0 にそろえる
 }
 
+function integer(v: unknown, lo: number, hi: number, where: string): number {
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < lo || v > hi) reject(`${where}: integer ${lo}..${hi}`);
+  return v;
+}
+
 function oneOf<T extends string>(v: unknown, values: readonly T[], where: string): T {
   if (typeof v !== 'string' || !(values as readonly string[]).includes(v)) reject(`${where}: one of ${values.join('|')}`);
   return v as T;
@@ -172,6 +178,16 @@ function inputEvent(v: unknown, where: string): InputEvent {
     case 'pick':
       onlyKeys(o, ['k', 'id'], where);
       return { k: 'pick', id: ident(o.id, `${where}.id`) };
+    case 'tiles': {
+      onlyKeys(o, ['k', 'ids', 'pass'], where);
+      if (!Array.isArray(o.ids) || o.ids.length > LIMITS.TILES_SELECT_MAX) reject(`${where}.ids: array of at most ${LIMITS.TILES_SELECT_MAX}`);
+      const ids = o.ids.map((id: unknown, i: number) => ident(id, `${where}.ids[${i}]`));
+      if (new Set(ids).size !== ids.length) reject(`${where}.ids: duplicate`);
+      if (o.pass === undefined) return { k: 'tiles', ids };
+      if (o.pass !== true) reject(`${where}.pass: true`);
+      if (ids.length > 0) reject(`${where}: pass with ids`);
+      return { k: 'tiles', ids, pass: true };
+    }
     case 'tilt':
       onlyKeys(o, ['k', 'a', 'b', 'g'], where);
       return {
@@ -202,6 +218,16 @@ function labeledList(v: unknown, min: number, max: number, where: string): Butto
   if (!Array.isArray(v)) reject(`${where}: array`);
   if (v.length < min || v.length > max) reject(`${where}: ${min}..${max} items`);
   return v.map((item, i) => labeled(item, `${where}[${i}]`));
+}
+
+function tileSpec(v: unknown, where: string): TileSpec {
+  const o = obj(v, where);
+  onlyKeys(o, ['id', 'label', 'sub', 'color', 'off'], where);
+  const t: TileSpec = { id: ident(o.id, `${where}.id`), label: text(o.label, LIMITS.LABEL_MAX_GRAPHEMES, `${where}.label`) };
+  if (o.sub !== undefined) t.sub = text(o.sub, LIMITS.LABEL_MAX_GRAPHEMES, `${where}.sub`);
+  if (o.color !== undefined) t.color = oneOf(o.color, COLORS, `${where}.color`);
+  if (o.off !== undefined) t.off = bool(o.off, `${where}.off`);
+  return t;
 }
 
 function hint(o: Obj, where: string): string | undefined {
@@ -246,6 +272,25 @@ function padSpec(v: unknown, allowRemote: boolean, where: string): PadSpec {
       if (o.disabled !== undefined) s.disabled = bool(o.disabled, `${where}.disabled`);
       const h = hint(o, where);
       if (h !== undefined) s.hint = h;
+      return s;
+    }
+    case 'tiles': {
+      onlyKeys(o, ['k', 'tiles', 'ok', 'pass', 'min', 'max', 'note', 'hint', 'disabled'], where);
+      if (!Array.isArray(o.tiles) || o.tiles.length > LIMITS.TILES_MAX) reject(`${where}.tiles: array of at most ${LIMITS.TILES_MAX}`);
+      const tiles = o.tiles.map((t: unknown, i: number) => tileSpec(t, `${where}.tiles[${i}]`));
+      if (new Set(tiles.map((t) => t.id)).size !== tiles.length) reject(`${where}.tiles: duplicate id`);
+      // 選べない札（off）は数えない。選ぶ数の上限は、選べる札の数と TILES_SELECT_MAX の小さいほう。
+      const cap = Math.min(LIMITS.TILES_SELECT_MAX, tiles.filter((t) => t.off !== true).length);
+      const s: Extract<PadSpec, { k: 'tiles' }> = { k: 'tiles', tiles, ok: text(o.ok, LIMITS.LABEL_MAX_GRAPHEMES, `${where}.ok`) };
+      const max = o.max === undefined ? Math.min(1, cap) : integer(o.max, 0, cap, `${where}.max`);
+      const min = o.min === undefined ? Math.min(1, max) : integer(o.min, 0, max, `${where}.min`);
+      if (o.pass !== undefined) s.pass = text(o.pass, LIMITS.LABEL_MAX_GRAPHEMES, `${where}.pass`);
+      if (o.min !== undefined) s.min = min;
+      if (o.max !== undefined) s.max = max;
+      if (o.note !== undefined) s.note = text(o.note, LIMITS.BODY_MAX_GRAPHEMES, `${where}.note`);
+      const h = hint(o, where);
+      if (h !== undefined) s.hint = h;
+      if (o.disabled !== undefined) s.disabled = bool(o.disabled, `${where}.disabled`);
       return s;
     }
     case 'touch': {

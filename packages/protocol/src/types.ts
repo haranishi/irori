@@ -19,6 +19,8 @@ export type InputEvent =
   | { k: 'axis'; id: string; x: number; y: number }
   | { k: 'ptr'; id: string; x: number; y: number; ph: 's' | 'm' | 'e' }
   | { k: 'pick'; id: string }
+  /** `tiles` の「決定」か「パス」を押したときに1回だけ届く。`pass` が真なら `ids` は空。 */
+  | { k: 'tiles'; ids: string[]; pass?: true }
   | { k: 'tilt'; a: number; b: number; g: number }
   | { k: 'menu' };
 
@@ -37,6 +39,16 @@ export interface ChoiceSpec {
   color?: ColorName;
 }
 
+/** `tiles` の1枚。手札の1枚や、投票先の1人。`off` は「いまは選べない」で、薄く出す。 */
+export interface TileSpec {
+  id: string;
+  label: string;
+  /** 小さな補助文字（例「×2」「生存」）。 */
+  sub?: string;
+  color?: ColorName;
+  off?: boolean;
+}
+
 /** ゲームが指定できるコントローラー画面。種類は固定で、自由なHTMLは持ち込めない。 */
 export type GamePadSpec =
   | { k: 'wait'; title?: string; body?: string }
@@ -49,6 +61,22 @@ export type GamePadSpec =
     }
   | { k: 'buzzer'; label: string; color?: ColorName; disabled?: boolean; hint?: string }
   | { k: 'choices'; options: ChoiceSpec[]; disabled?: boolean; hint?: string }
+  /**
+   * 札や人を並べ、`min`〜`max` 個を選んで「決定」する（手札の提出・投票）。能力 `pad-tiles-v1` が要る。
+   * `min` の既定は1、`max` の既定は1（選べる札が無ければ0）。札が空なら「文と決定ボタンだけ」の画面になる。
+   * `disabled` は見るだけ（決定とパスは出さない）。
+   */
+  | {
+      k: 'tiles';
+      tiles: TileSpec[];
+      ok: string;
+      pass?: string;
+      min?: number;
+      max?: number;
+      note?: string;
+      hint?: string;
+      disabled?: boolean;
+    }
   | { k: 'touch'; mode?: 'area' | 'swipe'; hint?: string }
   | { k: 'tilt'; buttons?: ButtonSpec[]; hint?: string };
 

@@ -24,6 +24,9 @@ export const LIMITS = {
   BUTTONS_MAX: 4,
   CHOICES_MIN: 2,
   CHOICES_MAX: 6,
+  /** `tiles` の札の数（3人で54枚を配ると18枚）と、一度に選べる数（入力が512バイトに収まる大きさ）。 */
+  TILES_MAX: 20,
+  TILES_SELECT_MAX: 8,
   FX_PATTERN_MAX: 8,
   FX_MS_MAX: 1000,
 

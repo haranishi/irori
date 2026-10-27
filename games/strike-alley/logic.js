@@ -194,6 +194,11 @@ function moveOn(state, frame, from) {
 
 /** @param {GameState} state @param {readonly PlayerInfo[]} players @param {PlayerId|null} leader @returns {Transition} */
 function onPlayers(state, players, leader) {
+  // 開始前の席を取り除く前に、全員退出の記録を残して未成立にする。
+  if (state.phase === 'intro' && players.length === 0 && state.seats.length > 0) {
+    return transition(state, { ...state, phase: 'ended', outcome: 'incomplete', players: [], leader: null, chooser: null,
+      seats: state.seats.map((s) => ({ ...s, online: false, left: true })), turn: null, gesture: null });
+  }
   const roster = new Map(players.map((p) => [p.id, p]));
   // 始める前に抜けた席は名簿から外す。始めたあとは、抜けた席も記録のために残す。
   const seats = state.seats

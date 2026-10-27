@@ -30,7 +30,7 @@
     "id": "strike-alley-final-always-reset",
     "note": "最後のフレームで、ストライクのあとの2投目の残りピンでも立て直す",
     "file": "games/strike-alley/scoring.js",
-    "find": "return { done: false, frame: f, ball: balls.length, reset: left === PINS, pinsLeft: left };",
+    "find": "return { done: false, frame: f, ball: balls.length, reset: fresh, pinsLeft: left };",
     "replace": "return { done: false, frame: f, ball: balls.length, reset: true, pinsLeft: PINS };",
     "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
     "timeoutMs": 180000
@@ -169,5 +169,38 @@
     "replace": "return `m${state.nonce}_0_${frames}`;",
     "command": ["npm", "run", "test:games", "--", "games/strike-alley/"],
     "timeoutMs": 180000
+  },
+  {
+    "id": "strike-alley-final-fresh-by-count",
+    "note": "最終フレームの未投球判定を残り本数に戻し10・0後を誤認する",
+    "file": "games/strike-alley/scoring.js",
+    "find": "reset: fresh, pinsLeft: left",
+    "replace": "reset: left === PINS, pinsLeft: left",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/strike-alley/scoring.test.js",
+      "games/strike-alley/logic.test.js",
+      "-t",
+      "誤認"
+    ]
+  },
+  {
+    "id": "strike-alley-intro-empty",
+    "note": "introの全員退出を見逃してendを出さない",
+    "file": "games/strike-alley/logic.js",
+    "find": "if (state.phase === 'intro' && players.length === 0 && state.seats.length > 0) {",
+    "replace": "if (false) {",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/strike-alley/logic.test.js",
+      "-t",
+      "introで全員退出"
+    ]
   }
 ]

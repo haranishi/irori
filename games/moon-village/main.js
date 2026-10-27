@@ -69,7 +69,8 @@ async function boot() {
       else if (!finale) {
         // end は1回だけ。全役の画面がスマホへ届き、大画面の役の表を見る間を置いてから送る。
         const {results, options} = effect;
-        finale = {left:FINALE_MS, send:()=>{dispose(); irori.end(results, options);}};
+        // 役がまだ配られていない終わり（はじめる前に全員が席を立った）は、見せる役の表がないので置かない。
+        finale = {left:state.seats.some((s)=>s.role) ? FINALE_MS : 0, send:()=>{dispose(); irori.end(results, options);}};
         last = null;
         render();
       }

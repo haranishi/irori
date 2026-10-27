@@ -37,6 +37,29 @@ const freeze = (o) => {
 };
 
 describe('開始', () => {
+  it.each([1, 3, 6])('%i席のintroで全員退出：開始前の席の除去でendが送られなかった', (n) => {
+    const s = freeze(createGame(init({ players: players(n) })).state);
+    const offline = updateGame(s, { t: 'players', players: players(n, players(n).map((p) => p.id)), leader: 1 });
+    expect(offline.state.phase).toBe('intro');expect(offline.effects.some((e) => e.t === 'end')).toBe(false);
+    const tr = updateGame(s, { t: 'players', players: [], leader: null });
+    expect(tr.state).toMatchObject({ phase: 'ended', outcome: 'incomplete', turn: null, gesture: null });
+    expect(tr.state.seats).toEqual(s.seats.map((p) => ({ ...p, left: true, online: false })));
+    expect(tr.effects).toEqual([{
+      t: 'end', results: s.seats.map((p) => ({ p: p.id, score: 0, ranked: false })),
+      options: { display: 'points', outcome: 'incomplete', note: expect.any(String) },
+    }]);
+    expect(publicView(tr.state).canStart).toBe(false);
+    for (const event of [
+      { t: 'players', players: [], leader: null }, { t: 'players', players: players(n), leader: 1 },
+      { t: 'input', p: 1, input: { k: 'pick', id: modeId(s, 5) } },
+      { t: 'settled', id: 1 }, { t: 'next', id: 1 }, { t: 'menu', paused: true }, { t: 'environment', value: null },
+    ]) { const after = updateGame(tr.state, event);expect(after.state).toBe(tr.state);expect(after.effects).toEqual([]); }
+  });
+  it('最初から席のないintroは終了せず、空のplayersの後も待つ', () => {
+    const empty = createGame(init({ players: [], leader: null }));expect(empty.effects).toEqual([]);
+    const tr = updateGame(empty.state, { t: 'players', players: [], leader: null });
+    expect(tr.state.phase).toBe('intro');expect(tr.effects).toEqual([]);
+  });
   it.each([1, 3, 6])('%i人：リーダーにだけ長さの選択肢、ほかは wait', (n) => {
     const { state, effects } = createGame(init({ players: players(n) }));
     expect(state.phase).toBe('intro');
@@ -95,6 +118,30 @@ describe('開始', () => {
 });
 
 describe('投げる', () => {
+  it.each([5, 10].flatMap((frames) => [
+    { balls: [10, 0, 10], shots: [POCKET, GUTTER, POCKET], kinds: ['strike', 'gutter', 'spare'], marks: ['X', '−', '/'] },
+    { balls: [10, 10, 10], shots: [POCKET, POCKET, POCKET], kinds: ['strike', 'strike', 'strike'], marks: ['X', 'X', 'X'] },
+    { balls: [0, 10, 10], shots: [GUTTER, POCKET, POCKET], kinds: ['gutter', 'spare', 'strike'], marks: ['−', '/', 'X'] },
+    { balls: [10, 4, 6], shots: [POCKET, [[(1 - 0.6 / 0.85) / 2, 0.15], [(1 - 0.6 / 0.85) / 2, 0.711]], [[(1 - 0.24 / 0.85) / 2, 0.15], [(1 - 0.24 / 0.85) / 2, 0.711]]], kinds: ['strike', 'pins', 'spare'], marks: ['X', '4', '/'] },
+  ].map((c) => ({ frames, ...c }))))('$frames フレーム・$balls ：10・0後の残り10本を新しい棚と誤認し字幕・cue・振動がストライクになっていた', ({ frames, balls, shots, kinds, marks }) => {
+    let s = start({ players: players(1) }, frames);
+    for (let f = 0; f < frames - 1; f++) s = throwAndFinish(throwAndFinish(s, ...GUTTER), ...GUTTER);
+    for (let b = 0; b < 3; b++) {
+      expect(s.turn).toEqual({ p: 1, frame: frames - 1, ball: b });
+      const rolled = swipe(s, ...shots[b]).state;
+      expect(rolled.roll.result.knocked).toBe(balls[b]);
+      expect(rolled.roll.kind).toBe(kinds[b]);
+      expect(publicView(rolled).roll.kind).toBe(kinds[b]); // 字幕・演出は公開されたkindを使う。
+      const settled = settle(rolled);
+      const special = kinds[b] === 'strike' || kinds[b] === 'spare';
+      expect(settled.effects.filter((e) => e.t === 'cue')).toEqual(special ? [{ t: 'cue', name: kinds[b], v: kinds[b] === 'strike' ? 1 : 0.8 }] : []);
+      expect(settled.effects.filter((e) => e.t === 'vibrate')).toEqual([{ t: 'vibrate', to: 1, ms: special ? BUZZ[kinds[b]] : balls[b] ? BUZZ.pins : BUZZ.miss }]);
+      s = next(settled.state).state;
+    }
+    expect(s.phase).toBe('ended');
+    expect(publicView(s).participants[0].card[frames - 1].marks).toEqual(marks);
+    expect(s.seats[0].rolls.slice(-3)).toEqual(balls);
+  });
   it('置いて引いてはなすと、物理を1回だけ走らせて rolling へ。結果は同じ投げ方の物理と同じ', () => {
     const s = start();
     const { state, effects } = swipe(s, ...POCKET);

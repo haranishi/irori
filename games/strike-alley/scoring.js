@@ -130,7 +130,7 @@ export function scoreCard(rolls, frames) {
 }
 
 /**
- * 次の投球。何フレーム目の何球目か、ピンを立て直すか、何本立っているか。全部投げ終えたら done。
+ * 次の投球。resetは未投球の棚（0本投げた棚は含まない）。全部投げ終えたらdone。
  * @param {readonly number[]} rolls @param {number} frames @returns {NextTurn}
  */
 export function nextTurn(rolls, frames) {
@@ -144,11 +144,13 @@ export function nextTurn(rolls, frames) {
     }
     if (balls.length < finalNeed(balls)) {
       let left = PINS;
+      let fresh = true;
       for (const n of balls) {
         left -= n;
+        fresh = left === 0;
         if (left === 0) left = PINS;
       }
-      return { done: false, frame: f, ball: balls.length, reset: left === PINS, pinsLeft: left };
+      return { done: false, frame: f, ball: balls.length, reset: fresh, pinsLeft: left };
     }
   }
   return { done: true, frame: frames, ball: 0, reset: true, pinsLeft: PINS };

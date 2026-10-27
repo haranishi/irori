@@ -80,6 +80,29 @@ function checkPrivacy(transition){
 }
 
 describe('開始と役の確認',()=>{
+  it.each([1,4,8])('%i席のintroで全員退出：名簿の作り直しでendに届かず、席も失われていた',(n)=>{
+    const s=deepFreeze(createGame(init({players:players(n)})).state);
+    const offline=updateGame(s,{t:'players',players:players(n,players(n).map((p)=>p.id)),leader:1});
+    expect(offline.state.phase).toBe('intro');expect(offline.effects.some((e)=>e.t==='end')).toBe(false);
+    const tr=updateGame(s,{t:'players',players:[],leader:null});
+    expect(tr.state).toMatchObject({phase:'ended',outcome:'incomplete',winner:null});
+    expect(tr.state.seats).toEqual(s.seats.map((p)=>({...p,left:true,online:false,alive:false})));
+    const ends=tr.effects.filter((e)=>e.t==='end');expect(ends).toHaveLength(1);
+    expect(ends[0]).toMatchObject({results:s.seats.map((p)=>({p:p.id,score:0,ranked:false,label:'退出'})),options:{display:'record',outcome:'incomplete'}});
+    expect(publicView(tr.state).reveal).toBeNull();
+    expect(tr.effects.filter((e)=>e.t==='pad').every((e)=>!e.spec.body)).toBe(true);
+    for(const event of [
+      {t:'players',players:[],leader:null},{t:'players',players:players(n),leader:1},
+      {t:'input',p:1,input:{k:'btn',id:id(s,1),d:1}},{t:'input',p:1,input:{k:'tiles',t:token(s,1),ids:[]}},
+      {t:'tick',ms:999999},{t:'menu',paused:true},{t:'environment',value:null},
+    ]) {const after=updateGame(tr.state,event);expect(after.state).toBe(tr.state);expect(after.effects).toEqual([]);}
+  });
+  it('最初から席がないintroは全員退出と区別して待ち、その後の参加を受け付ける',()=>{
+    const empty=createGame(init({players:[],leader:null}));expect(empty.effects).toEqual([]);
+    const tr=updateGame(empty.state,{t:'players',players:[],leader:null});
+    expect(tr.state.phase).toBe('intro');expect(tr.effects).toEqual([]);
+    expect(ev(tr.state,{t:'players',players:players(4),leader:1}).seats).toHaveLength(4);
+  });
   it.each([4,5,6,7,8])('%i人の開始・確認・夜に進み、役は本人にだけ送る',(n)=>{
     let tr=createGame(init({players:players(n)}));checkPrivacy(tr);
     expect(publicView(tr.state).canBegin).toBe(true);

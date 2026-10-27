@@ -283,8 +283,8 @@
     "id": "party-pack-moon-village-final-text-limit",
     "note": "終了本文の文字数制限を外し、8人の長い名前で上限を超える",
     "file": "games/moon-village/logic.js",
-    "find": "].slice(0,120).join('')};",
-    "replace": "].join('')};",
+    "find": "].slice(0,120).join('')} : {})};",
+    "replace": "].join('')} : {})};",
     "command": [
       "npm",
       "run",
@@ -354,5 +354,21 @@
     "find": "const leader = leaderLeft ? null : seats.some((s)=>s.id === event.leader && (s.alive || s.id === state.leader)) ? event.leader : state.leader;",
     "replace": "const leader = event.leader;",
     "command": ["npm", "run", "test:games", "--", "games/moon-village/logic.test.js", "-t", "夜明け・処刑後のスマホ進行"]
+  },
+  {
+    "id": "party-pack-moon-village-intro-empty",
+    "note": "introの全員退出を見逃してendを出さない",
+    "file": "games/moon-village/logic.js",
+    "find": "if (state.phase === 'intro' && event.players.length === 0 && state.seats.length > 0) {",
+    "replace": "if (false) {",
+    "command": [
+      "npm",
+      "run",
+      "test:games",
+      "--",
+      "games/moon-village/logic.test.js",
+      "-t",
+      "introで全員退出"
+    ]
   }
 ]

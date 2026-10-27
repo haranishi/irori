@@ -45,6 +45,11 @@ function tileToken(state,p) { return `w${state.nonce}_${(state.epochs[p] ?? 0).t
 export function updateGame(state,event) {
   if (state.phase === 'ended') return {state,effects:[]};
   if (event.t === 'players') {
+    // introの名簿を作り直す前に、最後の全員退出を記録して終える。
+    if (state.phase === 'intro' && event.players.length === 0 && state.seats.length > 0) {
+      return transition(state,{...state,phase:'ended',outcome:'incomplete',winner:null,leader:null,players:[],
+        seats:state.seats.map((s)=>({...s,online:false,left:true,alive:false}))});
+    }
     const roster = new Map(event.players.map((p)=>[p.id,p]));
     const seats = state.phase === 'intro'
       ? event.players.map((p)=>({...p,alive:true,left:false,role:null,lastGuard:null}))
@@ -221,7 +226,7 @@ function padFor(state,seat) {
 }
 /** @param {GameState} state @param {Seat} seat @returns {PadSpec} */
 function padContent(state,seat) {
-  if (state.phase === 'ended') return {k:'wait',title:state.outcome === 'incomplete' ? '今回は未成立です' : '勝負が終わりました',body:[...state.seats.map((s)=>`${s.name}：${s.role ? ROLE_NAMES[s.role] : '未配役'}`).join('、')].slice(0,120).join('')};
+  if (state.phase === 'ended') return {k:'wait',title:state.outcome === 'incomplete' ? '今回は未成立です' : '勝負が終わりました',...(state.seats.some((s)=>s.role) ? {body:[...state.seats.map((s)=>`${s.name}：${s.role ? ROLE_NAMES[s.role] : '未配役'}`).join('、')].slice(0,120).join('')} : {})};
   if (seat.left) return {k:'wait',title:'退出しました'};
   if (state.blockers.length) return {k:'wait',title:'再開を待っています',body:'接続・表示・メニューが戻るまで時計を止めています。'};
   if (state.resumeRequired) return seat.id === state.leader ? emptyTiles('再開する','同じ場面から再開します。') : {k:'wait',title:'進行役の再開を待っています'};
@@ -275,7 +280,7 @@ function transition(before,next,forceSeat) {
     effects.push({t:'end',results:next.seats.map((s)=>{
       const side = s.role === 'wolf' || s.role === 'madman' ? 'wolf' : 'village';
       const won = side === next.winner;
-      return {p:s.id,score:won ? 1 : 0,ranked:next.outcome === 'complete' && !s.left,label:`${side === 'wolf' ? '人狼' : '村人'}・${next.outcome === 'incomplete' ? '未成立' : won ? '勝ち' : '負け'}`};
+      return {p:s.id,score:won ? 1 : 0,ranked:next.outcome === 'complete' && !s.left,label:s.role ? `${side === 'wolf' ? '人狼' : '村人'}・${next.outcome === 'incomplete' ? '未成立' : won ? '勝ち' : '負け'}` : '退出'};
     }),options:{display:'record',outcome:next.outcome,note:next.outcome === 'incomplete' ? '残った参加者が2人未満のため、今回は勝敗なしです。' : `${next.winner === 'wolf' ? '人狼' : '村人'}側の勝ちです。`}});
   }
   return {state:next,effects};
@@ -287,7 +292,7 @@ export function publicView(state) {
     timer:state.phase === 'day' || state.phase === 'night' || state.phase === 'vote' ? {remaining:state.remaining,total:state.total} : null,
     decided:state.phase === 'night' || state.phase === 'vote' ? {count:living(state).filter((s)=>s.id in state.picks).length,total:living(state).length} : null,
     votes:state.votes?.map((v)=>({...v})) ?? null,
-    reveal:state.phase === 'ended' ? state.seats.map((s)=>({id:s.id,role:s.role})) : null,
+    reveal:state.phase === 'ended' && state.seats.some((s)=>s.role) ? state.seats.map((s)=>({id:s.id,role:s.role})) : null,
     leader:state.leader,canBegin:canBegin(state),outcome:state.outcome};
 }
 /** @typedef {ReturnType<typeof publicView>} GameViewModel */

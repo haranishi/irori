@@ -118,8 +118,6 @@ describe('途中のフレーム', () => {
 });
 
 describe('最後のフレームの全パターン', () => {
-  // 前の9フレームを 0・0 にして、最後のフレームの規則だけを見る。
-  const pre = Array(18).fill(0);
   const cases = [];
   for (let a = 0; a <= 10; a++) {
     if (a === 10) {
@@ -134,14 +132,15 @@ describe('最後のフレームの全パターン', () => {
       }
     }
   }
-  it('投げられる組み合わせは全部で241通りで、点・表示・終了・次の球がそろう', () => {
+  it.each([5, 10])('%iフレーム：全241通りで、点・表示・終了・次の球がそろう', (frames) => {
+    const pre = Array((frames - 1) * 2).fill(0);
     expect(cases).toHaveLength(241);
     for (const balls of cases) {
-      const card = scoreCard([...pre, ...balls], 10);
+      const card = scoreCard([...pre, ...balls], frames);
       expect(card.total).toBe(balls.reduce((x, y) => x + y, 0));
       expect(card.complete).toBe(true);
-      expect(nextTurn([...pre, ...balls], 10).done).toBe(true);
-      const marks = card.frames[9].marks;
+      expect(nextTurn([...pre, ...balls], frames).done).toBe(true);
+      const marks = card.frames[frames - 1].marks;
       const [a, b, c] = balls;
       expect(marks[0]).toBe(a === 10 ? 'X' : a === 0 ? '−' : String(a));
       if (a === 10) expect(marks[1]).toBe(b === 10 ? 'X' : b === 0 ? '−' : String(b));
@@ -151,20 +150,33 @@ describe('最後のフレームの全パターン', () => {
       else expect(marks[2]).toBe(c === 10 ? 'X' : c === 0 ? '−' : String(c));
       // 3投目の前の状態：立て直すか、何本残っているか。
       if (balls.length === 3) {
-        const before = nextTurn([...pre, a, b], 10);
-        expect(before).toMatchObject({ done: false, frame: 9, ball: 2 });
-        expect(before.reset).toBe(a + b === 10 || b === 10);
+        const before = nextTurn([...pre, a, b], frames);
+        expect(before).toMatchObject({ done: false, frame: frames - 1, ball: 2 });
+        // 10・0は合計10でも、2投目を投げた棚。10本残ることと未投球は別。
+        expect(before.reset).toBe(a < 10 && a + b === 10 || b === 10);
         expect(before.pinsLeft).toBe(before.reset ? 10 : 10 - b);
       }
     }
   });
   it('オープンなら2投で終わり、3投目は受け付けない', () => {
+    const pre = Array(18).fill(0);
     expect(() => scoreCard([...pre, 3, 4, 1], 10)).toThrow(RangeError);
     expect(nextTurn([...pre, 3, 4], 10).done).toBe(true);
   });
 });
 
 describe('次の投球', () => {
+  it.each([5, 10].flatMap((frames) => [
+    { balls: [10], fresh: true, left: 10 },
+    { balls: [10, 0], fresh: false, left: 10 },
+    { balls: [10, 10], fresh: true, left: 10 },
+    { balls: [0, 10], fresh: true, left: 10 },
+    { balls: [10, 4], fresh: false, left: 6 },
+  ].map((c) => ({ frames, ...c }))))('$frames フレーム・$balls ：0本でも投げた棚を未投球と誤認していた', ({ frames, balls, fresh, left }) => {
+    expect(nextTurn([...Array((frames - 1) * 2).fill(0), ...balls], frames)).toEqual({
+      done: false, frame: frames - 1, ball: balls.length, reset: fresh, pinsLeft: left,
+    });
+  });
   it('1投目で残れば同じフレームの2投目、ストライクなら次のフレーム', () => {
     expect(nextTurn([], 10)).toEqual({ done: false, frame: 0, ball: 0, reset: true, pinsLeft: 10 });
     expect(nextTurn([7], 10)).toEqual({ done: false, frame: 0, ball: 1, reset: false, pinsLeft: 3 });

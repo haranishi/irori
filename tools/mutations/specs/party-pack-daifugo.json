@@ -1,0 +1,101 @@
+[
+  {
+    "id": "party-pack-daifugo-final-place-cue",
+    "note": "退出で最下位が確定しても効果音を鳴らさない",
+    "file": "games/daifugo/logic.js",
+    "find": "if (next.outcome === 'complete') effects.push({t:'cue',name:'lose'});",
+    "replace": "if (false) effects.push({t:'cue',name:'lose'});",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "全員の手札が退出"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-strict-strength",
+    "note": "場と同じ強さも出せてしまう",
+    "file": "games/daifugo/cards.js",
+    "find": "return power(set) > power(previous);",
+    "replace": "return power(set) >= power(previous);",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/cards.test.js", "-t", "同じ強さ"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-shuffle-range",
+    "note": "交換先に末尾自身を含めず順列が偏る",
+    "file": "games/daifugo/cards.js",
+    "find": "Math.floor(rng() * (i + 1))",
+    "replace": "Math.floor(rng() * i)",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/cards.test.js", "-t", "全6通り"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-discard-conservation",
+    "note": "場を置き換えると古い札が消失する",
+    "file": "games/daifugo/logic.js",
+    "find": "if (next.table) next.discard.push(...next.table.cards);",
+    "replace": "if (next.table) next.discard.push();",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "札を場へ移し"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-illegal-rejection",
+    "note": "弱い・枚数違い・混在した札を拒否しない",
+    "file": "games/daifugo/logic.js",
+    "find": "if (!isLegal(play,state.table,state.revolution))",
+    "replace": "if (false)",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "枚数違い・弱い"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-revolution-toggle",
+    "note": "2回目の革命で通常の強さに戻らない",
+    "file": "games/daifugo/logic.js",
+    "find": "next.revolution = !next.revolution;",
+    "replace": "next.revolution = true;",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "もう一度の4枚"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-eight-cut",
+    "note": "8切りを適用せず場に残す",
+    "file": "games/daifugo/logic.js",
+    "find": "if (classify(play)?.rank === '8')",
+    "replace": "if (false)",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "8をジョーカーで補っても"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-pass-unanimity",
+    "note": "1人がパスしただけで場を流す",
+    "file": "games/daifugo/logic.js",
+    "find": ".every((s)=>s.passed)",
+    "replace": ".some((s)=>s.passed)",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "全員の連続パス"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-excluded-conservation",
+    "note": "退出した人の手札を保存しない",
+    "file": "games/daifugo/logic.js",
+    "find": "next.excluded.push(...seat.hand);",
+    "replace": "next.excluded.push();",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "番の席が消えたら"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-secret-pad",
+    "note": "他席へ先頭の人の手札を送ってしまう",
+    "file": "games/daifugo/logic.js",
+    "find": "spec:padFor(next,seat)",
+    "replace": "spec:padFor(next,next.seats[0])",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "全padが本人の手札だけ"],
+    "timeoutMs": 30000
+  },
+  {
+    "id": "party-pack-daifugo-end-once",
+    "note": "終了後の名簿通知でもう一度結果を送る",
+    "file": "games/daifugo/logic.js",
+    "find": "if (state.phase === 'ended') return {state,effects:[]};",
+    "replace": "if (false) return {state,effects:[]};",
+    "command": ["npm", "run", "test:games", "--", "games/daifugo/logic.test.js", "-t", "endを1回だけ送る"],
+    "timeoutMs": 30000
+  }
+]

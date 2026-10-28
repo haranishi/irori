@@ -1,3 +1,4 @@
+import { CUES } from '@irori/protocol';
 import { describe, expect, it } from 'vitest';
 import { LIMITS, STORAGE_LIMITS } from '@irori/protocol';
 import { validateGameToHost } from '../src/index';
@@ -25,7 +26,7 @@ describe('validateGameToHost：通すもの', () => {
     expect(ok({ m: 'end' })).toEqual({ m: 'end' });
   });
 
-  it('ready・6種の setPad・vibrate・end・store を通し、検証したキーだけで組み直す', () => {
+  it('ready・7種の setPad・vibrate・end・store を通し、検証したキーだけで組み直す', () => {
     expect(ok({ m: 'ready' })).toEqual({ m: 'ready' });
     const specs = [
       { k: 'wait', title: 'よーい', body: '<b>まもなく</b>' },
@@ -33,6 +34,7 @@ describe('validateGameToHost：通すもの', () => {
       { k: 'pad' },
       { k: 'buzzer', label: '押せ', color: 'red', disabled: false },
       { k: 'choices', options: [b('a', 'A'), b('b', 'B')], disabled: true, hint: '選んで' },
+      { k: 'tiles', tiles: [{ id: 'a', label: '札', sub: '赤', color: 'red', off: false }], ok: '出す', pass: 'パス', min: 0, max: 1, note: '手札' },
       { k: 'touch', mode: 'swipe' },
       { k: 'tilt', buttons: [b('x')] },
     ];
@@ -178,4 +180,30 @@ describe('validateGameToHost：でたらめな入力', () => {
     }
     expect(accepted).toBeGreaterThan(10);
   });
+});
+
+
+it('tilesの札数・重複・未知キー・選択数の不正を橋で拒む', () => {
+  for (const spec of [
+    { k: 'tiles', tiles: Array.from({ length: 21 }, (_, i) => ({ id: `t${i}`, label: '札' })), ok: '出す' },
+    { k: 'tiles', tiles: [{ id: 'a', label: '札' }, { id: 'a', label: '札' }], ok: '出す' },
+    { k: 'tiles', tiles: [], ok: '出す', max: 1 },
+    { k: 'tiles', tiles: [], ok: '出す', html: 'x' },
+  ]) expect(rejected({ m: 'setPad', to: 1, spec })).toBe(true);
+});
+
+
+describe('cueの境界検証', () => {
+  it('全23名・強さの両端と省略を通す', () => {
+    expect(CUES).toHaveLength(23);
+    for (const name of CUES) for (const v of [undefined, 0, 0.7, 1]) {
+      const msg = v === undefined ? { m: 'cue', name } : { m: 'cue', name, v };
+      expect(ok(msg)).toEqual(msg);
+    }
+  });
+  it.each([
+    { m: 'cue', name: 'unknown' }, { m: 'cue', name: 'Tick' }, { m: 'cue' },
+    ...[-0.01, 1.01, NaN, Infinity, -Infinity, '0.5', null].map((v) => ({ m: 'cue', name: 'tick', v })),
+    { m: 'cue', name: 'tick', to: '*' }, { m: 'cue', name: 'tick', extra: 0 },
+  ])('不正なcueを捨てる: %j', (msg) => expect(rejected(msg)).toBe(true));
 });

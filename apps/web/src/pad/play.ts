@@ -211,7 +211,9 @@ export class PlayView {
     );
     this.el = h('div', { class: 'pp-play', data: { screen: 'play' } }, this.frame);
     // 部屋の中では、引っ張って更新・拡大・選択のメニューを起こさない（入力欄はない）。
-    this.el.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    this.el.addEventListener('touchmove', (e) => {
+      if (!(e.target instanceof Element && e.target.closest('.irori-pad__tiles-grid'))) e.preventDefault();
+    }, { passive: false });
     for (const type of ['contextmenu', 'dblclick', 'selectstart', 'dragstart']) this.el.addEventListener(type, (e) => e.preventDefault());
 
     this.mq = o.matchMedia ? o.matchMedia('(orientation: portrait)') : null;

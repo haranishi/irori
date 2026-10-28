@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HELD_REPEAT_MS, LIMITS, SEND_RATE_HZ } from '@irori/protocol';
 import type { InputEvent, PadSpec } from '@irori/protocol';
+import { mountPad, PAD_STRINGS_EN } from '../src/index';
 import { box, pointer, seeded, setup } from './helpers';
 
 beforeEach(() => {
@@ -492,4 +493,121 @@ describe(`押したままの送り直し（HELD_REPEAT_MS＝${HELD_REPEAT_MS}ms�
       { k: 'ptr', id: 'touch', x: 0.5, y: 0.5, ph: 'e' },
     ]);
   });
+});
+
+describe('tiles：画面内で選び、確定時だけ送る', () => {
+  const tiles = Array.from({ length: 20 }, (_, i) => ({ id: `t${i}`, label: `${i}`, sub: '札' }));
+  it('選択・解除・上限拒否は送信せず、決定で1回だけ送って画面をロックする', () => {
+    const { q, qa, sent } = setup({ k: 'tiles', tiles, min: 2, max: 2, ok: '出す', pass: 'パス', note: '手札', hint: '2枚' });
+    const click = (id: string) => q<HTMLButtonElement>(`[data-id="${id}"]`).click();
+    const ok = q<HTMLButtonElement>('[data-action="ok"]');
+    expect(qa('.irori-pad__tile')).toHaveLength(20);
+    expect(q('.irori-pad__text').textContent).toBe('手札');
+    expect(ok.disabled).toBe(true);
+    click('t0'); click('t1'); click('t2');
+    expect(q('[data-id="t2"]').getAttribute('aria-pressed')).toBe('false');
+    expect(q('[role="status"]').textContent).toBe('これ以上選べません');
+    expect(q('[data-id="t2"]').hasAttribute('data-limit')).toBe(true);
+    expect(ok.disabled).toBe(false);
+    expect(ok.getAttribute('aria-disabled')).toBe('false');
+    click('t0'); expect(ok.disabled).toBe(true); click('t2');
+    expect(sent).toEqual([]);
+    ok.click(); ok.click(); click('t3'); q<HTMLButtonElement>('[data-action="pass"]').click();
+    expect(sent).toEqual([{ k: 'tiles', ids: ['t1', 't2'] }]);
+    expect(q('[role="status"]').textContent).toBe('送りました');
+    expect(qa('button').every((b) => (b as HTMLButtonElement).disabled)).toBe(true);
+  });
+  it('既定の1枚選択は入れ替え。パスは選択中も空で送り、同じ画面の再設定は空に戻す', () => {
+    const spec: PadSpec = { k: 'tiles', tiles, ok: '決定', pass: 'パス' };
+    const { q, pad, sent } = setup(spec);
+    q<HTMLButtonElement>('[data-id="t0"]').click(); q<HTMLButtonElement>('[data-id="t1"]').click();
+    expect(q('[data-id="t0"]').getAttribute('aria-pressed')).toBe('false');
+    expect(q('[data-id="t1"]').getAttribute('aria-pressed')).toBe('true');
+    q<HTMLButtonElement>('[data-action="pass"]').click();
+    expect(sent).toEqual([{ k: 'tiles', ids: [], pass: true }]);
+    const old = q<HTMLButtonElement>('[data-id="t1"]');
+    pad.setSpec(spec); old.click();
+    expect(q('[data-id="t1"]').getAttribute('aria-pressed')).toBe('false');
+    expect(q<HTMLButtonElement>('[data-action="ok"]').disabled).toBe(true);
+    expect(sent).toHaveLength(1);
+  });
+  it('offは押せず、disabledは文と札だけ。空札と全offの既定は空の決定を送れる', () => {
+    for (const list of [[], [{ id: 'x', label: '不可', off: true }]]) {
+      const { q, sent } = setup({ k: 'tiles', tiles: list, ok: '確認' });
+      q<HTMLButtonElement>('[data-id="x"]')?.click();
+      expect(sent).toEqual([]);
+      if (list.length) expect(q('[data-id="x"]').getAttribute('aria-disabled')).toBe('true');
+      q<HTMLButtonElement>('[data-action="ok"]').click();
+      expect(sent).toEqual([{ k: 'tiles', ids: [] }]);
+    }
+    const { q, qa, sent } = setup({ k: 'tiles', tiles, ok: '確認', pass: 'パス', disabled: true, note: '見るだけ', hint: '待機' });
+    expect(q('[data-action]')).toBeNull();
+    expect(q('.irori-pad__hint').textContent).toBe('待機');
+    for (const b of qa('button')) { expect(b.getAttribute('aria-disabled')).toBe('true'); (b as HTMLButtonElement).click(); }
+    expect(sent).toEqual([]);
+  });
+  it('札の欄はキーボードの停止位置になる：見るだけの画面でも、押せる札がなくても、スクロール領域に届く', () => {
+    // 以前の不具合：札がすべて押せない画面は、中にフォーカスできるものがなく、WebKit で axe の scrollable-region-focusable に当たった。
+    const view = setup({ k: 'tiles', tiles, ok: '確認', disabled: true, note: '見るだけ' });
+    expect(view.q('.irori-pad__tiles-grid')?.getAttribute('tabindex')).toBe('0');
+    const live = setup({ k: 'tiles', tiles, ok: '出す' });
+    expect(live.q('.irori-pad__tiles-grid')?.getAttribute('tabindex')).toBe('0');
+  });
+  it('文と補助文字はHTMLとして解釈せず、破棄後の古い決定は送らない', () => {
+    const { q, pad, container, sent } = setup({ k: 'tiles', tiles: [{ id: 'a', label: '<b>x</b>', sub: '<img src=x>' }], ok: '出す', min: 0 });
+    expect(container.querySelector('b, img')).toBeNull();
+    const ok = q<HTMLButtonElement>('[data-action="ok"]');
+    pad.destroy(); ok.click(); expect(sent).toEqual([]);
+  });
+  it('全選択パターンで下限・上限を守る（4枚、16パターン）', () => {
+    for (let mask = 0; mask < 16; mask++) {
+      const { q, sent, pad } = setup({ k: 'tiles', tiles: tiles.slice(0, 4), min: 1, max: 2, ok: '出す' });
+      for (let i = 0; i < 4; i++) if (mask & (1 << i)) q<HTMLButtonElement>(`[data-id="t${i}"]`).click();
+      q<HTMLButtonElement>('[data-action="ok"]').click();
+      const expected = tiles.slice(0, 4).filter((_, i) => mask & (1 << i)).slice(0, 2).map((t) => t.id);
+      expect(sent).toEqual(expected.length ? [{ k: 'tiles', ids: expected }] : []);
+      pad.destroy();
+    }
+  });
+});
+
+
+it('tilesのoffは選べる札があるときも選択せず、英語の通知を出して短時間で枠を戻す', () => {
+  const container = document.createElement('div'); document.body.append(container);
+  const sent: InputEvent[] = [];
+  const pad = mountPad(container, { strings: PAD_STRINGS_EN, send: (i) => sent.push(i) });
+  pad.setSpec({ k: 'tiles', tiles: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'off', label: 'Off', off: true }], max: 0, ok: 'Confirm' });
+  const off = container.querySelector<HTMLButtonElement>('[data-id="off"]')!;
+  expect(off.disabled).toBe(true); off.click();
+  expect(off.getAttribute('aria-pressed')).toBe('false');
+  const a = container.querySelector<HTMLButtonElement>('[data-id="a"]')!; a.click();
+  expect(container.querySelector('[role="status"]')!.textContent).toBe('You cannot select any more');
+  expect(a.hasAttribute('data-limit')).toBe(true);
+  vi.advanceTimersByTime(301);
+  expect(a.hasAttribute('data-limit')).toBe(false);
+  container.querySelector<HTMLButtonElement>('[data-action="ok"]')!.click();
+  expect(container.querySelector('[role="status"]')!.textContent).toBe('Sent');
+  expect(sent).toEqual([{ k: 'tiles', ids: [] }]); pad.destroy();
+});
+
+
+it('tokenは決定とパスのtに戻す。変更で選択を捨て、取り替え前のボタンは送れない', () => {
+  const spec = { k: 'tiles' as const, tiles: [{ id: 'a', label: 'A' }], ok: '出す', pass: 'パス', token: 'r1' };
+  const { pad, q, sent } = setup(spec);
+  q<HTMLButtonElement>('[data-id="a"]').click();
+  q<HTMLButtonElement>('[data-action="ok"]').click();
+  expect(sent).toEqual([{ k: 'tiles', ids: ['a'], t: 'r1' }]);
+  pad.setSpec(spec);
+  const oldPass = q<HTMLButtonElement>('[data-action="pass"]');
+  q<HTMLButtonElement>('[data-id="a"]').click();
+  pad.setSpec({ ...spec, token: 'r2' });
+  oldPass.click();
+  expect(sent).toHaveLength(1);
+  expect(q<HTMLButtonElement>('[data-action="ok"]').disabled).toBe(true);
+  q<HTMLButtonElement>('[data-action="pass"]').click();
+  expect(sent.at(-1)).toEqual({ k: 'tiles', ids: [], pass: true, t: 'r2' });
+  const { token: _, ...legacy } = spec;
+  pad.setSpec(legacy);
+  q<HTMLButtonElement>('[data-action="pass"]').click();
+  expect(sent.at(-1)).toEqual({ k: 'tiles', ids: [], pass: true });
 });

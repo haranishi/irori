@@ -130,3 +130,19 @@ describe('退出', () => {
     expect(w.core.status(w.now).exists).toBe(false);
   });
 });
+
+it('tilesの秘密は指定席だけへ、入力は本人の番号つきでホストだけへ届く。不正は他席へ影響しない', () => {
+  const { w, h, pads } = setup(2);
+  const spec = { k: 'tiles', tiles: [{ id: 'secret1', label: '秘密' }], ok: '出す' };
+  w.send(h, { t: 'pad', to: 2, spec });
+  expect(w.take(pads[0]!.conn)).toEqual([]);
+  expect(w.take(pads[1]!.conn)).toEqual([{ t: 'pad', spec }]);
+  w.send(pads[1]!.conn, { t: 'in', i: { k: 'tiles', ids: ['secret1'] } });
+  expect(w.take(h)).toEqual([{ t: 'in', p: 2, i: { k: 'tiles', ids: ['secret1'] }, T: w.now }]);
+  w.send(pads[1]!.conn, { t: 'in', i: { k: 'tiles', ids: [], pass: true } });
+  expect(w.take(h)).toEqual([{ t: 'in', p: 2, i: { k: 'tiles', ids: [], pass: true }, T: w.now }]);
+  w.send(pads[1]!.conn, { t: 'in', i: { k: 'tiles', ids: ['a', 'a'] } });
+  expect(w.take(pads[1]!.conn)).toEqual([{ t: 'err', code: 'bad-frame' }]);
+  expect(w.take(h)).toEqual([]);
+  expect(w.take(pads[0]!.conn)).toEqual([]);
+});

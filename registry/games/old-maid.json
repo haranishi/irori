@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "old-maid",
+  "title": { "ja": "ババ抜き", "en": "Hearth Joker" },
+  "summary": {
+    "ja": "となりの伏せた札を1枚ずつ。最後にジョーカーを持っていた人の負け。表情を読み合おう。",
+    "en": "Draw a hidden card from your neighbor. Whoever is left holding the joker loses."
+  },
+  "authors": [{ "name": "irori contributors", "url": "https://github.com/haranishi/irori" }],
+  "license": { "code": "MIT OR Apache-2.0", "assets": "original" },
+  "players": { "min": 2, "max": 8 },
+  "pads": ["wait", "tiles"],
+  "entry": { "bundled": "games/old-maid/" },
+  "thumbnail": "old-maid.jpg",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-10-27"
+}

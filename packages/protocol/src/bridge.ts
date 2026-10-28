@@ -33,13 +33,27 @@ export interface GameEndOptions {
 }
 
 export interface HostEnvironment { connected: boolean; visible: boolean }
-export type HostCapability = 'result-options-v1' | 'host-environment-v1';
+export type HostCapability = 'result-options-v1' | 'host-environment-v1' | 'pad-tiles-v1' | 'cue-v1';
+
+/**
+ * ゲームが頼める効果音の名前（`cue-v1`）。音そのものはコンソールが自前で合成して鳴らす。
+ * ゲームは音のファイルも音の部品も持たない。名前を足すときは、コンソールの合成と試験も足す。
+ */
+export const CUES = [
+  'tick', 'confirm', 'deny', 'turn', 'win', 'lose', 'count', 'go',
+  'deal', 'flip', 'place', 'sweep', 'revolution',
+  'roll', 'pins', 'strike', 'spare', 'gutter',
+  'night', 'dawn', 'vote', 'execute', 'reveal',
+] as const;
+export type CueName = (typeof CUES)[number];
 
 /** ゲーム → ホスト（MessagePort 上） */
 export type GameToHost =
   | { m: 'ready' }
   | { m: 'setPad'; to: PlayerId | '*'; spec: GamePadSpec }
   | { m: 'vibrate'; to: PlayerId | '*'; ms: number[] }
+  /** 効果音の依頼。`v` は強さ（0〜1、省略時は0.7）。能力 `cue-v1` が要る。 */
+  | { m: 'cue'; name: CueName; v?: number }
   | { m: 'end'; results?: GameResult[]; options?: GameEndOptions }
   | { m: 'store.get'; id: number; key: string }
   | { m: 'store.set'; id: number; key: string; value: string };

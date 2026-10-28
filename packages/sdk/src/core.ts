@@ -1,6 +1,6 @@
 // ゲームから見た irori。送り先（本物のコンソールか、仮想プレイヤー）は Transport で差し替える。
-import { LIMITS, validateGameEnd } from '@irori/protocol';
-import type { GameEndOptions, GamePadSpec, GameResult, GameToHost, HostCapability, HostEnvironment, PlayerId, PlayerInfo } from '@irori/protocol';
+import { CUES, LIMITS, validateGameEnd } from '@irori/protocol';
+import type { CueName, GameEndOptions, GamePadSpec, GameResult, GameToHost, HostCapability, HostEnvironment, PlayerId, PlayerInfo } from '@irori/protocol';
 import { look } from '@irori/pad-ui';
 import type { Look } from '@irori/pad-ui';
 import { checkPadSpec, checkVibrate, isPlainObject, isSeat, isStoreKey, isStoreValue, readEnv } from './checks';
@@ -23,7 +23,7 @@ export interface CoreInit {
 
 /** 保存の応答を待つ時間。ホストが答えないときに、約束を宙に浮かせない。 */
 export const STORAGE_TIMEOUT_MS = 5_000;
-export const CAPS: readonly HostCapability[] = ['result-options-v1', 'host-environment-v1'];
+export const CAPS: readonly HostCapability[] = ['result-options-v1', 'host-environment-v1', 'pad-tiles-v1', 'cue-v1'];
 
 type Listener = (...args: never[]) => void;
 type Waiter = { resolve: (v: string | null) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> };
@@ -51,6 +51,8 @@ export class IroriCore implements Irori {
   private readied = false;
   private ended = false;
   private nextId = 1;
+  private cueTimes: number[] = [];
+  private readonly lastCue = new Map<CueName, number>();
   private readonly waiting = new Map<number, Waiter>();
   private readonly listeners = new Map<keyof IroriEvents, Set<Listener>>();
 
@@ -108,6 +110,7 @@ export class IroriCore implements Irori {
     const dest = this.target(to);
     const bad = checkPadSpec(spec);
     if (bad) throw new IroriError('bad-pad', bad);
+    if (spec.k === 'tiles' && !this.caps.includes('pad-tiles-v1')) throw new IroriError('unsupported-feature');
     this.t.send({ m: 'setPad', to: dest, spec });
   }
 
@@ -116,6 +119,16 @@ export class IroriCore implements Irori {
     const list = checkVibrate(ms);
     if (typeof list === 'string') throw new IroriError('bad-vibrate', list);
     this.t.send({ m: 'vibrate', to: dest, ms: list });
+  }
+
+  cue(name: CueName, v = 0.7): void {
+    if (this.mode === 'mock' || !this.caps.includes('cue-v1') || !CUES.includes(name) || typeof v !== 'number' || Number.isNaN(v)) return;
+    const now = performance.now();
+    this.cueTimes = this.cueTimes.filter((t) => now - t < 1000);
+    if (now - (this.lastCue.get(name) ?? -Infinity) < 50 || this.cueTimes.length >= 20) return;
+    this.lastCue.set(name, now);
+    this.cueTimes.push(now);
+    this.t.send({ m: 'cue', name, v: Math.max(0, Math.min(1, v)) });
   }
 
   look(id: PlayerId): Look {

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "moon-village",
+  "title": {"ja": "月あかりの寄り合い", "en": "Night at Hearth Village"},
+  "summary": {"ja": "夜の秘密をスマホにしまい、顔を合わせて話し合おう。4〜8人で村の行方を決める推理ゲーム。", "en": "Talk, keep secrets on your phone, and vote for the village. For 4–8 players."},
+  "authors": [{"name": "irori contributors"}],
+  "license": {"code": "MIT OR Apache-2.0", "assets": "original"},
+  "players": {"min": 4, "max": 8},
+  "pads": ["wait", "pad", "tiles"],
+  "entry": {"bundled": "games/moon-village/"},
+  "thumbnail": "moon-village.jpg",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-10-27"
+}

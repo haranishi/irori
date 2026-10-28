@@ -1,6 +1,6 @@
 // @vitest-environment node
 /// <reference types="node" />
-// 配る1ファイルの約束（docs/architecture.md「SDKは1ファイルで依存がなく、容量の上限（60KB）を試験で守る」）。
+// 配る1ファイルの約束（docs/architecture.md「SDKは1ファイルで依存がなく、生の容量の上限（72KB）を試験で守る」）。
 // 本物の設定（vite.config.ts）で、一時フォルダへビルドして確かめる。
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -10,8 +10,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { build } from 'vite';
 
 const SDK = join(dirname(fileURLToPath(import.meta.url)), '..');
-/** 60KB（1KB＝1000バイトで数える。ビルドの表示と同じ数え方で、厳しいほう）。 */
-const MAX_BYTES = 60_000;
+/** 72KB（1KB＝1000バイトで数える。ビルドの表示と同じ数え方で、厳しいほう）。60KBから上げた理由は docs/decisions/0009-party-pack-platform.md。 */
+const MAX_BYTES = 72_000;
 
 let out = '';
 let code = '';

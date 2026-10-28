@@ -280,3 +280,22 @@ describe('つながったあと', () => {
     expect(await lost).toMatchObject({ code: 'storage-timeout' });
   });
 });
+
+describe('tilesの能力', () => {
+  it('旧ホストへ送る前に断り、その後もwaitを送れる', async () => {
+    const { irori, fromGame } = await connected(INIT);
+    const before = fromGame.length;
+    expect(() => irori.setPad({ k: 'tiles', tiles: [], ok: '確認' })).toThrow(/unsupported-feature/);
+    expect(fromGame).toHaveLength(before);
+    irori.setPad({ k: 'wait', title: '更新が必要です' });
+    await tick();
+    expect(fromGame.at(-1)).toMatchObject({ m: 'setPad', spec: { k: 'wait' } });
+  });
+  it('申告済みホストへは席を指定してtilesを送れる', async () => {
+    const { irori, fromGame } = await connected({ ...INIT, capabilities: ['pad-tiles-v1'] });
+    expect(irori.capabilities).toEqual(['pad-tiles-v1']);
+    irori.setPad({ k: 'tiles', tiles: [{ id: 'a', label: 'A' }], ok: '出す' }, 2);
+    await tick();
+    expect(fromGame.at(-1)).toMatchObject({ m: 'setPad', to: 2, spec: { k: 'tiles' } });
+  });
+});

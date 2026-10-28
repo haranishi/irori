@@ -1,0 +1,38 @@
+[
+  {
+    "id": "protocol-sparse-arrays-labeled-list",
+    "note": "MessagePortで届くボタン・選択肢の配列の穴を検査しない",
+    "file": "packages/protocol/src/validate.ts",
+    "find": "return Array.from(v, (item, i) => labeled(item, `${where}[${i}]`));",
+    "replace": "return v.map((item, i) => labeled(item, `${where}[${i}]`));",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol",
+      "--",
+      "validate.test.ts",
+      "-t",
+      "sparse pad arrays"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "id": "protocol-sparse-arrays-tiles",
+    "note": "MessagePortで届くtiles配列の穴を検査しない",
+    "file": "packages/protocol/src/validate.ts",
+    "find": "const tiles = Array.from(o.tiles, (t: unknown, i: number) => tileSpec(t, `${where}.tiles[${i}]`));",
+    "replace": "const tiles = o.tiles.map((t: unknown, i: number) => tileSpec(t, `${where}.tiles[${i}]`));",
+    "command": [
+      "npm",
+      "test",
+      "-w",
+      "@irori/protocol",
+      "--",
+      "validate.test.ts",
+      "-t",
+      "sparse pad arrays"
+    ],
+    "timeoutMs": 180000
+  }
+]

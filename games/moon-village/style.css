@@ -1,0 +1,172 @@
+/* 藍の空に暖色の灯。大画面（16:9）では縦にはみ出さず、遠くから読める大きさを vmin で決める。 */
+:root {
+  color-scheme: dark;
+  --bg: #1a1411;
+  --panel: #2f241d;
+  --text: #f5ebe0;
+  --dim: #c9b8a6;
+  --glow: #ffd9a0;
+  --line: #957c66;
+  --gap: clamp(10px, 2.1vmin, 26px);
+  font-family: ui-rounded, "Hiragino Maru Gothic ProN", "Yu Gothic UI", system-ui, sans-serif;
+  font-size: 16px;
+  font-synthesis: none;
+  background: var(--bg);
+  color: var(--text);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(ellipse at 50% 18%, #4a302440, transparent 65%), var(--bg); }
+[hidden] { display: none !important; }
+h1, h2, p, ul, ol { margin: 0; }
+ul { list-style: none; padding: 0; }
+html[data-phase="night"] body { background: radial-gradient(ellipse at 50% 10%, #27345a, #161a29 58%, #110e12); }
+html[data-phase="dawn"] body { background: radial-gradient(ellipse at 50% 0%, #5a3a3088, transparent 60%), var(--bg); }
+
+.game { width: min(100%, 1440px); min-height: 100dvh; margin: auto; padding: clamp(12px, 2.4vmin, 36px) clamp(16px, 3vw, 56px); display: grid; grid-template-rows: auto 1fr; gap: var(--gap); }
+.topbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; color: var(--dim); font-size: clamp(16px, 2vmin, 22px); }
+.brand { color: var(--glow); letter-spacing: .08em; }
+.content { display: grid; align-content: center; justify-items: center; gap: var(--gap); text-align: center; min-width: 0; }
+
+/* 見出し：知らせを主役にする。襲撃・処刑・勝敗は一段大きく。 */
+.heading { display: grid; justify-items: center; gap: clamp(4px, 1vmin, 12px); max-width: 100%; }
+.kicker { font-size: clamp(16px, 2.6vmin, 30px); color: var(--glow); letter-spacing: .14em; }
+/* 日本語は文節で折り返す（対応しないブラウザは通常の折り返し）。 */
+.title { max-width: 20em; font-size: clamp(28px, 6vmin, 72px); line-height: 1.25; overflow-wrap: anywhere; word-break: auto-phrase; text-wrap: balance; }
+.heading[data-tone="news"] .title { font-size: clamp(30px, 7vmin, 88px); text-shadow: 0 0 .5em #ffd9a033; }
+.copy { max-width: 32em; font-size: clamp(16px, 3vmin, 34px); line-height: 1.5; color: var(--dim); overflow-wrap: anywhere; word-break: auto-phrase; }
+
+/* 空と村：円と丘と家はCSSの図形。夜は家の窓が決定の数だけ消える（席とは対応しない）。 */
+.scene { position: relative; width: min(100%, 880px); height: clamp(100px, 25vmin, 290px); overflow: hidden; border-radius: 50% 50% 18px 18px / 60% 60% 18px 18px; background: linear-gradient(#131b34, #252846 70%, #362c3a); box-shadow: inset 0 -30px 60px #0005; }
+.stars { position: absolute; inset: 0; opacity: .85; background:
+  radial-gradient(2px 2px at 12% 30%, #fff8 50%, transparent 51%), radial-gradient(2px 2px at 24% 14%, #fff6 50%, transparent 51%),
+  radial-gradient(2px 2px at 38% 40%, #fff5 50%, transparent 51%), radial-gradient(3px 3px at 71% 22%, #fff7 50%, transparent 51%),
+  radial-gradient(2px 2px at 84% 36%, #fff6 50%, transparent 51%), radial-gradient(2px 2px at 92% 12%, #fff5 50%, transparent 51%),
+  radial-gradient(2px 2px at 56% 10%, #fff4 50%, transparent 51%); transition: opacity 600ms ease; }
+.orb { --size: clamp(38px, 9vmin, 100px); position: absolute; width: var(--size); aspect-ratio: 1; border-radius: 50%; left: calc(62% - var(--size) / 2); top: 14%; box-shadow: 0 0 calc(var(--size) * .6) #ffdc9d38; }
+/* 三日月は円の切り抜き（mask）で作り、空の色とずれないようにする。光の輪は切り抜かない本体が持つ。 */
+.orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: #ffdc9d; -webkit-mask: radial-gradient(circle at 80% 24%, transparent 0 40%, #000 41%); mask: radial-gradient(circle at 80% 24%, transparent 0 40%, #000 41%); }
+.hills { position: absolute; inset: 66% -10% -40%; border-radius: 50%; background: #34281f; box-shadow: 120px -14px 0 #46342a, -160px -6px 0 #3c2e25; }
+.anonymous-lights { position: absolute; left: 6%; right: 6%; bottom: 9%; display: flex; justify-content: center; align-items: flex-end; gap: clamp(8px, 2.4vmin, 30px); }
+.anonymous-light { position: relative; width: clamp(22px, 4.6vmin, 50px); aspect-ratio: 5 / 4; background: #3d2c22; border-radius: 2px; flex-shrink: 0; }
+.anonymous-light::before { content: ""; position: absolute; left: -14%; right: -14%; bottom: 100%; height: 62%; background: #4d382b; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.anonymous-light::after { content: ""; position: absolute; left: 30%; right: 30%; top: 26%; height: 44%; border-radius: 2px; background: var(--glow); box-shadow: 0 0 14px 4px #ffc77a88; transition: background 260ms ease, box-shadow 260ms ease; }
+/* 消えた窓は暗く、点線の枠でも示す（色だけに頼らない）。 */
+.anonymous-light--out::after { background: #15110f; box-shadow: none; outline: 2px dashed #957c66; outline-offset: -2px; animation: window-out 520ms ease-out; }
+/* 夜は空と村が主役。窓が大きく見えるよう、空を高くする。 */
+html[data-phase="night"] .scene { height: clamp(130px, 34vmin, 380px); }
+html[data-phase="night"] .anonymous-light { width: clamp(26px, 5.6vmin, 62px); }
+html[data-phase="dawn"] .scene { background: linear-gradient(#4a3a52, #b46a3c 78%, #d4894a); }
+html[data-phase="dawn"] .stars { opacity: 0; }
+html[data-phase="dawn"] .orb { background: #ffe2a8; top: 30%; box-shadow: 0 0 calc(var(--size) * 1.1) #ffd48a99; animation: sunrise 900ms cubic-bezier(.2,.8,.3,1.05) both; }
+html[data-phase="dawn"] .orb::after { -webkit-mask: none; mask: none; background: #ffe2a8; }
+.rules { display: grid; gap: clamp(6px, 1.2vmin, 14px); text-align: left; padding-left: 1.6em; font-size: clamp(16px, 2.7vmin, 30px); line-height: 1.5; }
+
+/* 時計：数字と輪の両方で残りを出す。経過はJSのtickだけで進め、CSSでは時間を測らない。 */
+/* 余白の%は親の幅で決まるため、輪の大きさから計算する。 */
+.clock { --remaining: 1; --size: clamp(230px, 40vmin, 440px); width: var(--size); height: var(--size); display: grid; align-content: center; justify-items: center; gap: calc(var(--size) * .025); padding: calc(var(--size) * .14); border-radius: 50%; background: radial-gradient(closest-side, var(--bg) 83%, transparent 84%), conic-gradient(var(--glow) calc(var(--remaining) * 1turn), #4a382c 0); box-shadow: 0 0 calc(var(--size) * .12) #ffb96826; }
+.clock-time { font-size: calc(var(--size) * .27); font-variant-numeric: tabular-nums; line-height: 1; }
+.clock-label, .extension { font-size: clamp(16px, calc(var(--size) * .06), 26px); line-height: 1.4; }
+.extension { color: var(--dim); }
+.clock--low .clock-label { color: var(--glow); }
+.clock--low .clock-time { animation: pulse 1s ease-in-out infinite; }
+
+/* 票箱と公開票は、広い画面では横に並べる（決選のとき両方が出る）。 */
+.board { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--gap) clamp(20px, 4vw, 56px); width: 100%; }
+/* 票箱：決めた人数だけ満ち、1票ごとに紙が1枚落ちる。 */
+.progress { display: grid; justify-items: center; gap: clamp(6px, 1.4vmin, 16px); }
+.decided { font-size: clamp(22px, 4.4vmin, 52px); font-variant-numeric: tabular-nums; }
+.ballot-box { position: relative; width: clamp(130px, 27vmin, 290px); aspect-ratio: 5 / 4; border: 3px solid var(--line); border-radius: 14px; overflow: hidden; background: #241c18; box-shadow: 0 10px 40px #0005; }
+.ballot-box::before { content: ""; position: absolute; z-index: 2; top: 11%; left: 28%; right: 28%; height: 7%; border-radius: 4px; background: #0f0b09; box-shadow: 0 0 0 2px var(--glow); }
+.ballot-fill { --fill: 0; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, #c4925e 0 14%, #4a382c 14% 17%); transform: scaleY(var(--fill)); transform-origin: bottom; transition: transform 320ms cubic-bezier(.2,.8,.3,1.15); }
+.ballot-paper { position: absolute; z-index: 1; left: 36%; right: 36%; top: 10%; height: 22%; border-radius: 3px; background: #f5ebe0; opacity: 0; }
+.ballot-paper--drop { animation: paper-drop 460ms cubic-bezier(.4,0,.8,.6) both; }
+
+/* 村のみんな：広い画面は1列、狭いと半分ずつ、スマホ幅は2列。生死は文字と灯の形でも示す。 */
+.village { --per-row: var(--n, 8); --g: clamp(8px, 1.4vmin, 16px); display: flex; flex-wrap: wrap; justify-content: center; gap: var(--g); width: 100%; max-width: 1240px; }
+.resident { flex: 0 0 calc((100% - (var(--per-row) - 1) * var(--g)) / var(--per-row)); max-width: 230px; min-width: 0; display: grid; justify-items: center; align-content: start; gap: clamp(4px, 1vmin, 10px); padding: clamp(8px, 1.6vmin, 18px) clamp(6px, 1vmin, 12px); border: 1px solid var(--line); border-radius: 14px; background: var(--panel); transition: background-color 300ms ease, border-color 300ms ease; }
+.resident-info { display: grid; justify-items: inherit; gap: 2px; min-width: 0; max-width: 100%; }
+.resident-name { font-size: clamp(17px, 2.9vmin, 32px); line-height: 1.3; overflow-wrap: anywhere; }
+.resident-state { color: var(--dim); font-size: clamp(16px, 2.3vmin, 26px); }
+.resident-lamp { width: clamp(22px, 3.8vmin, 44px); aspect-ratio: 3 / 4; border: 2px solid var(--glow); border-radius: 42%; background: radial-gradient(circle at 50% 58%, #ffe6b8 0 26%, #ffbd7055 62%); box-shadow: 0 0 22px #ffb96855; transition: background 300ms ease, box-shadow 300ms ease, opacity 300ms ease; }
+.resident--out { background: #241b16; }
+.resident--out .resident-lamp { background: transparent; border-style: dashed; box-shadow: none; opacity: .8; }
+.resident--fading .resident-lamp { animation: lamp-out 1200ms ease-out both; }
+.resident--winner { border: 3px double var(--glow); box-shadow: 0 0 34px #ffc77a40; animation: winner-glow 1.6s ease-in-out 1.2s infinite alternate; }
+.resident--lost { border-style: dashed; }
+.role-card { width: 100%; padding-top: clamp(4px, 1vmin, 10px); border-top: 1px solid var(--line); font-size: clamp(16px, 2.7vmin, 30px); color: var(--glow); animation: card-in 480ms cubic-bezier(.2,.8,.3,1.1) both; animation-delay: calc(var(--order, 0) * 180ms); }
+.resident--lost .role-card { color: var(--text); }
+/* 終了の役の表が主役。広い画面でも2段に分け、札を大きくする。「★勝ち」は途中で折り返さない。 */
+html[data-phase="ended"] .village { --per-row: var(--half, 4); max-width: 1120px; }
+html[data-phase="ended"] .resident { max-width: 300px; }
+html[data-phase="ended"] .resident-name { font-size: clamp(18px, 3.4vmin, 38px); }
+html[data-phase="ended"] .role-card { font-size: clamp(18px, 3.4vmin, 38px); }
+.role-card { word-break: keep-all; overflow-wrap: anywhere; }
+
+/* 公開された投票：矢印を順に出し、そのあとで票数の棒を伸ばす。 */
+/* 名前の途中では折り返さない（→ の前後の空白でだけ折る）。 */
+.votes { flex: 1 1 560px; max-width: 1040px; display: grid; gap: clamp(8px, 1.4vmin, 16px); font-size: clamp(16px, 2.4vmin, 28px); text-align: left; }
+.votes-title { text-align: center; font-size: clamp(18px, 3vmin, 34px); color: var(--dim); }
+.vote-arrows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5em), 1fr)); gap: 4px 18px; }
+.vote-arrow { padding: 2px 10px; border-left: 3px solid var(--line); line-height: 1.45; word-break: keep-all; overflow-wrap: anywhere; animation: arrow-in 280ms ease both; animation-delay: calc(var(--order) * 90ms); }
+.vote-tallies { --after: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 12px; }
+.vote-tally { --votes: 0; flex: 0 1 14em; position: relative; isolation: isolate; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 1.1em; word-break: keep-all; overflow-wrap: anywhere; }
+.vote-tally::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 7px; background: #725132; transform-origin: left; transform: scaleX(var(--votes)); animation: bar-grow 460ms cubic-bezier(.2,.8,.3,1.1) both; animation-delay: calc(var(--after) * 90ms + 120ms); }
+
+.footer { display: grid; justify-items: center; gap: clamp(8px, 1.4vmin, 16px); }
+.guide { font-size: clamp(16px, 2.7vmin, 30px); line-height: 1.5; color: var(--glow); overflow-wrap: anywhere; word-break: auto-phrase; }
+.continue { min-height: 52px; min-width: 160px; padding: 10px 28px; border: 2px solid var(--glow); border-radius: 12px; font: inherit; font-size: clamp(16px, 2.4vmin, 26px); font-weight: 700; color: var(--bg); background: var(--glow); cursor: pointer; transition: transform 160ms cubic-bezier(.2,.8,.3,1.15); }
+.continue:hover { transform: translateY(-1px); }
+.continue:active { transform: scale(.96); }
+.continue:focus-visible { outline: 3px solid var(--text); outline-offset: 5px; }
+.continue:disabled { cursor: wait; background: var(--panel); color: var(--dim); border-style: dashed; transform: none; }
+.suspension { display: none; max-width: 52ch; padding: 16px; border: 2px dashed var(--glow); border-radius: 12px; font-size: clamp(16px, 2.4vmin, 26px); line-height: 1.6; }
+/* 中断のお知らせは、画面の高さからはみ出さない上端に重ねる（夜や導入は内容が高く、流れの最後に置くと見えない）。 */
+/* 段階の切り替えのフェード（.content--enter）に載せない。表示された瞬間にフェードが頭から始まり、止める規則で透明のまま固まる（実ブラウザの評価で見えなかった）。 */
+.game .suspension { animation: none !important; opacity: 1; }
+.game[data-suspended="true"] .suspension { display: block; position: fixed; z-index: 20; top: clamp(8px, 2vmin, 24px); left: 50%; width: min(92vw, 52ch); transform: translateX(-50%); background: var(--panel); box-shadow: 0 8px 28px rgb(0 0 0 / 55%); }
+.game[data-suspended="true"] *, .game[data-suspended="true"] *::before, .game[data-suspended="true"] *::after { animation-play-state: paused !important; transition: none !important; }
+.game--message { display: grid; align-content: center; justify-items: center; gap: 24px; text-align: center; }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* 段階が替わったら、見出しを少し持ち上げて出す。 */
+.content--enter > .heading { animation: rise 460ms cubic-bezier(.2,.8,.3,1.08) both; }
+.content--enter > :not(.heading) { animation: fade 380ms ease 90ms both; }
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes sunrise { from { transform: translateY(70%); opacity: .3; } 70% { opacity: 1; } }
+@keyframes window-out { 0% { opacity: 1; } 30% { opacity: .2; } 50% { opacity: .9; } 100% { opacity: 1; } }
+@keyframes lamp-out { 0% { opacity: 1; box-shadow: 0 0 26px #ffb968aa; } 25% { opacity: .3; } 40% { opacity: .9; } 60% { opacity: .2; } 100% { opacity: .8; } }
+@keyframes pulse { 50% { transform: scale(1.05); } }
+@keyframes paper-drop { 0% { opacity: 0; transform: translateY(-40%); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(190%); } }
+@keyframes card-in { from { opacity: 0; transform: translateY(10px) scale(.92); } }
+@keyframes winner-glow { to { box-shadow: 0 0 52px #ffc77a66; } }
+@keyframes arrow-in { from { opacity: 0; transform: translateX(-10px); } }
+@keyframes bar-grow { from { transform: scaleX(0); } }
+
+/* 中くらいの幅：村は半分ずつ2段。 */
+@media (max-width: 899px) {
+  .village { --per-row: var(--half, 4); }
+}
+/* スマホ幅：村は2列の横長カード、投票は1列。 */
+@media (max-width: 560px) {
+  .game { padding: 16px; }
+  .village, html[data-phase="ended"] .village { --per-row: 2; }
+  .resident { grid-template-columns: auto minmax(0, 1fr); justify-items: start; align-items: center; text-align: left; column-gap: 10px; }
+  .role-card { grid-column: 1 / -1; }
+  .scene { height: 120px; }
+  html[data-phase="night"] .scene { height: 150px; }
+  .clock { --size: min(78vw, 300px); }
+}
+/* 動きを減らす設定：移動・拡大・点滅・ゆらぎをやめ、短いフェードだけにする。 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-property: opacity, color, background-color, border-color, box-shadow !important; scroll-behavior: auto !important; }
+  .content--enter > .heading, .content--enter > :not(.heading), .vote-arrow, .vote-tally::before, .role-card, .resident--fading .resident-lamp, .anonymous-light--out::after, html[data-phase="dawn"] .orb { animation-name: fade !important; }
+  .clock--low .clock-time, .resident--winner { animation: none !important; }
+  .ballot-paper { display: none; }
+}
+
+/* 導入の勝ち方・内訳は狭い画面でも折り返し、情報が増えたぶん飾りを小さくする。 */
+.intro-details { width: min(100%, 52em); min-width: 0; display: grid; gap: .5em; font-size: clamp(16px, 2.2vmin, 24px); line-height: 1.6; overflow-wrap: anywhere; }
+.composition { color: var(--glow); }
+html[data-phase="intro"] .scene { height: clamp(64px, 12vmin, 130px); }

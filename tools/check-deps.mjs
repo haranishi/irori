@@ -14,7 +14,8 @@ export const ALLOWED = {
   '@irori/web': ['@irori/protocol', '@irori/pad-ui', '@irori/host-bridge', '@irori/room-client'],
 };
 
-const IMPORT_RE = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\(\s*)["']([^"']+)["']/g;
+// from は、直前が引用符・英数字・ドットのときは読み込みの from ではない（文字列 'from' や、プロパティ model.turn.from の誤認を避ける）。
+const IMPORT_RE = /(?:(?<![\w.'"`])from\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\(\s*)["']([^"']+)["']/g;
 
 function workspaceDirs(root) {
   const dirs = {};

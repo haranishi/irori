@@ -50,6 +50,10 @@ async function inRoom(c: Ctx, spec?: PadSpec, name?: string): Promise<{ host: Te
 }
 
 const SCENES: [string, (c: Ctx) => Promise<void>][] = [
+  ['tiles-20', async (c) => {
+    await inRoom(c, { k: 'tiles', tiles: Array.from({ length: 20 }, (_, i) => ({ id: `t${i}`, label: `札${i + 1}`, sub: '手札', off: i === 3 })), min: 1, max: 8, ok: '出す', pass: 'パス', note: '手札を選んでください', hint: '選択して決定' });
+    await c.page.locator('[data-id="t0"]').tap();
+  }],
   ['01-entry', async (c) => {
     await openPad(c.page, c.line);
     await expect(screen(c.page, 'entry')).toBeVisible();
@@ -238,5 +242,17 @@ for (const o of ORIENTS) {
         await page.screenshot({ path: `${SHOTS_DIR}/${name}-${o.name}.png`, animations: 'disabled', caret: 'hide' });
       });
     }
+  });
+}
+
+for (const width of [390, 768, 1440]) {
+  test.describe(`tilesの3幅撮影 ${width}px`, () => {
+    test.skip(!shotsEnabled(), 'IRORI_PAD_SHOTS=1 のときだけ撮る');
+    test.use({ viewport: { width, height: 844 }, screen: { width, height: 844 } });
+    test('20枚と選択状態', async ({ page, line, makeHost }) => {
+      const scene = SCENES.find(([name]) => name === 'tiles-20')![1];
+      await scene({ page, line, makeHost, orient: 'portrait' });
+      await page.screenshot({ path: `${SHOTS_DIR}/tiles-${width}.png`, animations: 'disabled' });
+    });
   });
 }

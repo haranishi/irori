@@ -3,6 +3,9 @@
 // 木をたたく音（雑音を帯域で絞る）と、鈴のような音（基音と、少しずれた倍音）を組み合わせる。
 // ブラウザは操作の前に音を止めるので、最初のキー・クリックの中で AudioContext を作って鳴らせるようにする。
 
+import { CUES, type CueName } from '@irori/protocol';
+import { synthesizeCue } from './audio-cues';
+
 export type SoundName = 'move' | 'decide' | 'back' | 'join' | 'start' | 'result';
 
 export const SOUND_VOLUME = 0.25;
@@ -42,6 +45,7 @@ export class Sounds {
   setOn(on: boolean): void {
     if (this.enabled === on) return;
     this.enabled = on;
+    if (this.master) this.master.gain.value = on ? SOUND_VOLUME : 0;
     this.changed();
   }
 
@@ -52,7 +56,7 @@ export class Sounds {
       if (!this.ctx) {
         this.ctx = new this.ctor();
         this.master = this.ctx.createGain();
-        this.master.gain.value = SOUND_VOLUME;
+        this.master.gain.value = this.enabled ? SOUND_VOLUME : 0;
         this.master.connect(this.ctx.destination);
         this.ctx.addEventListener('statechange', () => this.changed());
       }
@@ -90,6 +94,15 @@ export class Sounds {
       case 'result':
         for (const f of [523, 659, 784]) this.bell(t, f, SOUND_MAX_S - 0.01, 0.3, 0.02);
         break;
+    }
+  }
+
+  cue(name: CueName, v = 0.7): void {
+    if (!this.enabled || !this.ctx || !this.master || !this.unlocked || !CUES.includes(name)) return;
+    try {
+      synthesizeCue(this.ctx, this.master, name, v);
+    } catch {
+      // 音が使えなくてもゲームは続く。
     }
   }
 

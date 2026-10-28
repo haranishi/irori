@@ -4,6 +4,7 @@
 import { expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import type { Line } from '../../../../apps/web/tests/pad/e2e/line.mjs';
 import type { Finger } from './finger';
+import type { PadSpec } from '../../../../packages/protocol/src/types';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -55,6 +56,64 @@ export class Pad {
   /** 受け取った振動の指示（fx）の数。 */
   fx(): number {
     return this.received.filter((r) => r.f.t === 'fx').length;
+  }
+
+  /** 再接続前も含む全pad指定。呼ぶたびに新しい配列を返す。 */
+  receivedFrames(): PadSpec[] {
+    return this.received.filter((r) => r.f.t === 'pad').map((r) => r.f.spec as PadSpec);
+  }
+
+  /** 現在選べる札から選び、決定する。空配列は札なし画面の決定。 */
+  async tiles(selection: string[] | 'first' | { pass: true }): Promise<void> {
+    await this.expectKind('tiles');
+    const root = this.page.locator('.irori-pad[data-kind="tiles"]');
+    const short = { timeout: 2_000 };
+    // 段階が替わった直後は、前の画面（送信済み）が残っていたり、画面が差し替わる途中だったりする。
+    // 画面が替わって操作が空振りしたら、最初からやり直す（決定を押すのは最後の1回だけなので、二重には送らない）。
+    await expect(async () => {
+      await expect(root.locator('.irori-pad__tiles')).not.toHaveAttribute('data-sent', '', short);
+      if (typeof selection === 'object' && !Array.isArray(selection)) {
+        const pass = root.locator('[data-action="pass"]');
+        await expect(pass).toBeEnabled(short);
+        await pass.tap();
+        return;
+      }
+      const available = root.locator('.irori-pad__tile:not(:disabled)');
+      if (selection === 'first') await expect(available.first()).toBeEnabled(short);
+      const ids = selection === 'first' ? [(await available.first().getAttribute('data-id', short))!] : selection;
+      const selectable = await available.evaluateAll((els) => els.map((el) => el.getAttribute('data-id')));
+      if (new Set(ids).size !== ids.length || ids.some((id) => !/^[a-z0-9_-]{1,24}$/.test(id) || !selectable.includes(id))) {
+        throw new Error(`${this.label}: 選べない札または重複した札`);
+      }
+      for (const tile of await root.locator('.irori-pad__tile[aria-pressed="true"]').all()) await tile.tap(short);
+      for (const id of ids) await root.locator(`.irori-pad__tile[data-id="${id}"]`).tap(short);
+      await expect(root.locator('.irori-pad__tile[aria-pressed="true"]')).toHaveCount(ids.length, short);
+      const ok = root.locator('[data-action="ok"]');
+      await expect(ok).toBeEnabled(short);
+      await ok.tap(short);
+    }).toPass({ timeout: 15_000, intervals: [100, 250, 500] });
+  }
+
+  /** 枠内の座標で実際のpointer経路を通す。Chromiumはタッチ、WebKitは既存Fingerのマウス。 */
+  async swipe(x0: number, y0: number, x1: number, y1: number, ms: number): Promise<void> {
+    if ([x0, y0, x1, y1].some((n) => !Number.isFinite(n) || n < 0 || n > 1) || !Number.isFinite(ms) || ms < 0 || ms > 5_000) {
+      throw new Error(`${this.label}: swipeの座標か時間が範囲外`);
+    }
+    await this.expectKind('touch');
+    const touch = this.page.locator('.irori-pad__touch');
+    await expect(touch).toBeVisible();
+    const b = await touch.boundingBox();
+    if (!b) throw new Error(`${this.label}: なぞる枠の位置が取れない`);
+    await this.finger.down(b.x + b.width * x0, b.y + b.height * y0);
+    try {
+      for (let i = 1; i <= 8; i++) {
+        await this.finger.move(b.x + b.width * (x0 + (x1 - x0) * i / 8), b.y + b.height * (y0 + (y1 - y0) * i / 8));
+        // 固定待ちは状態待ちには使わず、指を動かす実時間だけに使う。
+        if (ms) await sleep(ms / 8);
+      }
+    } finally {
+      await this.finger.up();
+    }
   }
 
   /** QR の URL（/pad#CODE）で開き、「参加する」を1回押す。席に入って遊ぶ画面が出るまで待つ。 */

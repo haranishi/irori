@@ -113,3 +113,17 @@ test('入り直した直後の入力も、同じ席の入力として届く（�
   expect(host.inputs().every((f) => f.p === you.id)).toBe(true);
   expect(host.joined().length).toBe(1);
 });
+
+test('tiles：再接続で同じ手札に選択なしで戻り、再び決定できる', async ({ page, line, makeHost, watch }) => {
+  watch.allowNetworkErrors();
+  const host = await makeHost(); const you = await joinRoom(page, line, host);
+  host.setPad(you.id, { k: 'tiles', tiles: [{ id: 'a', label: '札' }], ok: '出す' });
+  const tile = page.locator('.irori-pad__tile');
+  await tile.tap(); await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  line.blockNew = true; line.drop(); await expect(page.locator('.pp-banner')).toBeVisible();
+  line.unblock(); await expect(page.locator('.pp-banner')).toBeHidden();
+  await expect(tile).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('[data-action="ok"]')).toBeDisabled();
+  await tile.tap(); await page.locator('[data-action="ok"]').tap(); await host.eventsAtLeast(you.id, 1);
+  expect(host.events(you.id)).toEqual([{ k: 'tiles', ids: ['a'] }]);
+});

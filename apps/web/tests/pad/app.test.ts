@@ -478,3 +478,35 @@ describe('待ちの画面の自分の印', () => {
     expect(h.q('.irori-pad__wait')!.textContent).toContain('はなこが選んでいます');
   });
 });
+
+
+it('tilesの同一再送は選択を保ち、再接続直後はforceで選択と送信済み状態を消す', async () => {
+  const h = startApp({ hash: 'BCDF' });
+  const ws = await joined(h);
+  const spec: PadSpec = { k: 'tiles', tiles: [{ id: 'a', label: '札' }], ok: '出す' };
+  ws.pad(spec);
+  const first = h.q<HTMLButtonElement>('[data-id="a"]')!;
+  first.click(); ws.pad(spec);
+  expect(h.q('[data-id="a"]')).toBe(first);
+  expect(first.getAttribute('aria-pressed')).toBe('true');
+  h.q<HTMLButtonElement>('[data-action="ok"]')!.click();
+  expect(h.q<HTMLButtonElement>('[data-action="ok"]')!.disabled).toBe(true);
+  ws.drop(1006); h.clock.advance(1000);
+  const next = lastWS(); next.welcome(1, 'プレイヤー1'); next.pad(spec);
+  expect(h.q('[data-id="a"]')).not.toBe(first);
+  expect(h.q('[data-id="a"]')!.getAttribute('aria-pressed')).toBe('false');
+  h.q<HTMLButtonElement>('[data-id="a"]')!.click();
+  h.q<HTMLButtonElement>('[data-action="ok"]')!.click();
+  expect(next.frames.filter((f) => f.t === 'in')).toEqual([{ t: 'in', i: { k: 'tiles', ids: ['a'] } }]);
+});
+
+it('tiles領域のtouchmoveだけは止めず、外側の拡大やスクロールは止める', async () => {
+  const h = startApp({ hash: 'BCDF' });
+  const ws = await joined(h);
+  ws.pad({ k: 'tiles', tiles: [{ id: 'a', label: '札' }], ok: '出す' });
+  for (const [sel, blocked] of [['[data-id="a"]', false], ['.pp-top', true]] as const) {
+    const e = new Event('touchmove', { bubbles: true, cancelable: true });
+    h.q(sel)!.dispatchEvent(e);
+    expect(e.defaultPrevented).toBe(blocked);
+  }
+});

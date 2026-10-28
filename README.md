@@ -15,9 +15,11 @@ npm install
 npm run dev
 ```
 
-Open the printed URL on the big screen, join the same Wi-Fi with a phone, scan the QR code on the screen, and tap "Join". Seven games are included: `hello-pad`, `tap-race`, `quiz-4`, `dot-grab`, `ten-seconds`, `blade-duel`, `lantern-market`. Node 24 or later is required.
+Open the printed URL on the big screen, join the same Wi-Fi with a phone, scan the QR code on the screen, and tap "Join". Eleven games are included: `hello-pad`, `tap-race`, `quiz-4`, `dot-grab`, `ten-seconds`, `blade-duel`, `lantern-market`, `strike-alley`, `daifugo`, `old-maid`, `moon-village`. Node 24 or later is required.
 
 The new [Blade and Breath](games/blade-duel/README.md) is a two-player sword duel: choose a move in secret, manage your energy, and clash together. [Lanterns Unclaimed](games/lantern-market/README.md) is a card battle for 2–8 players: matching bids cancel out, so the highest unique card wins the lanterns. Try them on one computer at `/games/blade-duel/?mock=2` or `/games/lantern-market/?mock=3` using the on-screen controllers.
+
+The second pack adds four games meant to last: [Strike Yokocho](games/strike-alley/README.md) is bowling you throw by pulling your finger back on the phone (1–6 players); [Hearth Daifugo](games/daifugo/README.md) (3–8) and [Hearth Joker](games/old-maid/README.md) (2–8) are card games where your hand shows only on your own phone; [Night at Hearth Village](games/moon-village/README.md) is a werewolf game with no game master (4–8). On one computer, open `/games/strike-alley/?mock=2`, `/games/daifugo/?mock=4`, `/games/old-maid/?mock=3` or `/games/moon-village/?mock=5` and use the on-screen controllers.
 
 To try Ten Seconds Together on one computer, open `/games/ten-seconds/?mock=2` on the development server. Space controls player 1; Enter controls player 2. The [game guide](games/ten-seconds/README.md) explains the three rounds and how to resume after an interruption.
 
@@ -40,14 +42,15 @@ The reasoning, and the things deliberately left out (accounts, analytics, ads, p
 | Area | State |
 |---|---|
 | Join by QR or 4-character code, up to 8 seats, reconnect within 60 seconds | Alpha |
-| Six controller kinds (pad, buzzer, choices, touch, tilt, wait) | Alpha |
+| Seven controller kinds (pad, buzzer, choices, tiles, touch, tilt, wait) | Alpha |
 | Sandboxed games, registry by pull request, CI checks | Alpha |
 | Sharing (X, LINE, share sheet, copy link) and OGP | Alpha |
-| Seven bundled games, including a simultaneous sword duel and a competitive card game; end states are tested | Alpha |
+| Eleven bundled games, including bowling, two card games and a werewolf game; endings, leavers and rematches are tested | Alpha |
 | Long sessions on real iPhones and Android phones, TV browsers | Not tested yet. Reports are very welcome. Automated tests run Chromium and WebKit (Safari's engine, via Playwright) only |
 | Opening the host screen at phone width | Not officially supported (it does not break, but its visual score is around the pass line) |
 | Problems found by playing, and what is not verified yet | Listed in [docs/known-issues.md](docs/known-issues.md) (Japanese). Reports and fixes are welcome |
-| Passing the console's mute setting on to games' sound | Not yet. The sample games make no sound |
+| Sound effects (games ask for named cues; the console plays its own synthesized sounds and honors mute) | Alpha. How it sounds has not been checked by ear yet |
+| Long sessions of the card, werewolf and bowling games between real people | Not yet. Tuning values (role mix, how often strikes happen) are expected to change after play |
 | WebRTC for lower latency | Planned after measuring ([ADR 0002](docs/decisions/0002-websocket-first.md)) |
 | Accounts, ranking, chat, payments, ads, analytics, game uploads | Not planned |
 

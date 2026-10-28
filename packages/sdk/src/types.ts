@@ -1,5 +1,5 @@
 // 公開APIの型。手書きの irori.d.ts と同じ形にする（tests/types が tsc で突き合わせる）。
-import type { GameEndOptions, GamePadSpec, GameResult, HostCapability, HostEnvironment, InputEvent, PlayerId, PlayerInfo } from '@irori/protocol';
+import type { CueName, GameEndOptions, GamePadSpec, GameResult, HostCapability, HostEnvironment, InputEvent, PlayerId, PlayerInfo } from '@irori/protocol';
 import type { Look } from '@irori/pad-ui';
 
 /** ゲームに届く入力。メニューの依頼（menu）はコンソールが受け取り、ゲームには届かない。 */
@@ -33,6 +33,8 @@ export interface Irori {
   on<K extends keyof IroriEvents>(name: K, fn: IroriEvents[K]): () => void;
   setPad(spec: GamePadSpec, to?: Target): void;
   vibrate(ms: number | readonly number[], to?: Target): void;
+  /** コンソールの合成音。cue-v1 が無ければ無視。強さ0〜1、既定0.7。 */
+  cue(name: CueName, v?: number): void;
   look(id: PlayerId): Look;
   ready(): void;
   end(results?: readonly GameResult[], options?: GameEndOptions): void;

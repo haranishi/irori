@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { isDirectRun } from './lib/files.mjs';
 
 const STEPS = [
+  ['ソースファイルの境界', ['node', 'tools/check-source-files.mjs']],
   ['文書の長さとリンク', ['node', 'tools/check-docs.mjs']],
   ['権利（禁止語・音声と書体・外部の読み込み）', ['node', 'tools/check-rights.mjs']],
   ['依存の向き', ['node', 'tools/check-deps.mjs']],

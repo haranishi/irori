@@ -64,7 +64,7 @@ function buttons(rng: Rng, min: number, max: number): Record<string, unknown>[] 
 }
 
 function spec(rng: Rng): Record<string, unknown> {
-  const k = pick(rng, ['wait', 'pad', 'buzzer', 'choices', 'touch', 'tilt', 'remote', 'html']);
+  const k = pick(rng, ['wait', 'pad', 'buzzer', 'choices', 'tiles', 'touch', 'tilt', 'remote', 'html']);
   const s: Record<string, unknown> = { k };
   const opt = (key: string, make: () => unknown) => {
     if (bool(rng)) s[key] = make();
@@ -87,6 +87,16 @@ function spec(rng: Rng): Record<string, unknown> {
     s.options = buttons(rng, 1, 7);
     opt('disabled', () => bool(rng));
   }
+  if (k === 'tiles') {
+    s.tiles = Array.from({ length: int(rng, 0, 21) }, (_, i) => maybe(rng, { id: `t${i}`, label: '札', sub: '補助', off: bool(rng) }, 0.1));
+    opt('token', () => ident(rng));
+    s.ok = text(rng, 14);
+    opt('pass', () => text(rng, 14));
+    opt('min', () => int(rng, 0, 9));
+    opt('max', () => int(rng, 0, 9));
+    opt('note', () => text(rng, 125));
+    opt('disabled', () => bool(rng));
+  }
   if (k === 'touch') opt('mode', () => pick(rng, ['area', 'swipe', 'x']));
   if (k === 'tilt') opt('buttons', () => buttons(rng, 0, 5));
   if (k !== 'wait') opt('hint', () => text(rng, 45));
@@ -94,12 +104,17 @@ function spec(rng: Rng): Record<string, unknown> {
 }
 
 function input(rng: Rng): Record<string, unknown> {
-  const k = pick(rng, ['btn', 'axis', 'ptr', 'pick', 'tilt', 'menu', 'key']);
+  const k = pick(rng, ['btn', 'axis', 'ptr', 'pick', 'tiles', 'tilt', 'menu', 'key']);
   let i: Record<string, unknown>;
   if (k === 'btn') i = { k, id: ident(rng), d: rng() < 0.9 ? int(rng, 0, 1) : pick(rng, [2, true, '1']) };
   else if (k === 'axis') i = { k, id: ident(rng), x: anyNum(rng, -2, 2), y: anyNum(rng, -2, 2) };
   else if (k === 'ptr') i = { k, id: ident(rng), x: anyNum(rng, -1, 2), y: anyNum(rng, -1, 2), ph: pick(rng, ['s', 'm', 'e', 'q']) };
   else if (k === 'pick') i = { k, id: ident(rng) };
+  else if (k === 'tiles') {
+    i = { k, ids: Array.from({ length: int(rng, 0, 9) }, () => ident(rng)) };
+    if (bool(rng)) i.t = ident(rng);
+    if (bool(rng)) i.pass = pick(rng, [true, false, 1]);
+  }
   else if (k === 'tilt') i = { k, a: anyNum(rng, -200, 600), b: anyNum(rng, -400, 400), g: anyNum(rng, -200, 200) };
   else i = { k };
   return maybe(rng, i, 0.15);
@@ -195,6 +210,7 @@ function checkButtons(problems: string[], where: string, list: unknown, min: num
 function checkSpec(problems: string[], s: Record<string, unknown>): void {
   const allowed: Record<string, string[]> = {
     wait: ['k', 'title', 'body'], pad: ['k', 'stick', 'buttons', 'hint', 'orient'], buzzer: ['k', 'label', 'color', 'disabled', 'hint'],
+    tiles: ['k', 'tiles', 'ok', 'pass', 'min', 'max', 'note', 'hint', 'disabled', 'token'],
     choices: ['k', 'options', 'disabled', 'hint'], touch: ['k', 'mode', 'hint'], tilt: ['k', 'buttons', 'hint'], remote: ['k', 'hint'],
   };
   const keys = allowed[s.k as string];
@@ -206,6 +222,31 @@ function checkSpec(problems: string[], s: Record<string, unknown>): void {
   if (s.title !== undefined) within(problems, 'spec.title', s.title, LIMITS.TITLE_MAX_GRAPHEMES);
   if (s.body !== undefined) within(problems, 'spec.body', s.body, LIMITS.BODY_MAX_GRAPHEMES);
   if (s.hint !== undefined) within(problems, 'spec.hint', s.hint, LIMITS.HINT_MAX_GRAPHEMES);
+  if (s.k === 'tiles') {
+    if (s.token !== undefined && (typeof s.token !== 'string' || !ID.test(s.token))) problems.push('spec.token');
+    const list = s.tiles as Record<string, unknown>[];
+    if (!Array.isArray(list) || list.length > 20) problems.push('spec.tiles: 個数');
+    else {
+      const ids = list.map((t) => t.id);
+      if (new Set(ids).size !== ids.length) problems.push('spec.tiles: 重複');
+      for (const t of list) {
+        keysOnly(problems, 'tile', t, ['id', 'label', 'sub', 'color', 'off']);
+        if (typeof t.id !== 'string' || !ID.test(t.id)) problems.push('tile.id');
+        within(problems, 'tile.label', t.label, 12);
+        if (t.sub !== undefined) within(problems, 'tile.sub', t.sub, 12);
+        if (t.color !== undefined && !COLORS.includes(t.color as string)) problems.push('tile.color');
+        if (t.off !== undefined && typeof t.off !== 'boolean') problems.push('tile.off');
+      }
+      const cap = Math.min(8, list.filter((t) => t.off !== true).length);
+      const max = s.max === undefined ? Math.min(1, cap) : s.max as number;
+      const min = s.min === undefined ? Math.min(1, max) : s.min as number;
+      if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || min > max || max > cap) problems.push('spec.tiles: 選択数');
+    }
+    within(problems, 'spec.ok', s.ok, 12);
+    if (s.pass !== undefined) within(problems, 'spec.pass', s.pass, 12);
+    if (s.note !== undefined) within(problems, 'spec.note', s.note, 120);
+    if (s.disabled !== undefined && typeof s.disabled !== 'boolean') problems.push('spec.disabled');
+  }
   if (s.k === 'buzzer') within(problems, 'spec.label', s.label, LIMITS.LABEL_MAX_GRAPHEMES);
   if (s.buttons !== undefined) checkButtons(problems, 'spec.buttons', s.buttons, 0, LIMITS.BUTTONS_MAX);
   if (s.k === 'choices') checkButtons(problems, 'spec.options', s.options, LIMITS.CHOICES_MIN, LIMITS.CHOICES_MAX);
@@ -214,7 +255,7 @@ function checkSpec(problems: string[], s: Record<string, unknown>): void {
 
 function checkInput(problems: string[], i: Record<string, unknown>): void {
   const allowed: Record<string, string[]> = {
-    btn: ['k', 'id', 'd'], axis: ['k', 'id', 'x', 'y'], ptr: ['k', 'id', 'x', 'y', 'ph'], pick: ['k', 'id'], tilt: ['k', 'a', 'b', 'g'], menu: ['k'],
+    btn: ['k', 'id', 'd'], axis: ['k', 'id', 'x', 'y'], ptr: ['k', 'id', 'x', 'y', 'ph'], pick: ['k', 'id'], tiles: ['k', 'ids', 'pass', 't'], tilt: ['k', 'a', 'b', 'g'], menu: ['k'],
   };
   const keys = allowed[i.k as string];
   if (!keys) return void problems.push(`i.k: ${String(i.k)}`);
@@ -224,6 +265,11 @@ function checkInput(problems: string[], i: Record<string, unknown>): void {
     const v = i[name];
     if (typeof v !== 'number' || !(v >= lo && v <= hi)) problems.push(`i.${name}: ${String(v)}`);
   };
+  if (i.k === 'tiles') {
+    if (i.t !== undefined && (typeof i.t !== 'string' || !ID.test(i.t))) problems.push('i.t');
+    if (!Array.isArray(i.ids) || i.ids.length > 8 || i.ids.some((id) => typeof id !== 'string' || !ID.test(id)) || new Set(i.ids).size !== i.ids.length) problems.push('i.ids');
+    if (i.pass !== undefined && (i.pass !== true || (i.ids as unknown[]).length !== 0)) problems.push('i.pass');
+  }
   if (i.k === 'btn' && i.d !== 0 && i.d !== 1) problems.push('i.d');
   if (i.k === 'axis') {
     inRange('x', -1, 1);
@@ -305,4 +351,39 @@ describe('乱数の入力（固定の種）', () => {
     // すべて拒む検証は、この試験を素通りしてしまう。通ったものが一定数あることも確かめる。
     for (const [name, count] of accepted) expect(count, name).toBeGreaterThan(30);
   });
+});
+
+
+it('tilesを固定種で500通り作り、独立した規則と一致する', () => {
+  const rng = mulberry32(27);
+  let accepted = 0;
+  for (let n = 0; n < 500; n++) {
+    const count = int(rng, 0, 21);
+    const max = int(rng, 0, 9);
+    const s = { k: 'tiles', tiles: Array.from({ length: count }, (_, i) => ({ id: `t${i}`, label: '札', off: bool(rng) })), ok: '出す', min: 0, max };
+    const problems: string[] = [];
+    checkSpec(problems, s);
+    const r = parseHostFrame(JSON.stringify({ t: 'pad', to: 1, spec: s }));
+    expect(r.ok).toBe(problems.length === 0);
+    if (r.ok) accepted++;
+    const input = { k: 'tiles', ids: Array.from({ length: int(rng, 0, 9) }, () => `t${int(rng, 0, 10)}`) };
+    const errors: string[] = [];
+    checkInput(errors, input);
+    expect(parsePadFrame(JSON.stringify({ t: 'in', i: input })).ok).toBe(errors.length === 0);
+  }
+  expect(accepted).toBeGreaterThan(100);
+});
+
+
+it('tokenとtの境界は独立検証器とも一致する', () => {
+  for (const token of [undefined, 'r_1-a', 'a'.repeat(24), '', 'A', 'a'.repeat(25), 1, null]) {
+    const spec = { k: 'tiles', tiles: [], ok: '確認', token };
+    const problems: string[] = [];
+    checkSpec(problems, spec);
+    expect(parseHostFrame(JSON.stringify({ t: 'pad', to: 1, spec })).ok).toBe(problems.length === 0);
+    const input = { k: 'tiles', ids: [], t: token };
+    const errors: string[] = [];
+    checkInput(errors, input);
+    expect(parsePadFrame(JSON.stringify({ t: 'in', i: input })).ok).toBe(errors.length === 0);
+  }
 });

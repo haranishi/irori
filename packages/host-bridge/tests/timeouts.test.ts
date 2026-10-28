@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 // @vitest-environment-options {"settings":{"enableIframePageLoading":true}}
+import { CUES } from '@irori/protocol';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EXTERNAL_HANDSHAKE_TIMEOUT_MS, GameFrame, HANDSHAKE_TIMEOUT_MS, handshakeTimeoutFor } from '../src/index';
 import type { GameFrameEvents, GameFrameInit, HostMessage } from '../src/index';
@@ -51,7 +52,7 @@ describe('GameFrameと実SDKの追加契約', () => {
     f.post({ m: 'environment', environment: { connected: false, visible: false } });
     f.post({ m: 'environment', environment: { connected: true, visible: 'broken' } } as never);
     const irori = await connect();
-    expect(irori.capabilities).toEqual(['result-options-v1', 'host-environment-v1']);
+    expect(irori.capabilities).toEqual(['result-options-v1', 'host-environment-v1', 'pad-tiles-v1', 'cue-v1']);
     expect(irori.environment).toEqual({ connected: false, visible: false });
     expect(irori.players.map((p) => p.id)).toEqual([2]);
     expect(irori.leader).toBe(2);
@@ -97,4 +98,62 @@ describe('握手の既定の待ち時間', () => {
     expect(EXTERNAL_HANDSHAKE_TIMEOUT_MS).toBeGreaterThanOrEqual(10_000);
     expect(HANDSHAKE_TIMEOUT_MS).toBeLessThan(EXTERNAL_HANDSHAKE_TIMEOUT_MS);
   });
+});
+
+
+it('実SDKのcueが橋へ届き、終了後は捨てる', async () => {
+  const { f, connect } = frame();
+  const heard: unknown[] = [];
+  f.on('cue', (cue) => heard.push(cue));
+  const irori = await connect();
+  irori.cue('pins', 0.4);
+  await tick();
+  expect(heard).toEqual([{ name: 'pins', v: 0.4 }]);
+  irori.end();
+  irori.cue('confirm');
+  await tick();
+  expect(heard).toHaveLength(1);
+});
+
+it('SDKを通さないcueも検証し、過剰頻度は違反に数えず捨てる', async () => {
+  const { f, connect } = frame();
+  await connect();
+  const port = ports.at(-1)!;
+  const heard: unknown[] = [];
+  f.on('cue', (cue) => heard.push(cue));
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  port.postMessage({ m: 'cue', name: 'bad' });
+  port.postMessage({ m: 'cue', name: 'tick', v: 2 });
+  port.postMessage({ m: 'cue', name: 'tick', extra: 1 });
+  await tick();
+  expect(f.dropped).toBe(3);
+  port.postMessage({ m: 'cue', name: 'tick' });
+  await tick();
+  expect(heard).toEqual([{ name: 'tick', v: 0.7 }]);
+  for (let i = 0; i < 150; i++) port.postMessage({ m: 'cue', name: 'tick' });
+  await tick();
+  expect(f.state).toBe('connected');
+  expect(f.dropped).toBe(3);
+  expect(heard).toHaveLength(1);
+  now = 49; port.postMessage({ m: 'cue', name: 'tick' }); await tick();
+  expect(heard).toHaveLength(1);
+  now = 50; port.postMessage({ m: 'cue', name: 'tick' }); await tick();
+  expect(heard).toHaveLength(2);
+});
+
+
+it('橋のcueも移動する1秒窓で20件を上限にする', async () => {
+  const { f, connect } = frame(); await connect();
+  const port = ports.at(-1)!;
+  const heard: unknown[] = [];
+  f.on('cue', (cue) => heard.push(cue));
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  CUES.forEach((name) => port.postMessage({ m: 'cue', name })); await tick();
+  expect(heard).toHaveLength(20);
+  now = 999; port.postMessage({ m: 'cue', name: 'reveal' }); await tick();
+  expect(heard).toHaveLength(20);
+  now = 1000; port.postMessage({ m: 'cue', name: 'reveal' }); await tick();
+  expect(heard).toHaveLength(21); expect(f.dropped).toBe(0);
 });

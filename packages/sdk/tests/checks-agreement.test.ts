@@ -15,6 +15,11 @@ const results: unknown[] = [
   Array.from({ length: 8 }, (_, i) => ({ p: i + 1, score: i })), Array.from({ length: 9 }, (_, i) => ({ p: (i % 8) + 1, score: i })), 'x', null,
 ];
 const specs: unknown[] = [
+  { k: 'tiles', tiles: [], ok: '確認' },
+  { k: 'tiles', tiles: [{ id: 'a', label: 'A', sub: '札', off: true }], ok: '確認', disabled: true },
+  { k: 'tiles', tiles: [{ id: 'a', label: 'A' }], ok: '出す', max: 2 },
+  { k: 'tiles', tiles: [{ id: 'a', label: 'A' }, { id: 'a', label: 'B' }], ok: '出す' },
+  { k: 'tiles', tiles: [{ id: 'a', label: 'A', style: 'x' }], ok: '出す' },
   { k: 'wait' }, { k: 'remote' }, { k: 'pad', buttons: [{ id: 'a', label: 'A' }] }, { k: 'pad', buttons: [{ id: 'A', label: 'A' }] },
   { k: 'buzzer', label: 'x', color: 'pink' }, { k: 'choices', options: [{ id: 'a', label: 'A' }] }, { k: 'touch', mode: 'swipe', x: 1 },
 ];
@@ -55,5 +60,27 @@ describe('SDK と host-bridge の検査の一致', () => {
 
   it.each(specs.map((s) => [s]))('画面の指定 %j', (spec) => {
     expect(checkPadSpec(spec) === null).toBe(validateGameToHost({ m: 'setPad', to: '*', spec }).ok);
+  });
+});
+
+
+describe('sparse pad arrays at the SDK/bridge boundary', () => {
+  it.each([
+    { k: 'tiles', key: 'tiles', extra: { ok: '出す' } },
+    { k: 'pad', key: 'buttons', extra: {} },
+    { k: 'tilt', key: 'buttons', extra: {} },
+    { k: 'choices', key: 'options', extra: {} },
+  ])('$k rejects holes rather than forwarding invalid room frames', ({ k, key, extra }) => {
+    const dense = Array.from({ length: 3 }, (_, i) => ({ id: `a${i}`, label: '札' }));
+    const sparse = [...dense];
+    delete sparse[1];
+    for (const list of [sparse, new Array(3), dense]) {
+      const spec = { k, [key]: list, ...extra };
+      for (const value of [spec, structuredClone(spec)]) {
+        const valid = list === dense;
+        expect(checkPadSpec(value) === null).toBe(valid);
+        expect(validateGameToHost({ m: 'setPad', to: '*', spec: value }).ok).toBe(valid);
+      }
+    }
   });
 });

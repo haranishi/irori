@@ -22,6 +22,9 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 /** apps/web/public/_headers の /games/* と同じ。インラインのスクリプトや外部の読み込みがあれば、ここで動かなくなる。 */
 const CSP = "sandbox allow-scripts; default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'";
 
+/** 仮想プレイヤーの人数（既定は3）。人狼は4人以上が要る。 */
+const PLAYERS = { 'blade-duel': 2, 'moon-village': 8 };
+
 /** ゲームごとの撮る前の手順。page は Playwright のページ。 */
 const SCENES = {
   'blade-duel': async (page) => {
@@ -53,6 +56,71 @@ const SCENES = {
   },
   'ten-seconds': async (page) => {
     await phase(page, 'intro');
+  },
+  // ボウリング：10フレームを選び、1人目が引いてはなす。ピンが舞う瞬間を撮る（強さ0.7・曲がり0.6でストライクが続く幅の中ほど）。
+  'strike-alley': async (page) => {
+    await phase(page, 'intro');
+    await page.keyboard.press('Space');
+    await phase(page, 'aim');
+    await page.waitForTimeout(500);
+    const box = await page.locator('.irori-mock__seat[data-p="1"] .irori-pad__touch').boundingBox();
+    if (!box) throw new Error('make-thumbs: strike-alley の touch の枠がありません');
+    const at = (fx, fy) => [box.x + box.width * fx, box.y + box.height * fy];
+    await page.mouse.move(...at(0.1, 0.15));
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) {
+      await page.mouse.move(...at(0.1 + (0.21 * i) / 8, 0.15 + (0.561 * i) / 8));
+      await page.waitForTimeout(25);
+    }
+    await page.waitForTimeout(80);
+    await page.mouse.up();
+    await phase(page, 'rolling');
+    await page.waitForTimeout(2650);
+  },
+  // 大富豪：番の席の手札から、ジョーカーと8を除いて一番多い数を最大4枚出す（4枚なら革命の印も入る）。
+  daifugo: async (page) => {
+    await phase(page, 'intro');
+    await page.keyboard.press('Space');
+    await phase(page, 'play');
+    const seat = page.locator('.irori-mock__seat:has(.irori-pad__tiles-actions)').first();
+    await seat.waitFor({ timeout: 15_000 });
+    const tiles = seat.locator('.irori-pad__tile:not(:disabled)');
+    const byRank = new Map();
+    for (let i = 0, n = await tiles.count(); i < n; i++) {
+      const label = (await tiles.nth(i).locator('.irori-pad__tile-label').textContent()) ?? '';
+      const m = /^[♠♥♦♣](.+)$/.exec(label);
+      if (!m || m[1] === '8') continue;
+      byRank.set(m[1], [...(byRank.get(m[1]) ?? []), i]);
+    }
+    const pick = [...byRank.values()].sort((a, b) => b.length - a.length)[0] ?? [];
+    for (const i of pick.slice(0, 4)) await tiles.nth(i).click();
+    await seat.locator('[data-action="ok"]').click();
+    await page.waitForTimeout(2600);
+  },
+  // ババ抜き：配札のあと、演出が落ち着いた勝負中の机（引く線・表向きのペアが乗った捨て札）を撮る。
+  'old-maid': async (page) => {
+    await phase(page, 'intro');
+    await page.keyboard.press('Space');
+    await phase(page, 'play');
+    await page.waitForFunction(() => !document.getElementById('stage')?.hasAttribute('data-busy'), null, { timeout: 15_000 });
+    await page.waitForTimeout(600);
+  },
+  // 人狼：8人で、役の確認（見る→かくす）を済ませ、夜に3人が決める（月と8軒の家、窓が3つ消えた夜）。
+  'moon-village': async (page) => {
+    await phase(page, 'intro');
+    await page.keyboard.press('Space');
+    await phase(page, 'reveal');
+    const seatOf = (p) => page.locator(`.irori-mock__seat[data-p="${p}"]`);
+    for (let p = 1; p <= 8; p++) {
+      await seatOf(p).locator('[data-action="ok"]').click();
+      await seatOf(p).locator('[data-action="ok"]').click();
+    }
+    await phase(page, 'night');
+    for (let p = 1; p <= 3; p++) {
+      await seatOf(p).locator('.irori-pad__tile').first().click();
+      await seatOf(p).locator('[data-action="ok"]').click();
+    }
+    await page.waitForTimeout(1200);
   },
 };
 
@@ -119,7 +187,7 @@ export async function makeThumbs(root, ids, env = process.env) {
       page.on('pageerror', (e) => errors.push(e.message));
       // canvas に描く文字（hello-pad・tap-race・dot-grab）は、CSS では替わらない。ctx.font への代入を、ページの最初から差し替える。
       await page.addInitScript(canvasFontPatchScript());
-      await page.goto(`http://127.0.0.1:${srv.port}/${id}/?mock=${id === 'blade-duel' ? 2 : 3}`);
+      await page.goto(`http://127.0.0.1:${srv.port}/${id}/?mock=${PLAYERS[id] ?? 3}`);
       await page.waitForSelector('.irori-mock[data-ready]', { state: 'attached', timeout: 15_000 });
       await scene(page);
       await page.addStyleTag({

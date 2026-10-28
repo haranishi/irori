@@ -98,7 +98,8 @@
   cursor: default;
 }
 .irori-pad__btn:focus-visible,
-.irori-pad__arrow:focus-visible {
+.irori-pad__arrow:focus-visible,
+.irori-pad__tiles-grid:focus-visible {
   outline: 3px solid var(--pad-on);
   outline-offset: 2px;
 }
@@ -247,3 +248,30 @@
     transform: none;
   }
 }
+
+.irori-pad[data-kind='tiles'] { min-height: 0; overflow: hidden; touch-action: pan-y; }
+.irori-pad__tiles { touch-action: pan-y; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.irori-pad__tiles-grid {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(72px, max-content); align-content: start; gap: 8px; padding: 4px;
+}
+.irori-pad__tiles-grid, .irori-pad__tiles-grid * { touch-action: pan-y; }
+.irori-pad__tile { position: relative; min-width: 56px; min-height: 56px; padding: 8px 4px 20px; overflow-wrap: anywhere; }
+/* 押せない札（出せない手札）も、明るい部屋で読める濃さにする（既定の .45 だと、文字と地の差が約3.6:1まで落ちる）。押せないことは、明るさと「押せない」の動かなさで示す。 */
+.irori-pad__tile:disabled { opacity: 0.68; }
+.irori-pad__tile-label, .irori-pad__tile small { display: block; }
+.irori-pad__tile small { font-size: 16px; }
+.irori-pad__tile-check { position: absolute; right: 5px; bottom: 0; visibility: hidden; }
+.irori-pad__tile[aria-pressed='true'] { border-width: 4px; box-shadow: inset 0 0 0 2px var(--pad-on); }
+.irori-pad__tile[aria-pressed='true'] .irori-pad__tile-check { visibility: visible; }
+.irori-pad__tile[data-limit] { outline: 3px solid var(--pad-on); outline-offset: -3px; animation: irori-tiles-limit .2s; }
+.irori-pad__tiles-actions { display: flex; gap: 8px; flex: none; }
+.irori-pad__tiles-actions button { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.irori-pad__tiles .irori-pad__text { max-width: none; overflow-wrap: anywhere; }
+.irori-pad__tiles .irori-pad__status { min-height: 1.4em; font-size: 16px; }
+.irori-pad__tiles[data-sent] .irori-pad__status { color: var(--pad-on); font-weight: 700; }
+@container (min-width: 480px) { .irori-pad__tiles-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (min-width: 640px) { .irori-pad__tiles-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@keyframes irori-tiles-limit { 50% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .irori-pad__tile[data-limit] { animation: none; } }

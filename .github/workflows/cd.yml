@@ -33,7 +33,8 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - run: npm ci
+      - run: node tools/check-source-files.mjs
+      - run: npm ci --ignore-scripts
       - run: npm run deploy:dry-run
       - name: 公開直前にmainの先頭を確認
         id: main-head

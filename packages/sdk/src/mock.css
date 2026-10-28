@@ -103,3 +103,5 @@
 @media (prefers-reduced-motion: reduce) {
   .irori-mock__seat[data-buzz] { animation: none; outline: 2px solid var(--m-glow); }
 }
+
+.irori-mock__pad:has([data-kind='tiles']) { height: 380px; }

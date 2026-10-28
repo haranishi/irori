@@ -12,9 +12,12 @@
 //   curl -s -X POST localhost:PORT/pad/1/hold -d '{"id":"hop","ms":800}'      … 押し続ける
 //   curl -s -X POST localhost:PORT/pad/1/stick -d '{"x":1,"y":0,"ms":1500}'   … スティックを倒し続ける（-1〜1）
 //   curl -s -X POST localhost:PORT/pad/1/choose -d '{"index":0}'               … 選択肢を選ぶ（0から数える）
+//   POST /pad/:n/tiles {"ids":["a"]} または {"pass":true} … 札の選択をそろえて決定・パス
+//   POST /pad/:n/swipe {"x0":0.5,"y0":0.3,"x1":0.5,"y1":0.8,"ms":400} … touch の枠で、指を置いて動かして離す（座標は枠の中の0〜1。ボウリングは下へ引いてはなす）
 //   curl -s -X POST localhost:PORT/pad/1/menu -d '{"item":"leave"}'            … 長押しのメニュー（pause か leave）
 //   curl -s -X POST localhost:PORT/pad/1/disconnect   /   .../reconnect           … 回線を切る・戻す
 //   curl -s -X POST localhost:PORT/host/key -d '{"key":"Escape"}'              … ホストのキー（ArrowRight・Enter・Escape・m）
+//   curl -s -X POST localhost:PORT/host/viewport -d '{"width":768,"height":1024}' … ホストの画面の大きさを変える（既定は1280×720）
 //   curl -s -X POST localhost:PORT/clock/advance -d '{"ms":30000}'             … ホストの時計を進める
 //   curl -s localhost:PORT/state                                                … いま見えている文字・状態（JSON）
 //   curl -s -X POST localhost:PORT/shot -d '{"target":"host"}'                  … 撮ってパスを返す（target は host か 1〜8）
@@ -236,6 +239,24 @@ export class Playtest {
     return { held: Number(ms), x: clamp(x), y: clamp(y) };
   }
 
+  /** touch の枠で、(x0,y0) に指を置き、(x1,y1) まで動かして離す。座標は枠の中を0〜1にした値。 */
+  async swipe(n, { x0 = 0.5, y0 = 0.3, x1 = 0.5, y1 = 0.8, ms = 400 } = {}) {
+    const unit = (v, d) => { const f = Number(v); return Number.isFinite(f) ? Math.max(0, Math.min(1, f)) : d; };
+    const [ax, ay, bx, by] = [unit(x0, 0.5), unit(y0, 0.3), unit(x1, 0.5), unit(y1, 0.8)];
+    const c = await this.center(this.pad(n).page, '.irori-pad__touch');
+    const at = (px, py) => [c.x - c.w / 2 + px * c.w, c.y - c.h / 2 + py * c.h];
+    const steps = 8;
+    const wait = Math.max(0, Math.min(Number(ms) || 0, 5_000)) / steps;
+    await this.touch(n, 'touchStart', ...at(ax, ay));
+    for (let i = 1; i <= steps; i++) {
+      await this.touch(n, 'touchMove', ...at(ax + ((bx - ax) * i) / steps, ay + ((by - ay) * i) / steps));
+      if (wait) await sleep(wait);
+    }
+    await this.touch(n, 'touchEnd');
+    await this.settle();
+    return { from: [ax, ay], to: [bx, by], ms: Number(ms) || 0 };
+  }
+
   async choose(n, { index, id } = {}) {
     const { page } = this.pad(n);
     const sel = id !== undefined ? `.irori-pad__choice[data-id="${id}"]` : `.irori-pad__choice >> nth=${Number(index) || 0}`;
@@ -243,6 +264,28 @@ export class Playtest {
     await page.touchscreen.tap(c.x, c.y);
     await this.settle();
     return { chosen: id ?? (Number(index) || 0) };
+  }
+
+  async tiles(n, { ids = [], pass = false } = {}) {
+    if (!Array.isArray(ids) || ids.length > 8 || ids.some((id) => typeof id !== 'string' || !/^[a-z0-9_-]{1,24}$/.test(id)) || new Set(ids).size !== ids.length || typeof pass !== 'boolean' || (pass && ids.length)) {
+      throw new HttpError(400, 'ids は重複しない8個まで。pass は選択なしのときだけ');
+    }
+    const { page } = this.pad(n);
+    const pad = page.locator('.irori-pad[data-kind="tiles"]');
+    await pad.waitFor({ state: 'visible', timeout: 5_000 });
+    if (!pass) {
+      const available = await pad.locator('.irori-pad__tile:not(:disabled)').evaluateAll((els) => els.map((el) => el.getAttribute('data-id')));
+      if (ids.some((id) => !available.includes(id))) throw new HttpError(400, '選べない札です');
+      for (const el of await pad.locator('.irori-pad__tile[aria-pressed="true"]').all()) await el.tap();
+      for (const id of ids) await pad.locator(`.irori-pad__tile[data-id="${id}"]`).tap();
+      const selected = await pad.locator('.irori-pad__tile[aria-pressed="true"]').evaluateAll((els) => els.map((el) => el.getAttribute('data-id')));
+      if (selected.length !== ids.length || ids.some((id) => !selected.includes(id))) throw new HttpError(400, '選択数が上限を超えています');
+    }
+    const action = pad.locator(`[data-action="${pass ? 'pass' : 'ok'}"]`);
+    if (await action.count() !== 1 || !await action.isEnabled()) throw new HttpError(400, 'いまは決定できません');
+    await action.tap();
+    await this.settle();
+    return { ids: pass ? [] : ids, pass };
   }
 
   /** 左上の札の長押しで開くメニュー。item は pause（一時停止を頼む）か leave（退出）。 */
@@ -283,6 +326,17 @@ export class Playtest {
     await this.host.page.keyboard.press(k);
     await this.settle();
     return { key: k };
+  }
+
+  /** ホストの画面の大きさを変える。幅の違いで崩れないかを、撮って確かめるため。 */
+  async viewport(body) {
+    const { width, height } = body ?? {};
+    const within = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    if (!within(width, 320, 2560) || !within(height, 320, 1600)) throw new HttpError(400, 'width は320〜2560、height は320〜1600の整数');
+    if (!this.host) throw new HttpError(409, '先に /start');
+    await this.host.page.setViewportSize({ width, height });
+    await this.settle();
+    return { viewport: { width, height } };
   }
 
   async shot(target) {
@@ -358,8 +412,9 @@ export class Playtest {
               seat: play ? Number(play.getAttribute('data-seat')) : null,
               link: play?.getAttribute('data-link') ?? null,
               kind: pad?.getAttribute('data-kind') ?? null,
-              buttons: [...document.querySelectorAll('.irori-pad__btn[data-id]:not(.irori-pad__choice)')].map((b) => ({ id: b.getAttribute('data-id'), label: b.getAttribute('aria-label') ?? b.textContent, disabled: b.disabled })),
+              buttons: [...document.querySelectorAll('.irori-pad__btn[data-id]:not(.irori-pad__choice):not(.irori-pad__tile)')].map((b) => ({ id: b.getAttribute('data-id'), label: b.getAttribute('aria-label') ?? b.textContent, disabled: b.disabled })),
               choices: [...document.querySelectorAll('.irori-pad__choice')].map((b, index) => ({ index, id: b.getAttribute('data-id'), label: b.textContent, disabled: b.disabled })),
+              tiles: [...document.querySelectorAll('.irori-pad__tile')].map((b) => ({ id: b.getAttribute('data-id'), label: b.textContent, selected: b.getAttribute('aria-pressed') === 'true', disabled: b.disabled })),
               stick: document.querySelector('.irori-pad__stick') ? 'stick' : document.querySelector('.irori-pad__dpad') ? 'dpad' : null,
               text: (document.body?.innerText ?? '').replace(/\n{2,}/g, '\n').trim(),
             };
@@ -425,7 +480,7 @@ export function serve(pt, { port = 0 } = {}) {
       if (req.headers.origin !== undefined) throw new HttpError(403, 'ブラウザからの要求（Origin つき）は受けません。curl で操作してください');
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const body = req.method === 'POST' ? await readJson(req) : {};
-      const m = /^\/pad\/(\d+)\/(join|tap|hold|stick|choose|menu|disconnect|reconnect)$/.exec(url.pathname);
+      const m = /^\/pad\/(\d+)\/(join|tap|hold|stick|choose|tiles|swipe|menu|disconnect|reconnect)$/.exec(url.pathname);
       const route = `${req.method} ${m ? `/pad/:n/${m[2]}` : url.pathname}`;
       const n = m ? Number(m[1]) : 0;
       const handlers = {
@@ -436,10 +491,13 @@ export function serve(pt, { port = 0 } = {}) {
         'POST /pad/:n/hold': () => pt.hold(n, body),
         'POST /pad/:n/stick': () => pt.stick(n, body),
         'POST /pad/:n/choose': () => pt.choose(n, body),
+        'POST /pad/:n/tiles': () => pt.tiles(n, body),
+        'POST /pad/:n/swipe': () => pt.swipe(n, body),
         'POST /pad/:n/menu': () => pt.menu(n, body),
         'POST /pad/:n/disconnect': () => pt.disconnect(n),
         'POST /pad/:n/reconnect': () => pt.reconnect(n),
         'POST /host/key': () => pt.key(body.key),
+        'POST /host/viewport': () => pt.viewport(body),
         'POST /clock/advance': () => pt.advance(body.ms),
         'POST /clock/pause': async () => (await pt.pauseClock(), { clock: 'paused' }),
         'POST /clock/resume': async () => (await pt.host?.page.clock.resume(), (pt.clockMode = 'running'), { clock: 'running' }),

@@ -1,7 +1,7 @@
 // ゲームの隔離枠（ADR 0001）。握手だけ window.postMessage で受け、そのあとは渡した MessagePort の上で話す。
 // 握手は、送り主が自分の枠（event.source）で、オリジンも期待どおりのときだけ受ける。ほかの窓や枠からの握手は無視する。
 import { BRIDGE_VERSION } from '@irori/protocol';
-import type { BridgePort, GameEndOptions, GamePadSpec, GameResult, HostEnvironment, HostToGame, PlayerId, PlayerInfo } from '@irori/protocol';
+import type { CueName, BridgePort, GameEndOptions, GamePadSpec, GameResult, HostEnvironment, HostToGame, PlayerId, PlayerInfo } from '@irori/protocol';
 import type { FrameSource } from './entry';
 import type { GameStorage } from './storage';
 import { validateGameToHost } from './validate';
@@ -51,6 +51,7 @@ export interface StoreRequest {
 
 export interface GameFrameEvents {
   ready: () => void;
+  cue: (e: { name: CueName; v: number }) => void;
   setPad: (e: { to: PlayerId | '*'; spec: GamePadSpec }) => void;
   vibrate: (e: { to: PlayerId | '*'; ms: number[] }) => void;
   end: (e: { results: GameResult[]; options?: GameEndOptions }) => void;
@@ -76,6 +77,8 @@ export class GameFrame {
   private port: MessagePort | null = null;
   private current: FrameState = 'idle';
   private droppedCount = 0;
+  private cueTimes: number[] = [];
+  private readonly lastCue = new Map<CueName, number>();
   private handshakeTimer: ReturnType<typeof setTimeout> | undefined;
   private readyTimer: ReturnType<typeof setTimeout> | undefined;
   /** 直近に受けたメッセージの時刻（流量の検査）。 */
@@ -85,7 +88,7 @@ export class GameFrame {
 
   constructor(private readonly opts: GameFrameOptions) {
     this.init = { m: 'init', sdk: BRIDGE_VERSION, players: [...opts.init.players], leader: opts.init.leader, locale: opts.init.locale, paused: opts.init.paused === true,
-      capabilities: ['result-options-v1', 'host-environment-v1'] };
+      capabilities: ['result-options-v1', 'host-environment-v1', 'pad-tiles-v1', 'cue-v1'] };
     const env = environment(opts.init.environment);
     if (env) this.init.environment = env;
   }
@@ -183,13 +186,24 @@ export class GameFrame {
   }
 
   private onPortMessage(data: unknown): void {
-    if (this.current === 'stopped' || this.flooded()) return;
+    if (this.current === 'stopped') return;
     const r = validateGameToHost(data);
     if (!r.ok) {
+      if (this.flooded()) return;
       this.droppedCount++;
       return;
     }
     const m = r.msg;
+    // 有効なcueの過剰送信は黙って捨て、ゲーム全体の停止にはしない。
+    if (m.m === 'cue') {
+      if (this.current === 'ended') return;
+      const now = performance.now();
+      this.cueTimes = this.cueTimes.filter((t) => now - t < 1000);
+      if (now - (this.lastCue.get(m.name) ?? -Infinity) < 50 || this.cueTimes.length >= 20) return;
+      this.lastCue.set(m.name, now);
+      this.cueTimes.push(now);
+    }
+    if (this.flooded()) return;
     const ended = this.current === 'ended';
     switch (m.m) {
       case 'ready':
@@ -200,6 +214,9 @@ export class GameFrame {
         return;
       case 'setPad':
         if (!ended) this.emit('setPad', { to: m.to, spec: m.spec });
+        return;
+      case 'cue':
+        this.emit('cue', { name: m.name, v: m.v ?? 0.7 });
         return;
       case 'vibrate':
         if (!ended) this.emit('vibrate', { to: m.to, ms: m.ms });

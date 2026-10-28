@@ -81,6 +81,7 @@ const good = () => ({
 describe('validateManifestEntry', () => {
   it('正しい登録情報を通す。棚の表示用に足したキーは拒まない', () => {
     expect(validateManifestEntry(good()).ok).toBe(true);
+    expect(validateManifestEntry({ ...good(), pads: ['tiles', 'wait'] }).ok).toBe(true);
     expect(validateManifestEntry({ ...good(), thumbUrl: '/registry/thumbs/hello-pad.png' }).ok).toBe(true);
     expect(validateManifestEntry({ ...good(), entry: { url: 'https://games.example/party/' }, links: { source: 'https://github.com/x/y' } }).ok).toBe(true);
   });

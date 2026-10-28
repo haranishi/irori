@@ -22,3 +22,15 @@ A separate read-only reviewer checked each source, execution boundary, and requi
 The scoped local-server fixes and regression results are tracked in the follow-up PR and the validation record. Alerts 11 and 14 must not be dismissed until those actual boundaries are fixed and independently rechecked. A remaining check/read race under an actively mutating local filesystem is a documented limitation, not a claim of atomic filesystem isolation.
 
 Classification does not disable any CodeQL query, source directory, job, or security assertion. Future alerts require individual reachability review. Intentional attack fixtures must remain capable of exercising the real product defenses.
+
+## Follow-up PR analysis
+
+PR12 at `1e0b005` generated three additional alerts. A separate read-only review confirmed all three as false positives, without disabling scans or queries:
+
+| Alert | Actual boundary and reason |
+| --- | --- |
+| [20](https://github.com/haranishi/irori/security/code-scanning/20), path-injection in bridge static reads | The raw request is checked before normalization, then assertSafePath rejects root escapes and links/special files in every ancestor and leaf. Only that checked file is read. CodeQL does not model this custom guard. Existing-link and encoded traversal HTTP regressions verify the boundary. |
+| [21](https://github.com/haranishi/irori/security/code-scanning/21), path-injection in thumbnail serving | Requests are restricted beneath games/, reject dot segments/absolute forms, and pass the same per-path guard before reading. Original external links now return 404; ordinary assets still return 200. The custom confinement is not modeled by this query. |
+| [22](https://github.com/haranishi/irori/security/code-scanning/22), code construction in thumbnail test | Generated child code uses only the module URL derived from import.meta.url and two fixed test modes, serialized as string literals. The fixture root is a separate argv element; spawnSync uses no shell. No attacker-controlled code input exists. |
+
+The file-path classifications retain the documented stable-checkout assumption. They do not promise atomic protection against a same-permission concurrent local writer. The original two reachable disclosures are fixed separately; these new custom-guard findings are not a reason to omit their security regressions.

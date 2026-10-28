@@ -28,3 +28,5 @@ The party pack and CI/security fixes merged through PR10/9/11. Main dd695795 pas
 8. Follow-up release gate (live PR/Actions): merge the reviewed local-server fix only after applicable PR CI; verify the resulting main CI, mutation shards, and CodeQL status.
 
 Local-server follow-up independently reviewed PASS after persisting all six guard mutations. Full local suite 1,945 passed; typecheck, checks, build/Worker dry-run, budgets, and redacted secret scan passed. Permanent mutations killed 6/6 (exit 1, no timeout); all 294 definitions match exactly once and partition completely. Final main integration is evaluated from task 8 and the live PR/Actions record.
+
+PR12 Linux CI exposed shared keep-alive connections crossing thumbnail fixtures (three ECONNRESET failures). Isolating each test request passed all 149 tools and four permanent thumbnail mutations; independent review passed without changing source guards/assertions/timeouts/skips. Three additional CodeQL alerts were individually reviewed as false positives. Corrected PR and main CI remain task 8.

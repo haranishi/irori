@@ -36,7 +36,8 @@ const dependencyDir = fileURLToPath(new URL('../../node_modules', import.meta.ur
 const start = (root, fonts = {}) => serveGames(root, { from: 61520, to: 61539, fonts });
 function get(port, path) {
   return new Promise((resolve, reject) => {
-    const req = request({ hostname: '127.0.0.1', port, path, method: 'GET' }, (res) => {
+    // Each fixture reuses the listening port; do not retain sockets from a closed fixture.
+    const req = request({ hostname: '127.0.0.1', port, path, method: 'GET', agent: false }, (res) => {
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));

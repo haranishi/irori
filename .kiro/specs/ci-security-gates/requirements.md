@@ -10,5 +10,6 @@ The maintainer requested CI repair, PR creation/merging, and defenses against un
 
 6. Reject sparse arrays in game-to-host pad specifications before forwarding to the room service. Preserve valid dense arrays and protocol limits.
 7. Update vulnerable existing development dependencies to compatible fixed releases and audit development as well as production dependencies in CI. No new package or major version migration.
+8. Thumbnail generation and test-only static servers must apply the same file boundary: do not serve existing links or special files, expose files outside their configured root, or write thumbnails through unsafe paths. Keep loopback-only defaults, CSP/CORS needed by sandboxed games, ordinary assets, and fonts working. Malformed requests must fail without stopping the server. Review each main CodeQL alert against its actual execution boundary; retain explicit local-concurrency limitations.
 
 Out of scope: new games, new npm dependencies, production attacks, credential rotation, repository-wide permission changes, and claims that static scanning proves all code benign.

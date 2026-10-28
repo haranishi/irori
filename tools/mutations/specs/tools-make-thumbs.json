@@ -1,0 +1,54 @@
+[
+  {
+    "id": "tools-make-thumbs-no-request-file-guard",
+    "note": "HTTP配信で既存リンクの外部ファイルを読む",
+    "file": "tools/make-thumbs.mjs",
+    "find": "      const st = assertSafePath(root, source);",
+    "replace": "      const st = statSync(join(root, source));",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/make-thumbs.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-make-thumbs-no-plan-validation",
+    "note": "全入力と画像出力先の検査をせずにサムネイルを作る",
+    "file": "tools/make-thumbs.mjs",
+    "find": "  const plan = thumbnailPlan(root, ids);",
+    "replace": "  const plan = ids.map((id) => { const thumbnail = JSON.parse(readFileSync(join(root, 'registry/games', `${id}.json`), 'utf8')).thumbnail; return { id, scene: SCENES[id], thumbnail, path: join(root, 'registry/thumbs', thumbnail) }; });",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/make-thumbs.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-make-thumbs-no-manifest-name-guard",
+    "note": "manifestのサムネイル名にパストラバーサルを許す",
+    "file": "tools/make-thumbs.mjs",
+    "find": "    if (manifest?.id !== id || typeof manifest.thumbnail !== 'string' || !/^[a-z0-9-]+\\.(png|jpg|webp)$/.test(manifest.thumbnail)) {\n      throw new Error(`Unsafe source path: ${manifestFile} (invalid thumbnail or id)`);\n    }\n",
+    "replace": "",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/make-thumbs.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-make-thumbs-sparse-ids-accepted",
+    "note": "ID配列の穴を見逃し最初の画像を書いた後で失敗する",
+    "file": "tools/make-thumbs.mjs",
+    "find": "  return Array.from(ids, (id) => {",
+    "replace": "  return ids.map((id) => {",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/make-thumbs.test.mjs"
+    ],
+    "timeoutMs": 120000
+  }
+]

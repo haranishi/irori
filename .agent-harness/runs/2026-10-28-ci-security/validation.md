@@ -50,3 +50,16 @@ Static analysis and file checks cannot prove that arbitrary regular source code 
 ## Main follow-up
 
 PR10 merged as `4086ba5`, then the updated PR9 passed all applicable checks and merged as `ea9ff65`. The [first main run](https://github.com/haranishi/irori/actions/runs/40658138075) passed unit/build, audit, CodeQL and one mutation shard, while the console suite had 182 passes and a daifugo readiness race: the test read an earlier wait spec before tiles reached the phone. A focused follow-up PR waits for all phone hands before recording or inspecting them; product behavior and assertions remain unchanged. Delaying host-to-Worker tiles by 500ms reproduced the exact TypeError before the fix. After the fix, Chromium/WebKit × 0/500ms passed 4/4, and 12 related daifugo/privacy/minimum-player/departure/old-host/axe cases passed (16 total). Independent read-only review passed. Final main status is tracked by the follow-up PR and its main CI.
+
+## Full-main verification and CodeQL follow-up
+
+PR11 merged as `dd695795`. Its [full main CI](https://github.com/haranishi/irori/actions/runs/40666875250) passed all 12 jobs: 1,908 unit/tool/game tests, 185 console + 50 host + 78 pad browser cases (71 unchanged conditional pad skips), zero audited vulnerabilities, and all four mutation shards at 72/72 KILLED each (288/288, no outer timeout). Both CodeQL analyses completed; the first successful main-wide scan reported ten findings, individually reviewed in [the triage record](codeql-triage.md). Eight alerts were classified with specific reasons on GitHub; two real existing-link HTTP disclosures require this additional scoped local-server fix. The new release gate is its PR plus final main CI, not a zero raw-findings claim.
+
+## Local-server fix verification
+
+The bridge and thumbnail HTTP servers now reject existing links, special files, malformed URL encoding and path traversal while retaining ordinary assets and required CSP/CORS. Thumbnail generation validates every selected game/manifest/output before fonts, directories or browser work. Original external-sentinel leaks were reproduced before the fix, without racing the filesystem.
+
+- Real HTTP bridge regression: 9/9; existing real-browser bridge tests: 10/10.
+- Thumbnail regressions: 28/28 with verified OFL font and actual Chromium; output decoded as JPEG, 640×480. CI without that local font executes 27 cases and skips only the additional optional normal-image generation case. No existing skip or assertion changed.
+- Temporary-copy guard removal: bridge 2/2 and thumbnail 4/4 detected, exit 1 rather than timeout.
+- Full local suite: 1,945 passed (149 tools included), zero skipped with the verified font. Repository checks passed. Final typecheck/build/Worker dry-run/budgets passed. Independent code/HTTP/output review passed, including a second real Chromium JPEG generation. The reviewer required persisting the six verified guards as mutation definitions under CONTRIBUTING.md; all six permanent cases then KILLED with exit 1 and no timeout (thumbnail baseline also passed without a local font). The suite is now 294 cases, partitioned 74/74/73/73. The final PR records integration status.

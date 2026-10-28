@@ -1,0 +1,28 @@
+[
+  {
+    "id": "tools-bridge-static-no-file-guard",
+    "note": "bridgeの静的サーバーが既存のリンクをたどり、外部の合成ファイルを配信する",
+    "file": "tests/e2e/bridge/server/static.mjs",
+    "find": "info = assertSafePath(root, rel);",
+    "replace": "info = await (await import('node:fs/promises')).stat(join(root, rel));",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/bridge-static.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-bridge-static-no-traversal-guard",
+    "note": "bridgeの静的サーバーがdot segmentとencoded traversalを拒まず、正規化したパスを配信する",
+    "file": "tests/e2e/bridge/server/static.mjs",
+    "find": "if (!pathname.startsWith('/') || pathname.startsWith('//') || pathname.includes('\\\\') || pathname.split('/').some((part) => part === '.' || part === '..'))",
+    "replace": "if (false)",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/bridge-static.test.mjs"
+    ],
+    "timeoutMs": 120000
+  }
+]

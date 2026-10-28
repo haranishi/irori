@@ -20,3 +20,11 @@ The follow-up reproduced the old midgame assertion failure with 500ms delayed We
 The second Linux run passed all 183 console and 50 host browser cases, but two pad cases exposed a shared TestHost race: addNodePad returned after pad welcome before host joined. Final CI cycle repairs that fixture contract and verifies both event orders and reused-seat history before rerunning the full pad suite.
 
 The shared fixture fix failed 3/4 controlled-order regressions before the change and passed 4/4 afterward. Both removing the joined barrier and removing the old-event boundary were detected. Full web unit suite passed 217 tests; actual Worker/pad browser suite passed 78 with 71 existing conditional skips. Independent read-only review passed.
+
+The party pack and CI/security fixes merged through PR10/9/11. Main dd695795 passed all 12 CI jobs: 1,908 unit/tool/game tests, 313 browser cases (71 existing conditional skips), zero audited dependency vulnerabilities, and 288/288 mutation cases detected without outer timeouts. CodeQL completed with ten alerts requiring reachability triage rather than a zero-findings claim.
+
+- [x] 6. Extend existing file guards to thumbnail serving/writes and the bridge test server; reproduce unsafe existing links over actual HTTP and verify safe requests, malformed URLs, special files, and external sentinel retention. Requirement: 8.
+- [x] 7. Independently review the scoped fix and classify all ten main alerts with actual prerequisites; fix reachable violations and record accepted test-only/concurrent-writer limitations. Requirements: 5, 8.
+8. Follow-up release gate (live PR/Actions): merge the reviewed local-server fix only after applicable PR CI; verify the resulting main CI, mutation shards, and CodeQL status.
+
+Local-server follow-up independently reviewed PASS after persisting all six guard mutations. Full local suite 1,945 passed; typecheck, checks, build/Worker dry-run, budgets, and redacted secret scan passed. Permanent mutations killed 6/6 (exit 1, no timeout); all 294 definitions match exactly once and partition completely. Final main integration is evaluated from task 8 and the live PR/Actions record.

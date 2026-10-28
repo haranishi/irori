@@ -19,11 +19,11 @@
   },
   "ready_for_implementation": true,
   "approval_evidence": "Maintainer explicitly requested autonomous CI fixes, security safeguards, PR creation, and merging on 2026-10-28; no separate per-phase approval claimed.",
-  "updated_at": "2026-10-28T10:50:28.496620+00:00",
-  "spec_review": "Independent read-only review passed the initial hardening and local-server extension, including real HTTP/output/Chromium reproductions, eight individual alert classifications, and six permanent mutation definitions.",
+  "updated_at": "2026-10-28T12:27:17.410350+00:00",
+  "spec_review": "Independent final read-only review passed re-entry and monotonic clock repairs, actual Chromium/iframe/HTTP reproductions, strict error propagation, and permanent mutation definitions. Playwright 1.64.1 post-error behavior is explicitly an implementation dependency.",
   "validation": {
     "completion": "VERIFIED_LOCAL",
     "report": "../../../.agent-harness/runs/2026-10-28-ci-security/validation.md",
-    "release_gate": "Live local-server follow-up PR and final main CI, all 294 mutations, and individually triaged CodeQL status must be verified before release completion is reported."
+    "release_gate": "Live re-entry/clock follow-up PR must pass and merge; final main CI, all 297 mutations, and individually triaged CodeQL status must be verified before release completion is reported."
   }
 }

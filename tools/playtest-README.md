@@ -31,6 +31,8 @@ curl -s -X POST $U/stop                              # 全部止めて、サー�
 
 ホストの時計（ゲームの中の時計も同じ）は、最初から止めてあります。次の操作を何分考えても、時間切れになりません。時計が進むのは3つの場合だけです。操作の最中（連打の間隔・押し続け・倒し続けの時間）、操作のあとの約0.1秒、そして `/clock/advance`。「よーい」のカウントダウンや出題の締切は、`/clock/advance` で進めます。
 
+停止処理は、Playwright 1.64.1で過去時刻の `pauseAt` が例外前に時計を停止する挙動に依存します。これは[公開API](https://playwright.dev/docs/api/class-clock)が保証する例外後状態ではありません。Playwright更新時は、`tests/e2e/console/playtest.spec.ts` の実HTTP・「試遊時計」回帰（時刻の単調性・新しい枠・例外の伝播）を確認してください。
+
 ## /state の読み方と注意
 
 - `host.state` はホストの画面（home・detail・playing・paused・results など）、`host.focused` はいま選んでいる場所、`host.text` は見えている文字、`host.sockets` はホストがつないだ回数（1なら一度も切れていない）

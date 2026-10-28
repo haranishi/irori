@@ -1,0 +1,59 @@
+[
+  {
+    "id": "tools-playtest-clock-no-stop-phase",
+    "note": "動く時計を停止せずに最終時刻を記録し、遅延時に将来frameの時刻を古いsampleへ戻す",
+    "file": "tools/playtest-server.mjs",
+    "find": "    await stopAt(sampled);",
+    "replace": "    // first stop phase removed",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "tests/e2e/console/playtest.spec.ts",
+      "--grep",
+      "試遊時計"
+    ],
+    "timeoutMs": 300000
+  },
+  {
+    "id": "tools-playtest-clock-no-record-phase",
+    "note": "停止済host時刻を記録せず、将来frameに古いsampleを引き継ぐ",
+    "file": "tools/playtest-server.mjs",
+    "find": "    await stopAt(stopped);",
+    "replace": "    // stopped-time record phase removed",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "tests/e2e/console/playtest.spec.ts",
+      "--grep",
+      "試遊時計"
+    ],
+    "timeoutMs": 300000
+  },
+  {
+    "id": "tools-playtest-clock-swallows-other-errors",
+    "note": "想定したpast以外のClock transportエラーも隠す",
+    "file": "tools/playtest-server.mjs",
+    "find": "        if (!(error instanceof Error) || !/^clock\\.pauseAt: Error: Cannot fast-forward to the past(?:\\r?\\n|$)/.test(error.message)) throw error;",
+    "replace": "        // unexpected errors are swallowed",
+    "command": [
+      "npx",
+      "playwright",
+      "test",
+      "-c",
+      "tests/e2e/playwright.config.ts",
+      "--project=desktop-chromium",
+      "tests/e2e/console/playtest.spec.ts",
+      "--grep",
+      "試遊時計"
+    ],
+    "timeoutMs": 300000
+  }
+]

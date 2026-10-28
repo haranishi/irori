@@ -30,3 +30,11 @@ The party pack and CI/security fixes merged through PR10/9/11. Main dd695795 pas
 Local-server follow-up independently reviewed PASS after persisting all six guard mutations. Full local suite 1,945 passed; typecheck, checks, build/Worker dry-run, budgets, and redacted secret scan passed. Permanent mutations killed 6/6 (exit 1, no timeout); all 294 definitions match exactly once and partition completely. Final main integration is evaluated from task 8 and the live PR/Actions record.
 
 PR12 Linux CI exposed shared keep-alive connections crossing thumbnail fixtures (three ECONNRESET failures). Isolating each test request passed all 149 tools and four permanent thumbnail mutations; independent review passed without changing source guards/assertions/timeouts/skips. Three additional CodeQL alerts were individually reviewed as false positives. Corrected PR and main CI remain task 8.
+
+- [x] 9. Reproduce and repair the no-room code re-entry browser test used by the mutation baseline, without modifying product behavior, mutation definitions, timeout, or skip. Verify zero/500ms timing and the complete affected five-file pad baseline, then kill both previously unassessable mutants. Requirements: 4, 5.
+- [x] 10. Independently review the focused re-entry and clock repairs, including per-frame Date monotonicity, later frames, strict errors, and version dependence. Requirements: 4, 5, 9.
+11. Integration gate (live PR/Actions): create and merge the follow-up after applicable PR CI; verify all final main jobs, 297 mutations, and individually reviewed CodeQL status before claiming completion.
+
+- [x] 9.1. Reproduce POST/start clock.pauseAt past-target failure with controlled RPC latency; repair the generic playtest pause API using verified public Clock APIs. Verify 0/50/500ms, paused/running/repeated pause, Date/performance/timers, actual HTTP playtest, and permanent regressions. Requirements: 4, 5.
+
+Final local re-entry/clock follow-up: 1,945 tests passed (verified local font, no skips); typecheck/checks/build/Worker dry-run/budgets passed. Re-entry baseline 48/48 and existing mutants 2/2 killed. Clock real HTTP plus four browser regressions passed 5/5; new clock mutations 3/3 killed. Independent final review PASS after rejecting and correcting the temporary fixed-Date rewind. Full 297 mutations match once and partition 75/74/74/74.

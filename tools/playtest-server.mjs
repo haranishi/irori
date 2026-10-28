@@ -105,8 +105,20 @@ export class Playtest {
   // ---- 時計 ----
 
   async pauseClock() {
-    const now = await this.host.page.evaluate(() => Date.now());
-    await this.host.page.clock.pauseAt(now + 1);
+    const page = this.host.page;
+    const stopAt = async (time) => {
+      try {
+        await page.clock.pauseAt(time);
+      } catch (error) {
+        // Playwright 1.64.1 stops timers before rejecting a stale target. Other errors must propagate.
+        if (!(error instanceof Error) || !/^clock\.pauseAt: Error: Cannot fast-forward to the past(?:\r?\n|$)/.test(error.message)) throw error;
+      }
+    };
+    const sampled = await page.evaluate(() => Date.now());
+    await stopAt(sampled);
+    // Record the stopped host time for future frames; never derive host time from untrusted game frames.
+    const stopped = await page.evaluate(() => Date.now());
+    await stopAt(stopped);
     this.clockMode = 'paused';
   }
 

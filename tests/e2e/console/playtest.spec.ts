@@ -6,6 +6,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ROOT } from '../../../tools/lib/edge-server.mjs';
+import { Playtest } from '../../../tools/playtest-server.mjs';
 import { expect, test } from './fixtures';
 import { ONLY_DC } from './lib/tags';
 
@@ -75,6 +76,18 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
 
     const started = await call('POST', '/start', {});
     expect(started).toMatchObject({ clock: 'paused', code: expect.stringMatching(/^[A-Z0-9]{4}$/) });
+    const initialClock = (await state()).clock.now;
+    expect(await call('POST', '/clock/pause')).toEqual({ clock: 'paused' });
+    expect((await state()).clock).toEqual({ mode: 'paused', now: initialClock });
+    expect(await call('POST', '/clock/resume')).toEqual({ clock: 'running' });
+    await sleep(50);
+    const resumedClock = (await state()).clock;
+    expect(resumedClock.mode).toBe('running');
+    expect(resumedClock.now).toBeGreaterThan(initialClock);
+    expect(await call('POST', '/clock/pause')).toEqual({ clock: 'paused' });
+    const pausedClock = (await state()).clock;
+    await sleep(50);
+    expect((await state()).clock).toEqual(pausedClock);
     expect(await call('POST', '/pad/1/join', { name: 'たろう' })).toMatchObject({ seat: 1 });
     expect(await call('POST', '/pad/2/join', { name: 'はなこ' })).toMatchObject({ seat: 2 });
     let s = await state();
@@ -170,5 +183,136 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
     if (child.exitCode === null) child.kill('SIGTERM');
     await exited;
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// Only transport is delayed; Clock, pages, existing/new iframes and interval callbacks are real Chromium.
+for (const delayMs of [0, 50, 500]) {
+  test(`試遊時計：sample→pause のRPC遅延${delayMs}msでも停止・再停止・再開と既存timerを保つ`, ONLY_DC, async ({ browser }) => {
+    const ctx = await browser.newContext();
+    const pt = new Playtest();
+    try {
+      await ctx.clock.install({ time: 1_700_000_000_000 });
+      const page = await ctx.newPage();
+      await page.setContent('<iframe srcdoc="<p>clock frame</p>"></iframe>');
+      await expect.poll(() => page.frames().length).toBe(2);
+      await ctx.clock.fastForward(300_000);
+      const frames = page.frames();
+      const arm = (frame: (typeof frames)[number]) => frame.evaluate(() => {
+        const probe = { calls: 0, observedDate: Date.now(), observer: 0 };
+        Reflect.set(window, 'clockProbe', probe);
+        probe.observer = setInterval(() => { probe.observedDate = Math.max(probe.observedDate, Date.now()); }, 25);
+        setTimeout(() => { probe.calls++; }, 60_000);
+      });
+      for (const frame of frames) await arm(frame);
+      const snapshot = () => Promise.all(frames.map((frame) => frame.evaluate(() => ({
+        date: Date.now(), ticks: performance.now(), calls: Reflect.get(window, 'clockProbe').calls as number,
+      }))));
+      let pauseCalls = 0;
+      const delayedClock = new Proxy(page.clock, {
+        get(target, key) {
+          if (key === 'pauseAt') return async (time: number) => {
+            if (++pauseCalls === 1) {
+              const count = page.frames().length;
+              await page.evaluate(() => { const frame = document.createElement('iframe'); frame.srcdoc = '<p>during pause</p>'; document.body.append(frame); });
+              await expect.poll(() => page.frames().length).toBe(count + 1);
+              const created = page.frames().find((frame) => !frames.includes(frame))!;
+              await created.waitForLoadState();
+              await arm(created);
+              frames.push(created);
+            }
+            await sleep(delayMs);
+            return target.pauseAt(time);
+          };
+          const value = Reflect.get(target, key, target);
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      });
+      const delayedPage = new Proxy(page, {
+        get(target, key) {
+          if (key === 'clock') return delayedClock;
+          if (key === 'evaluate') return async (expression: () => number) => {
+            const sampled = await target.evaluate(expression);
+            await sleep(delayMs);
+            return sampled;
+          };
+          return Reflect.get(target, key, target);
+        },
+      });
+      pt.host = { ctx, page: delayedPage };
+      pt.clockMode = 'running';
+      await pt.pauseClock();
+      expect(pt.clockMode).toBe('paused');
+      const observed = await Promise.all(frames.map((frame) => frame.evaluate(() => {
+        const probe = Reflect.get(window, 'clockProbe');
+        clearInterval(probe.observer);
+        return probe.observedDate as number;
+      })));
+      const paused = await snapshot();
+      for (let i = 0; i < frames.length; i++) expect(paused[i]!.date).toBeGreaterThanOrEqual(observed[i]!);
+      for (const value of paused) {
+        expect(value.date).toBeGreaterThanOrEqual(1_700_000_300_000);
+        expect(value.calls).toBe(0);
+      }
+      // Existing controllers may differ by a few ticks; each frame must retain its own monotonic time.
+      await page.evaluate(() => { const frame = document.createElement('iframe'); frame.srcdoc = '<p>after pause</p>'; document.body.append(frame); });
+      await expect.poll(() => page.frames().length).toBe(frames.length + 1);
+      const future = page.frames().find((frame) => !frames.includes(frame))!;
+      await future.waitForLoadState();
+      expect(await future.evaluate(() => Date.now())).toBe(paused[0]!.date);
+      await sleep(50);
+      expect(await snapshot()).toEqual(paused);
+      await ctx.clock.runFor(1_000);
+      const advanced = await snapshot();
+      expect(await future.evaluate(() => Date.now())).toBe(paused[0]!.date + 1_000);
+      for (let i = 0; i < frames.length; i++) expect(advanced[i]).toEqual({ date: paused[i]!.date + 1_000, ticks: paused[i]!.ticks + 1_000, calls: 0 });
+      await pt.pauseClock();
+      expect(await snapshot()).toEqual(advanced);
+      await ctx.clock.runFor(60_000);
+      const fired = await snapshot();
+      for (let i = 0; i < frames.length; i++) expect(fired[i]).toEqual({ date: advanced[i]!.date + 60_000, ticks: advanced[i]!.ticks + 60_000, calls: 1 });
+      await ctx.clock.resume();
+      pt.clockMode = 'running';
+      await sleep(50);
+      const running = await snapshot();
+      for (let i = 0; i < frames.length; i++) {
+        expect(running[i]!.date).toBeGreaterThan(fired[i]!.date);
+        expect(running[i]!.ticks).toBeGreaterThan(fired[i]!.ticks);
+        expect(running[i]!.calls).toBe(1);
+      }
+      await pt.pauseClock();
+      const pausedAgain = await snapshot();
+      await sleep(50);
+      expect(await snapshot()).toEqual(pausedAgain);
+    } finally {
+      await pt.stop();
+      await ctx.close();
+      rmSync(pt.shots, { recursive: true, force: true });
+    }
+  });
+}
+
+test('試遊時計：想定外のpauseエラーを隠さず伝える', ONLY_DC, async ({ browser }) => {
+  const ctx = await browser.newContext();
+  const pt = new Playtest();
+  try {
+    await ctx.clock.install();
+    const page = await ctx.newPage();
+    const failure = new Error('clock transport unavailable');
+    const failedClock = new Proxy(page.clock, {
+      get(target, key) {
+        if (key === 'pauseAt') return async () => { throw failure; };
+        const value = Reflect.get(target, key, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+    pt.host = { ctx, page: new Proxy(page, { get(target, key) { return key === 'clock' ? failedClock : Reflect.get(target, key, target); } }) };
+    pt.clockMode = 'running';
+    await expect(pt.pauseClock()).rejects.toBe(failure);
+    expect(pt.clockMode).toBe('running');
+  } finally {
+    await pt.stop();
+    await ctx.close();
+    rmSync(pt.shots, { recursive: true, force: true });
   }
 });

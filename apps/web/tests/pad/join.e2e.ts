@@ -1,5 +1,6 @@
 // 入り方：QRのURLの # からコードを取り、「参加する」を1回押すだけで入る。コードがないときだけ4つの枠で打つ。
 import { look } from '@irori/pad-ui';
+import { LIMITS } from '@irori/protocol';
 import { act, comeBack, expect, joinRoom, openPad, screen, test } from './e2e/fixtures';
 
 test('QRのURLで開くと参加の画面が出て、「参加する」を1回押すだけで入れる。札は sessionStorage に置く', async ({ page, line, makeHost }) => {
@@ -95,18 +96,60 @@ test('部屋のURLを丸ごと貼っても、# の後ろのコードだけを使
   await expect(page.locator('.pp-room__code')).toHaveText(host.code);
 });
 
-test('存在しない部屋は「見つかりません」と出し、コードを入れ直せる', async ({ page, line, makeHost }) => {
-  await openPad(page, line, 'BCDF');
-  await expect(screen(page, 'entry')).toBeVisible();
-  await expect(page.locator('.pp-msg')).toHaveText('部屋「BCDF」が見つかりません。コードを確かめてください。');
-  await expect(page.locator('.pp-code')).toHaveAttribute('data-error', '');
-  // 打ち直すと誤りの知らせは消え、正しい部屋なら参加の画面へ進む。
-  const host = await makeHost();
-  const boxes = page.locator('.pp-code__box');
-  await boxes.nth(0).focus();
-  for (let i = 0; i < 4; i++) await boxes.nth(i).pressSequentially(host.code[i]!);
-  await expect(screen(page, 'join')).toBeVisible();
-});
+for (const delayMs of [0, 500]) {
+  const cpuRate = delayMs > 0 ? 10 : 1;
+  test(`存在しない部屋は「見つかりません」と出し、コードを入れ直せる（照会遅延${delayMs}ms・CPU${cpuRate}倍）`, async ({ page, line, makeHost }) => {
+    const cdp = cpuRate > 1 ? await page.context().newCDPSession(page) : null;
+    try {
+      if (cdp) await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
+      const host = await makeHost();
+      // 実在コードと末尾3文字を共有し、既存の部屋と衝突しない未知コードを実Workerで選ぶ。
+      let missing: string | undefined;
+      for (const first of LIMITS.CODE_ALPHABET) {
+        const candidate = first + host.code.slice(1);
+        if (candidate === host.code) continue;
+        const response = await fetch(`${host.base}/api/rooms/${candidate}`);
+        expect(response.status).toBe(200);
+        if (((await response.json()) as { exists: boolean }).exists === false) { missing = candidate; break; }
+      }
+      expect(missing, '実在コードと末尾を共有する未知コード').toBeDefined();
+      if (delayMs > 0) {
+        await page.route('**/api/rooms/*', async (route) => {
+          const response = await route.fetch();
+          // 返答だけを遅らせる。存在確認の内容は実Workerの応答を使う。
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          await route.fulfill({ response });
+        });
+      }
+      await openPad(page, line, missing!);
+      await expect(screen(page, 'entry')).toBeVisible();
+      await expect(page.locator('.pp-msg')).toHaveText(`部屋「${missing}」が見つかりません。コードを確かめてください。`);
+      await expect(page.locator('.pp-code')).toHaveAttribute('data-error', '');
+      // 打ち直すと誤りの知らせは消え、正しい部屋なら参加の画面へ進む。
+      const boxes = page.locator('.pp-code__box');
+      // 前の4文字を残すと、一部の書き換えだけで照会が始まり、残りの入力欄が消える。
+      for (let i = 0; i < 4; i++) {
+        await boxes.nth(i).fill('');
+        await expect(boxes.nth(i)).toHaveValue('');
+      }
+      await expect(page.locator('.pp-code')).not.toHaveAttribute('data-error', '');
+      await expect(page.locator('.pp-msg')).toHaveText('');
+      await boxes.nth(0).focus();
+      for (let i = 0; i < 4; i++) {
+        await boxes.nth(i).pressSequentially(host.code[i]!);
+        if (i < 3) {
+          await expect(screen(page, 'entry')).toBeVisible();
+          await expect(page.locator('.pp-code')).not.toHaveAttribute('data-error', '');
+        }
+      }
+      await expect(screen(page, 'join')).toBeVisible();
+    } finally {
+      if (cdp) {
+        try { await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 }); } finally { await cdp.detach(); }
+      }
+    }
+  });
+}
 
 test('形の正しくないコードの URL は、入力の画面に知らせを出す', async ({ page, line }) => {
   await openPad(page, line, 'AEIO');

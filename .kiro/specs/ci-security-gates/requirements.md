@@ -12,4 +12,6 @@ The maintainer requested CI repair, PR creation/merging, and defenses against un
 7. Update vulnerable existing development dependencies to compatible fixed releases and audit development as well as production dependencies in CI. No new package or major version migration.
 8. Thumbnail generation and test-only static servers must apply the same file boundary: do not serve existing links or special files, expose files outside their configured root, or write thumbnails through unsafe paths. Keep loopback-only defaults, CSP/CORS needed by sandboxed games, ordinary assets, and fonts working. Malformed requests must fail without stopping the server. Review each main CodeQL alert against its actual execution boundary; retain explicit local-concurrency limitations.
 
+9. Playtest clock pause must preserve observed Date/performance monotonicity and pending timers under RPC latency, repeated pause, resume, manual advancement, and later game-frame creation. Keep the existing local HTTP API and browser behavior.
+
 Out of scope: new games, new npm dependencies, production attacks, credential rotation, repository-wide permission changes, and claims that static scanning proves all code benign.

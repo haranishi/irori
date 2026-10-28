@@ -46,3 +46,7 @@ File-guard tests demonstrated failure before the fix, including source links, in
 ## Limits
 
 Static analysis and file checks cannot prove that arbitrary regular source code is benign. Review of future diffs is still required. The filesystem checks assume a stable checkout; an attacker concurrently changing local files requires OS isolation. Physical phones/TV, human group play, external expert audit, and production behavior were not verified in this task. Automatic deployment is currently disabled (`CD_ENABLED` absent); this work does not enable it or change deployment credentials.
+
+## Main follow-up
+
+PR10 merged as `4086ba5`, then the updated PR9 passed all applicable checks and merged as `ea9ff65`. The [first main run](https://github.com/haranishi/irori/actions/runs/40658138075) passed unit/build, audit, CodeQL and one mutation shard, while the console suite had 182 passes and a daifugo readiness race: the test read an earlier wait spec before tiles reached the phone. A focused follow-up PR waits for all phone hands before recording or inspecting them; product behavior and assertions remain unchanged. Delaying host-to-Worker tiles by 500ms reproduced the exact TypeError before the fix. After the fix, Chromium/WebKit × 0/500ms passed 4/4, and 12 related daifugo/privacy/minimum-player/departure/old-host/axe cases passed (16 total). Independent read-only review passed. Final main status is tracked by the follow-up PR and its main CI.

@@ -3,7 +3,7 @@
 //   スマホの回線が切れる → ゲームは切断を棄権にせず、戻ったスマホには連打の画面が戻って、続きから押せる
 //   回線が黙って死ぬ → 画面に戻ったときに確かめて入り直し、同じ席・同じ画面で続けられる（ゲームは切断に気づかない）
 //   ホストの再読み込み → ゲームは結果なしで終わり、同じ部屋・同じ席のままホームに戻る。次のゲームは遊べる
-//   ゲームの最中に外す（kick）→ 外された画面は「コードを入れ直す」だけ。外した席は結果に出ない
+//   ゲームの最中に外す（kick）→ 外された画面は「コードを入れ直す」だけ。外した席は、そのときの回数を「退出」で結果に残す
 // 既知の不具合1・2は、B1 が直したので、契約の形で確かめる（lib/known.ts の changed の案内に従って書き換えた）。
 import { TAPS_TO_FINISH } from '../../../games/tap-race/logic.js';
 import { ANSWER_MS } from '../../../games/quiz-4/logic.js';
@@ -141,31 +141,50 @@ async function kickFromMenu(host: Host, seat: number): Promise<void> {
   await host.expectState('playing');
 }
 
-test('ゲームの最中に外した（kick）席：外された画面は「コードを入れ直す」だけで、押すとコードの入力に戻る。外した席は、そのときの回数のまま「退出」で結果に載る', HOST, async ({ rig }) => {
-  const host = await rig.openHost();
-  const pads = await rig.join(host, ['たろう', 'はなこ', 'じろう']);
-  await host.choose('hello-pad', pads[0]);
-  await host.expectPhase('play');
-  await pads[1]!.tap('hop');
-  await kickFromMenu(host, 2);
-  await pads[1]!.expectEnded('kicked');
-  await expect(pads[1]!.page.locator('[data-act="reenter"]')).toBeVisible();
-  await expect(pads[1]!.page.locator('[data-act="rejoin"]')).toHaveCount(0);
-  await pads[1]!.page.locator('[data-act="reenter"]').tap();
-  await expect(pads[1]!.page.locator('[data-screen="entry"]')).toBeVisible();
-  await expect(pads[1]!.page.locator('.pp-code__box')).toHaveCount(4);
-  // 残りの2人でゲームは続き、リーダーが終える。外した人も、外されるまでの「ぴょん」のまま、結果に「退出」の印つきで載る
-  // （同点は、席の順。4本のゲームの結果で、抜けた人の扱いをそろえてある）。
-  await pads[0]!.expectKind('pad');
-  await pads[2]!.tap('hop');
-  await pads[0]!.tap('end');
-  const rows = await host.results();
-  expect(rows.map((r) => [r.seat, r.label, r.gone])).toEqual([
-    [2, 'ぴょん1回', true],
-    [3, 'ぴょん1回', false],
-    [1, 'ぴょん0回', false],
-  ]);
-});
+for (const delayMs of [0, 500]) {
+  test(`ゲームの最中に外した（kick）席：外された画面は「コードを入れ直す」だけで、押すとコードの入力に戻る。外した席は、そのときの回数のまま「退出」で結果に載る（入力遅延${delayMs}ms）`, HOST, async ({ rig }) => {
+    const host = await rig.openHost();
+    const pads = await rig.join(host, ['たろう', 'はなこ', 'じろう'], {
+      init: async (ctx) => {
+        // 実Workerへの転送だけを遅らせる。ぴょん以外の通信と、製品の入力処理はそのまま通す。
+        await ctx.routeWebSocket(/\/ws(?:\?|$)/, (route) => {
+          const server = route.connectToServer();
+          route.onMessage((message) => {
+            const frame = typeof message === 'string' && message.startsWith('{') ? JSON.parse(message) : null;
+            if (delayMs > 0 && frame?.t === 'in' && frame.i?.k === 'btn' && frame.i.id === 'hop') {
+              setTimeout(() => server.send(message), delayMs);
+            } else server.send(message);
+          });
+        });
+      },
+    });
+    await host.choose('hello-pad', pads[0]);
+    await host.expectPhase('play');
+    await pads[1]!.tap('hop');
+    // 送信しただけでは、ゲームが受け取る前にメニューで一時停止してしまう。
+    await expect.poll(() => host.inputs(2).filter((r) => r.f.i?.id === 'hop' && r.f.i.d === 1).length).toBe(1);
+    await kickFromMenu(host, 2);
+    await pads[1]!.expectEnded('kicked');
+    await expect(pads[1]!.page.locator('[data-act="reenter"]')).toBeVisible();
+    await expect(pads[1]!.page.locator('[data-act="rejoin"]')).toHaveCount(0);
+    await pads[1]!.page.locator('[data-act="reenter"]').tap();
+    await expect(pads[1]!.page.locator('[data-screen="entry"]')).toBeVisible();
+    await expect(pads[1]!.page.locator('.pp-code__box')).toHaveCount(4);
+    // 残りの2人でゲームは続き、リーダーが終える。外した人も、外されるまでの「ぴょん」のまま、結果に「退出」の印つきで載る
+    // （同点は、席の順。4本のゲームの結果で、抜けた人の扱いをそろえてある）。
+    await pads[0]!.expectKind('pad');
+    await pads[2]!.tap('hop');
+    // 終了も、別の端末から届くぴょんの入力を待ってから行う。
+    await expect.poll(() => host.inputs(3).filter((r) => r.f.i?.id === 'hop' && r.f.i.d === 1).length).toBe(1);
+    await pads[0]!.tap('end');
+    const rows = await host.results();
+    expect(rows.map((r) => [r.seat, r.label, r.gone])).toEqual([
+      [2, 'ぴょん1回', true],
+      [3, 'ぴょん1回', false],
+      [1, 'ぴょん0回', false],
+    ]);
+  });
+}
 
 test('ゲームの途中で空いた席に入った人は、そのゲームの参加者にならない：待機の画面で、結果には元の参加者が「退出」で載る（docs/sdk.md。元は既知の不具合1）', HOST, async ({ rig }) => {
   const host = await rig.openHost();

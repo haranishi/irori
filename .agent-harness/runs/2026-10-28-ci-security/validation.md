@@ -41,7 +41,7 @@ File-guard tests demonstrated failure before the fix, including source links, in
 
 ## GitHub and integration
 
-Pending: security follow-up PR against the party branch, successful applicable checks, merge into the party branch, updated PR9 checks and merge, then full main CI including all four mutation shards. Full browser verification is delegated to GitHub CI on the submitted commit; it is not claimed complete locally.
+[Security follow-up PR10](https://github.com/haranishi/irori/pull/10) targets the party branch. Its [first Linux run](https://github.com/haranishi/irori/actions/runs/40629510837) passed seven jobs; both CodeQL analyses reported zero findings/warnings. Browser console tests had 180 passes and one WebKit failure: a phone hop was sent immediately before opening the pause menu, so the in-flight input could be dropped before the test kicked that seat. The follow-up reproduced the failure with 500ms delayed WebKit input, then added delivery synchronization without changing expected scores, timeouts, skips or product behavior. Chromium/WebKit × 0/500ms passed 4/4 and nearby midgame regressions passed 12/12; independent diff review passed. Pending: corrected PR checks, merge into the party branch, updated PR9 checks/merge, and full main CI including all four mutation shards. Full browser verification is delegated to GitHub CI on the submitted commit; it is not claimed complete locally.
 
 ## Limits
 

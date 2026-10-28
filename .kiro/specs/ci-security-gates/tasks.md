@@ -12,3 +12,7 @@
 Evidence: `.agent-harness/runs/2026-10-28-ci-security/validation.md` (filled after execution).
 
 Implementation and local verification are complete. Release completion is evaluated from the live follow-up PR, PR9, and main Actions results; the validation record distinguishes that external gate from local test results.
+
+PR10 Linux CI found an existing midgame test race (WebKit: 180 passed, 1 failed): the test opens pause before the prior phone hop arrives. The next scoped fix must reproduce that race with delayed input, wait for observed delivery, retain result assertions, and rerun both browser engines before integration.
+
+The follow-up reproduced the old midgame assertion failure with 500ms delayed WebKit input; delivery barriers fixed it without changing expected scores. Chromium/WebKit × 0/500ms passed 4/4, nearby midgame regression passed 12/12, and the independent read-only diff review passed.

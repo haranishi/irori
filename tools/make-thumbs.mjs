@@ -12,10 +12,10 @@
 // Playwright の Chromium で games/<id>/?mock=3 を開き、ゲームごとの手順（仮想プレイヤーのキー操作）で数秒進め、
 // 開発用の仮想プレイヤーの表示を隠して撮る。点の位置などは毎回の乱数で変わるので、撮るたびに少し違う絵になる。
 import { createServer } from 'node:http';
-import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { extname, join, normalize, sep } from 'node:path';
-import { isDirectRun } from './lib/files.mjs';
+import { extname, join } from 'node:path';
+import { assertSafePath, assertSafeTree, isDirectRun } from './lib/files.mjs';
 import { canvasFontPatchScript, fontFaceCss, loadOflFonts, waitForOflFonts } from './lib/ofl-fonts.mjs';
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
@@ -137,9 +137,20 @@ async function hold(page, keys, ms) {
 
 /** games/ を本番と同じ CSP で配る。ポートは 5200〜5219 の空きを使う。 */
 export async function serveGames(root, { from = 5200, to = 5219, fonts = {} } = {}) {
-  const base = join(root, 'games');
+  const gameRoot = assertSafePath(root, 'games');
+  if (!gameRoot?.isDirectory()) throw new Error('Unsafe source path: games (expected directory)');
   const server = createServer((req, res) => {
-    let rel = decodeURIComponent(new URL(req.url ?? '/', 'http://127.0.0.1').pathname);
+    let rel;
+    try {
+      rel = decodeURIComponent((req.url ?? '/').split(/[?#]/, 1)[0]);
+      if (!rel.startsWith('/') || rel.startsWith('//') || rel.includes('\\') || rel.includes('\0') || rel.split('/').some((part) => part === '.' || part === '..')) {
+        res.writeHead(400).end();
+        return;
+      }
+    } catch {
+      res.writeHead(400).end();
+      return;
+    }
     // 撮るときだけ、書体を同じオリジンから配る（CSP の font-src 'self'。枠はオリジンが空なので CORS も許す）。
     const font = rel === '/__font/jp.ttf' ? fonts.jp : undefined;
     if (font) {
@@ -148,18 +159,23 @@ export async function serveGames(root, { from = 5200, to = 5219, fonts = {} } = 
       return;
     }
     if (rel.endsWith('/')) rel += 'index.html';
-    const file = normalize(join(base, rel));
-    if (!file.startsWith(base + sep) || !existsSync(file) || !statSync(file).isFile()) {
+    let content;
+    const source = `games/${rel.slice(1)}`;
+    try {
+      const st = assertSafePath(root, source);
+      if (!st?.isFile()) { res.writeHead(404).end(); return; }
+      content = readFileSync(join(root, source));
+    } catch {
       res.writeHead(404).end();
       return;
     }
     res.writeHead(200, {
-      'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream',
+      'Content-Type': TYPES[extname(source)] ?? 'application/octet-stream',
       'Content-Security-Policy': CSP,
       'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-store',
     });
-    res.end(readFileSync(file));
+    res.end(content);
   });
   for (let port = from; port <= to; port++) {
     const ok = await new Promise((resolve) => {
@@ -171,17 +187,42 @@ export async function serveGames(root, { from = 5200, to = 5219, fonts = {} } = 
   throw new Error(`make-thumbs: ${from}〜${to} に空きポートがありません`);
 }
 
+/** Validate the complete input/output set before fonts, browser startup, mkdir or screenshots. */
+function thumbnailPlan(root, ids) {
+  if (!Array.isArray(ids)) throw new Error('Unsafe source path: game ids must be an array');
+  const out = assertSafePath(root, 'registry/thumbs');
+  if (out && !out.isDirectory()) throw new Error('Unsafe source path: registry/thumbs (expected directory)');
+  assertSafeTree(root, 'registry/thumbs', { allowMissing: true });
+  return Array.from(ids, (id) => {
+    if (typeof id !== 'string' || !/^[a-z0-9-]+$/.test(id)) throw new Error('Unsafe source path: invalid game id');
+    if (!Object.hasOwn(SCENES, id)) throw new Error(`make-thumbs: ${id} の撮り方がありません（SCENES に足す）`);
+    const game = assertSafePath(root, `games/${id}`);
+    if (!game?.isDirectory()) throw new Error(`Unsafe source path: games/${id} (expected directory)`);
+    assertSafeTree(root, `games/${id}`);
+    const manifestFile = `registry/games/${id}.json`;
+    if (!assertSafePath(root, manifestFile)?.isFile()) throw new Error(`Unsafe source path: ${manifestFile} (expected file)`);
+    const manifest = JSON.parse(readFileSync(join(root, manifestFile), 'utf8'));
+    if (manifest?.id !== id || typeof manifest.thumbnail !== 'string' || !/^[a-z0-9-]+\.(png|jpg|webp)$/.test(manifest.thumbnail)) {
+      throw new Error(`Unsafe source path: ${manifestFile} (invalid thumbnail or id)`);
+    }
+    const output = `registry/thumbs/${manifest.thumbnail}`;
+    const existing = assertSafePath(root, output);
+    if (existing && !existing.isFile()) throw new Error(`Unsafe source path: ${output} (expected file)`);
+    return { id, scene: SCENES[id], thumbnail: manifest.thumbnail, path: join(root, output) };
+  });
+}
+
 export async function makeThumbs(root, ids, env = process.env) {
+  const plan = thumbnailPlan(root, ids);
   const fonts = loadOflFonts(env, ['jp']); // 書体が無い・違うときは、撮る前に止める
   const { chromium } = createRequire(join(root, 'package.json'))('@playwright/test');
   mkdirSync(join(root, 'registry/thumbs'), { recursive: true });
   const srv = await serveGames(root, { fonts });
-  const browser = await chromium.launch();
+  let browser;
   const made = [];
   try {
-    for (const id of ids) {
-      const scene = SCENES[id];
-      if (!scene) throw new Error(`make-thumbs: ${id} の撮り方がありません（SCENES に足す）`);
+    browser = await chromium.launch();
+    for (const { id, scene, thumbnail, path } of plan) {
       const page = await browser.newPage({ viewport: { width: 640, height: 480 }, deviceScaleFactor: 1, locale: 'ja-JP' });
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));
@@ -212,15 +253,13 @@ export async function makeThumbs(root, ids, env = process.env) {
       });
       if (bad) throw new Error(`make-thumbs: ${id} の canvas の書体が差し替わっていません（${bad}）`);
       if (errors.length) throw new Error(`make-thumbs: ${id} でエラー：${errors.join(' / ')}`);
-      const manifest = JSON.parse(readFileSync(join(root, 'registry/games', `${id}.json`), 'utf8'));
-      const path = join(root, 'registry/thumbs', manifest.thumbnail);
-      const jpeg = /\.jpe?g$/.test(manifest.thumbnail);
+      const jpeg = /\.jpe?g$/.test(thumbnail);
       await page.screenshot({ path, type: jpeg ? 'jpeg' : 'png', ...(jpeg ? { quality: 90 } : {}) });
-      made.push({ id, thumbnail: manifest.thumbnail, bytes: statSync(path).size });
+      made.push({ id, thumbnail, bytes: statSync(path).size });
       await page.close();
     }
   } finally {
-    await browser.close();
+    await browser?.close();
     await srv.close();
   }
   return made;

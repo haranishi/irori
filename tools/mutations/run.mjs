@@ -9,6 +9,7 @@
 //     "command": ["npm", "test", "-w", "@irori/room"],   // 赤くなるべき試験のコマンド
 //     "timeoutMs": 300000 }                  // 省略可
 //
+// --shard 1/4 で4分割の1番目だけを選ぶ。--only と併用すると、絞ったあとに分割する。
 // 実際の作業ツリーは書き換えない。リポジトリを一時フォルダに写し、そこで壊す。
 // 写しの node_modules は、元のものへの近道にし、@irori/* だけを写しの中の部品へ向ける（部品どうしの参照が、
 // 壊した写しを読むように）。壊す前の状態でも、同じコマンドが緑になることを先に確かめる。
@@ -43,6 +44,40 @@ export function loadSpecs(specsDir) {
     ids.add(s.id);
   }
   return specs;
+}
+
+/** 選択は実行と --list で共有し、0件の成功や分割の取りこぼしを防ぐ。 */
+export function selectSpecs({ specs, only, shard }) {
+  let selected = only === undefined ? specs : specs.filter((s) => s.id.startsWith(only));
+  if (shard !== undefined) {
+    const match = typeof shard === 'string' && /^([1-9]\d*)\/([1-9]\d*)$/.exec(shard);
+    const index = match ? Number(match[1]) : NaN;
+    const count = match ? Number(match[2]) : NaN;
+    if (!Number.isSafeInteger(index) || !Number.isSafeInteger(count) || index > count) {
+      throw new Error('--shard は index/count（1からcountまでの整数、例: 1/4）にします');
+    }
+    selected = selected.filter((_, i) => i % count === index - 1);
+  }
+  if (selected.length === 0) throw new Error('変異の選択が0件です（--only と --shard を確認してください）');
+  return selected;
+}
+
+function parseArgs(args) {
+  const opts = {};
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--list') {
+      opts.list = true;
+    } else if (arg === '--only' || arg === '--shard') {
+      const key = arg.slice(2);
+      const value = args[++i];
+      if (!value || value.startsWith('--') || opts[key] !== undefined) throw new Error(`${arg} の値を1回指定してください`);
+      opts[key] = value;
+    } else {
+      throw new Error(`知らない引数です: ${arg}`);
+    }
+  }
+  return opts;
 }
 
 function copyTree(src, dest) {
@@ -110,11 +145,10 @@ function run(command, cwd, timeoutMs) {
   return { status: r.status, signal: r.signal, timedOut: r.status === 124, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
 }
 
-export function runMutations({ root, specs, log = console.log, only }) {
+export function runMutations({ root, specs, log = console.log, only, shard }) {
   const results = [];
   const baselines = new Map();
-  for (const spec of specs) {
-    if (only && !spec.id.startsWith(only)) continue;
+  for (const spec of selectSpecs({ specs, only, shard })) {
     const timeoutMs = spec.timeoutMs ?? 300_000;
     const key = JSON.stringify(spec.command);
     const copy = makeCopy(root);
@@ -156,18 +190,20 @@ export function runMutations({ root, specs, log = console.log, only }) {
 
 if (isDirectRun(import.meta.url)) {
   const root = process.cwd();
-  const args = process.argv.slice(2);
-  const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : undefined;
-  const specs = loadSpecs(join(root, 'tools/mutations/specs'));
-  if (args.includes('--list')) {
-    for (const s of specs) console.log(`${s.id}\t${s.note ?? ''}`);
-    process.exit(0);
-  }
-  if (specs.length === 0) {
-    console.error('mutations: 仕様が1件もありません（tools/mutations/specs/*.json）。0件の成功は、成功ではありません');
+  let results;
+  try {
+    const { only, shard, list } = parseArgs(process.argv.slice(2));
+    const specs = loadSpecs(join(root, 'tools/mutations/specs'));
+    const selected = selectSpecs({ specs, only, shard });
+    if (list) {
+      for (const s of selected) console.log(`${s.id}\t${s.note ?? ''}`);
+      process.exit(0);
+    }
+    results = runMutations({ root, specs: selected });
+  } catch (err) {
+    console.error(`mutations: ${err.message}`);
     process.exit(1);
   }
-  const results = runMutations({ root, specs, only });
   const bad = results.filter((r) => r.verdict !== 'KILLED');
   console.log(`\nmutations: ${results.length}件中 ${results.length - bad.length}件で赤くなった`);
   const slow = results.filter((r) => r.timedOut);

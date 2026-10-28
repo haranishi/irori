@@ -155,8 +155,9 @@ export class TestHost {
     return this.until(() => (this.events(p).length >= n ? this.events(p) : undefined), `席${p}の入力${n}件`, timeoutMs);
   }
 
-  /** 試験用：Node からスマホ役をつなぐ（満員を作るため）。 */
+  /** 試験用：Node のスマホ役をつなぎ、本人とホストの両側に参加が届くまで待つ（満員を作るため）。 */
   async addNodePad(name: string): Promise<{ id: number; leave: () => void }> {
+    const before = this.frames.length;
     let you: PlayerInfo | null = null;
     const s = new RoomSocket<'pad'>({ role: 'pad', url: roomSocketUrl(this.base, this.code), name: () => name });
     s.on('frame', (f) => {
@@ -166,6 +167,11 @@ export class TestHost {
     this.pads.push(s);
     s.connect();
     const me = await this.until(() => you ?? undefined, `Node のスマホ役「${name}」の welcome`);
+    // 別接続のjoinedはwelcomeより遅れることがある。古い同席の参加記録は、今回の到達に数えない。
+    await this.until(
+      () => this.frames.slice(before).some((f) => f.t === 'joined' && f.p.id === me.id) ? true : undefined,
+      `Node のスマホ役「${name}」の joined`,
+    );
     return {
       id: me.id,
       leave: () => {

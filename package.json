@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "dev": "node tools/dev.mjs",
-    "prepare:web": "npm run build -w @irori/sdk && node tools/sync-sdk.mjs && node tools/build-registry.mjs && node tools/build-notices.mjs",
+    "prepare:web": "npm run check:files && npm run build -w @irori/sdk && node tools/sync-sdk.mjs && node tools/build-registry.mjs && node tools/build-notices.mjs",
     "build": "npm run prepare:web && npm run build -w @irori/web",
     "deploy": "npm run build && npm run deploy -w @irori/edge",
     "deploy:dry-run": "npm run build && npm run deploy -w @irori/edge -- --dry-run",
@@ -28,7 +28,8 @@
     "sync:sdk": "node tools/sync-sdk.mjs",
     "smoke:dev": "node tools/smoke-dev.mjs",
     "test:tools": "node --test \"tools/tests/**/*.test.mjs\"",
-    "test:games": "vitest run --config vitest.games.config.ts"
+    "test:games": "vitest run --config vitest.games.config.ts",
+    "check:files": "node tools/check-source-files.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

@@ -4,11 +4,11 @@
 //   node tools/sync-sdk.mjs --check                          … ずれがあれば終了コード1（npm run check から呼ばれる）
 // --check は dist を使わず、いまのソースから一時フォルダへビルドし直して比べる。古い dist と比べると、ずれを見逃すため。
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { isDirectRun } from './lib/files.mjs';
+import { assertSafePath, isDirectRun, listFiles } from './lib/files.mjs';
 
 const SDK = 'packages/sdk';
 /** コンソールが配る置き場。ビルドが作るもの（.gitignore 済み）なので、無ければ --check では見ない。 */
@@ -18,9 +18,12 @@ const PUBLIC_DIR = 'apps/web/public/sdk/v1';
 export function targets(root) {
   const out = [];
   const games = join(root, 'games');
-  if (existsSync(games)) {
+  const gameStat = assertSafePath(root, 'games');
+  if (gameStat && !gameStat.isDirectory()) throw new Error('Unsafe source path: games (expected directory)');
+  if (gameStat) {
     for (const name of readdirSync(games).sort()) {
-      if (!name.startsWith('.') && statSync(join(games, name)).isDirectory()) out.push(`games/${name}`);
+      if (name.startsWith('.')) continue;
+      if (assertSafePath(root, `games/${name}`).isDirectory()) out.push(`games/${name}`);
     }
   }
   out.push(PUBLIC_DIR);
@@ -28,6 +31,8 @@ export function targets(root) {
 }
 
 export function readDist(root) {
+  assertSafePath(root, `${SDK}/dist/irori.js`);
+  assertSafePath(root, `${SDK}/irori.d.ts`);
   const js = join(root, SDK, 'dist/irori.js');
   if (!existsSync(js)) return null;
   return { js: readFileSync(js, 'utf8'), dts: readFileSync(join(root, SDK, 'irori.d.ts'), 'utf8') };
@@ -38,6 +43,7 @@ export function readDist(root) {
  * 実行したフォルダからの相対パスが入るので、同じ packages/sdk で、別のプロセスとして組む。
  */
 export async function buildFresh(root) {
+  listFiles(root);
   const pkg = createRequire(join(root, 'package.json')).resolve('vite/package.json');
   const vite = join(dirname(pkg), 'bin/vite.js');
   const out = mkdtempSync(join(tmpdir(), 'irori-sync-sdk-'));
@@ -54,8 +60,18 @@ export async function buildFresh(root) {
 }
 
 export function syncSdk(root, built) {
+  const destinations = targets(root);
+  // Fail before the first write, even when a later destination contains the unsafe link.
+  for (const dir of destinations) {
+    const st = assertSafePath(root, dir);
+    if (st && !st.isDirectory()) throw new Error(`Unsafe source path: ${dir} (expected directory)`);
+    for (const name of ['irori.js', 'irori.d.ts']) {
+      const file = assertSafePath(root, `${dir}/${name}`);
+      if (file && !file.isFile()) throw new Error(`Unsafe source path: ${dir}/${name} (expected file)`);
+    }
+  }
   const written = [];
-  for (const dir of targets(root)) {
+  for (const dir of destinations) {
     mkdirSync(join(root, dir), { recursive: true });
     writeFileSync(join(root, dir, 'irori.js'), built.js);
     writeFileSync(join(root, dir, 'irori.d.ts'), built.dts);
@@ -67,9 +83,12 @@ export function syncSdk(root, built) {
 export function checkSdk(root, built) {
   const problems = [];
   for (const dir of targets(root)) {
+    const st = assertSafePath(root, dir);
+    if (st && !st.isDirectory()) throw new Error(`Unsafe source path: ${dir} (expected directory)`);
     if (dir === PUBLIC_DIR && !existsSync(join(root, dir))) continue;
     for (const [name, want] of [['irori.js', built.js], ['irori.d.ts', built.dts]]) {
       const file = join(root, dir, name);
+      assertSafePath(root, `${dir}/${name}`);
       if (!existsSync(file)) problems.push(`${dir}/${name}: ありません`);
       else if (readFileSync(file, 'utf8') !== want) problems.push(`${dir}/${name}: いまの SDK のビルドと違います`);
     }
@@ -79,6 +98,7 @@ export function checkSdk(root, built) {
 
 if (isDirectRun(import.meta.url)) {
   const root = process.cwd();
+  listFiles(root);
   if (process.argv.includes('--check')) {
     const problems = checkSdk(root, await buildFresh(root));
     if (problems.length) {

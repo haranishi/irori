@@ -10,7 +10,7 @@ import addFormats from 'ajv-formats';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { licenseAllowed } from './check-licenses.mjs';
-import { isDirectRun } from './lib/files.mjs';
+import { assertSafePath, assertSafeTree, isDirectRun, listFiles } from './lib/files.mjs';
 import { buildFresh, readDist } from './sync-sdk.mjs';
 
 /** サムネイルの決まり（docs/registry.md）。容量の KB は 1024 バイトで数える。 */
@@ -129,6 +129,7 @@ function urlProblems(m) {
  * @returns {{ problems: string[], games: Record<string, unknown>[] }}
  */
 export function checkRegistry(root, { sdk, now = Date.now() }) {
+  listFiles(root);
   const problems = [];
   const games = [];
   const dir = join(root, 'registry/games');
@@ -194,6 +195,7 @@ export function checkRegistry(root, { sdk, now = Date.now() }) {
 function thumbProblems(root, file) {
   const path = join(root, 'registry/thumbs', file);
   if (!/^[a-z0-9-]+\.(webp|png|jpg)$/.test(file)) return [];
+  assertSafePath(root, `registry/thumbs/${file}`);
   if (!existsSync(path)) return [`サムネイル registry/thumbs/${file} がありません`];
   const out = [];
   const bytes = statSync(path).size;
@@ -213,6 +215,7 @@ function bundledProblems(root, bundled, id, sdk) {
   if (!/^games\/[a-z0-9-]+\/$/.test(bundled)) return [];
   if (bundled !== `games/${id}/`) return [`entry.bundled「${bundled}」は games/${id}/ にします（id と同じフォルダ）`];
   const dir = join(root, bundled);
+  assertSafeTree(root, bundled, { allowMissing: true });
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return [`entry.bundled のフォルダ ${bundled} がありません`];
   const out = [];
   if (!existsSync(join(dir, 'index.html'))) out.push(`${bundled}index.html がありません`);

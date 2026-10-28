@@ -9,7 +9,7 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkRegistry, loadSdk } from './check-registry.mjs';
-import { isDirectRun } from './lib/files.mjs';
+import { assertSafePath, assertSafeTree, isDirectRun, listFiles } from './lib/files.mjs';
 
 const OUT_REGISTRY = 'apps/web/public/registry';
 const OUT_GAMES = 'apps/web/public/games';
@@ -45,6 +45,22 @@ export function shelfOrder(games) {
  * @param {Record<string, any>[]} games
  */
 export function writeRegistry(root, games) {
+  // Validate every input and destination before removing the previous working output.
+  const thumbsStat = assertSafePath(root, 'registry/thumbs');
+  if (thumbsStat && !thumbsStat.isDirectory()) throw new Error('Unsafe source path: registry/thumbs (expected directory)');
+  assertSafeTree(root, 'registry/thumbs', { allowMissing: true });
+  for (const game of games) {
+    if (typeof game.entry?.bundled !== 'string') continue;
+    if (!/^games\/[a-z0-9-]+\/$/.test(game.entry.bundled)) throw new Error('Unsafe source path: invalid bundled game directory');
+    const source = assertSafePath(root, game.entry.bundled);
+    if (source && !source.isDirectory()) throw new Error('Unsafe source path: bundled game (expected directory)');
+    assertSafeTree(root, game.entry.bundled, { include: shipped });
+  }
+  for (const out of [OUT_REGISTRY, OUT_GAMES]) {
+    const st = assertSafePath(root, out);
+    if (st && !st.isDirectory()) throw new Error(`Unsafe source path: ${out} (expected directory)`);
+    assertSafeTree(root, out, { allowMissing: true });
+  }
   rmSync(join(root, OUT_REGISTRY), { recursive: true, force: true });
   rmSync(join(root, OUT_GAMES), { recursive: true, force: true });
   mkdirSync(join(root, OUT_REGISTRY, 'thumbs'), { recursive: true });
@@ -68,6 +84,7 @@ export function writeRegistry(root, games) {
 
 if (isDirectRun(import.meta.url)) {
   const root = process.cwd();
+  listFiles(root);
   const { problems, games } = checkRegistry(root, { sdk: await loadSdk(root) });
   if (problems.length) {
     console.error(problems.join('\n'));

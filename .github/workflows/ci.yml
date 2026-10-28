@@ -30,7 +30,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: node tools/check-source-files.mjs
+      - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test
       - run: npm run check
@@ -49,7 +50,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: node tools/check-source-files.mjs
+      - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run build
       - run: npm run test:e2e
@@ -66,12 +68,17 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: node tools/check-source-files.mjs
+      - run: npm ci --ignore-scripts
       - run: npm run smoke:dev
 
   mutations:
-    name: 門番が生きているか（わざと壊して、試験が赤くなるか）
-    # 全件は1時間ほどかかるので、PRでは流さない。main への反映と、週1回の定期実行で流す。
+    name: mutations (${{ matrix.shard }}/4)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    # 全件を4分割し、main への反映と週1回の定期実行で流す。PRでは全件を流さない。
     if: github.event_name != 'pull_request'
     timeout-minutes: 150
     runs-on: ubuntu-latest
@@ -83,10 +90,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: node tools/check-source-files.mjs
+      - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run build
-      - run: npm run mutations
+      - run: npm run mutations -- --shard ${{ matrix.shard }}/4
 
   deps:
     name: 依存の脆弱性とライセンス
@@ -99,8 +107,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npm audit --omit=dev --audit-level=high
+      - run: node tools/check-source-files.mjs
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
       - run: node tools/check-licenses.mjs
 
   reuse:
@@ -123,3 +132,27 @@ jobs:
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          category: /language:${{ matrix.language }}

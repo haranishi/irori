@@ -1,0 +1,106 @@
+[
+  {
+    "id": "tools-source-files-no-type-check",
+    "note": "リンクと特殊ファイルをlstatで拒まない",
+    "file": "tools/lib/files.mjs",
+    "find": "    if (st.isSymbolicLink() || (!st.isFile() && !st.isDirectory())) {",
+    "replace": "    if (false) {",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/source-files.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-source-files-no-registry-preflight",
+    "note": "配信の前に全入力と出力先を確かめず、古い出力を消してからリンクを読む",
+    "file": "tools/build-registry.mjs",
+    "find": "  // Validate every input and destination before removing the previous working output.\n  const thumbsStat = assertSafePath(root, 'registry/thumbs');\n  if (thumbsStat && !thumbsStat.isDirectory()) throw new Error('Unsafe source path: registry/thumbs (expected directory)');\n  assertSafeTree(root, 'registry/thumbs', { allowMissing: true });\n  for (const game of games) {\n    if (typeof game.entry?.bundled !== 'string') continue;\n    if (!/^games\\/[a-z0-9-]+\\/$/.test(game.entry.bundled)) throw new Error('Unsafe source path: invalid bundled game directory');\n    const source = assertSafePath(root, game.entry.bundled);\n    if (source && !source.isDirectory()) throw new Error('Unsafe source path: bundled game (expected directory)');\n    assertSafeTree(root, game.entry.bundled, { include: shipped });\n  }\n  for (const out of [OUT_REGISTRY, OUT_GAMES]) {\n    const st = assertSafePath(root, out);\n    if (st && !st.isDirectory()) throw new Error(`Unsafe source path: ${out} (expected directory)`);\n    assertSafeTree(root, out, { allowMissing: true });\n  }\n",
+    "replace": "",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/source-files.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-source-files-no-sdk-preflight",
+    "note": "SDKの一部を書いたあとで不正な出力先へ進む",
+    "file": "tools/sync-sdk.mjs",
+    "find": "  // Fail before the first write, even when a later destination contains the unsafe link.\n  for (const dir of destinations) {\n    const st = assertSafePath(root, dir);\n    if (st && !st.isDirectory()) throw new Error(`Unsafe source path: ${dir} (expected directory)`);\n    for (const name of ['irori.js', 'irori.d.ts']) {\n      const file = assertSafePath(root, `${dir}/${name}`);\n      if (file && !file.isFile()) throw new Error(`Unsafe source path: ${dir}/${name} (expected file)`);\n    }\n  }\n",
+    "replace": "",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/source-files.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-source-files-no-sdk-read-check",
+    "note": "SDKのビルド済み入力のリンクを追う",
+    "file": "tools/sync-sdk.mjs",
+    "find": "  assertSafePath(root, `${SDK}/dist/irori.js`);\n  assertSafePath(root, `${SDK}/irori.d.ts`);\n",
+    "replace": "",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/source-files.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-source-files-no-sdk-check-guard",
+    "note": "SDKの同期検査でファイルリンクを追う",
+    "file": "tools/sync-sdk.mjs",
+    "find": "      assertSafePath(root, `${dir}/${name}`);\n",
+    "replace": "",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/source-files.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-source-files-no-registry-source-check",
+    "note": "登録検査でリンクされたmanifestを読む",
+    "file": "tools/check-registry.mjs",
+    "find": "  listFiles(root);\n",
+    "replace": "",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/source-files.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-source-files-preflight-always-pass",
+    "note": "依存導入前の検査が何も見なくなる",
+    "file": "tools/check-source-files.mjs",
+    "find": "    listFiles(root);",
+    "replace": "    // source inspection removed",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/source-files.test.mjs"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "tools-source-files-no-generated-tree-check",
+    "note": "生成出力を除外するときに既存木のリンク・特殊ファイルを確かめない",
+    "file": "tools/lib/files.mjs",
+    "find": "        assertSafeTree(root, rel); // Inspect metadata only; do not read or list generated contents as sources.",
+    "replace": "        // generated metadata inspection removed",
+    "command": [
+      "node",
+      "--test",
+      "tools/tests/source-files.test.mjs"
+    ],
+    "timeoutMs": 120000
+  }
+]

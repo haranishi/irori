@@ -16,3 +16,7 @@ Implementation and local verification are complete. Release completion is evalua
 PR10 Linux CI found an existing midgame test race (WebKit: 180 passed, 1 failed): the test opens pause before the prior phone hop arrives. The next scoped fix must reproduce that race with delayed input, wait for observed delivery, retain result assertions, and rerun both browser engines before integration.
 
 The follow-up reproduced the old midgame assertion failure with 500ms delayed WebKit input; delivery barriers fixed it without changing expected scores. Chromium/WebKit × 0/500ms passed 4/4, nearby midgame regression passed 12/12, and the independent read-only diff review passed.
+
+The second Linux run passed all 183 console and 50 host browser cases, but two pad cases exposed a shared TestHost race: addNodePad returned after pad welcome before host joined. Final CI cycle repairs that fixture contract and verifies both event orders and reused-seat history before rerunning the full pad suite.
+
+The shared fixture fix failed 3/4 controlled-order regressions before the change and passed 4/4 afterward. Both removing the joined barrier and removing the old-event boundary were detected. Full web unit suite passed 217 tests; actual Worker/pad browser suite passed 78 with 71 existing conditional skips. Independent read-only review passed.

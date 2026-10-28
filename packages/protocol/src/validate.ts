@@ -218,7 +218,8 @@ function labeled(v: unknown, where: string): ButtonSpec {
 function labeledList(v: unknown, min: number, max: number, where: string): ButtonSpec[] {
   if (!Array.isArray(v)) reject(`${where}: array`);
   if (v.length < min || v.length > max) reject(`${where}: ${min}..${max} items`);
-  return v.map((item, i) => labeled(item, `${where}[${i}]`));
+  // MessagePort preserves array holes; inspect every index before JSON can turn them into null.
+  return Array.from(v, (item, i) => labeled(item, `${where}[${i}]`));
 }
 
 function tileSpec(v: unknown, where: string): TileSpec {
@@ -278,7 +279,7 @@ function padSpec(v: unknown, allowRemote: boolean, where: string): PadSpec {
     case 'tiles': {
       onlyKeys(o, ['k', 'tiles', 'ok', 'pass', 'min', 'max', 'note', 'hint', 'disabled', 'token'], where);
       if (!Array.isArray(o.tiles) || o.tiles.length > LIMITS.TILES_MAX) reject(`${where}.tiles: array of at most ${LIMITS.TILES_MAX}`);
-      const tiles = o.tiles.map((t: unknown, i: number) => tileSpec(t, `${where}.tiles[${i}]`));
+      const tiles = Array.from(o.tiles, (t: unknown, i: number) => tileSpec(t, `${where}.tiles[${i}]`));
       if (new Set(tiles.map((t) => t.id)).size !== tiles.length) reject(`${where}.tiles: duplicate id`);
       // 選べない札（off）は数えない。選ぶ数の上限は、選べる札の数と TILES_SELECT_MAX の小さいほう。
       const cap = Math.min(LIMITS.TILES_SELECT_MAX, tiles.filter((t) => t.off !== true).length);

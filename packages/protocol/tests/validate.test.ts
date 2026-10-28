@@ -323,3 +323,32 @@ it('tilesのtokenと入力tは任意の24文字識別子で、通った値を保
     expect(parsePadFrame(J({ t: 'in', i: { k: 'tiles', ids: [], t: token } })).ok).toBe(false);
   }
 });
+
+
+describe('sparse pad arrays', () => {
+  const variants = [
+    { k: 'tiles', key: 'tiles', extra: { ok: '出す' }, max: LIMITS.TILES_MAX },
+    { k: 'pad', key: 'buttons', extra: {}, max: LIMITS.BUTTONS_MAX },
+    { k: 'tilt', key: 'buttons', extra: {}, max: LIMITS.BUTTONS_MAX },
+    { k: 'choices', key: 'options', extra: {}, max: LIMITS.CHOICES_MAX },
+  ];
+  it.each(variants)('$k rejects every hole before and after structured cloning', ({ k, key, extra }) => {
+    for (const missing of [[0], [1], [2], [0, 1, 2]]) {
+      const list = Array.from({ length: 3 }, (_, i) => ({ id: `a${i}`, label: '札' }));
+      for (const i of missing) delete list[i];
+      const spec = { k, [key]: list, ...extra };
+      for (const value of [spec, structuredClone(spec)]) {
+        expect(validatePadSpec(value).ok).toBe(false);
+        // JSON replaces holes with null; the bridge must reject them before a host sends this frame.
+        expect(parseHostFrame(J({ t: 'pad', to: '*', spec: value })).ok).toBe(false);
+      }
+    }
+  });
+  it.each(variants)('$k preserves dense arrays at the existing limit', ({ k, key, extra, max }) => {
+    const spec = { k, [key]: Array.from({ length: max }, (_, i) => ({ id: `a${i}`, label: '札' })), ...extra };
+    for (const value of [spec, structuredClone(spec)]) {
+      expect(ok(validatePadSpec(value))).toEqual(value);
+      expect(ok(parseHostFrame(J({ t: 'pad', to: '*', spec: value })))).toEqual({ t: 'pad', to: '*', spec: value });
+    }
+  });
+});

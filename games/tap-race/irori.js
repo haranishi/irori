@@ -292,7 +292,7 @@ function labeled(v, where) {
 function labeledList(v, min, max, where) {
 	if (!Array.isArray(v)) reject(`${where}: array`);
 	if (v.length < min || v.length > max) reject(`${where}: ${min}..${max} items`);
-	return v.map((item, i) => labeled(item, `${where}[${i}]`));
+	return Array.from(v, (item, i) => labeled(item, `${where}[${i}]`));
 }
 function tileSpec(v, where) {
 	const o = obj(v, where);
@@ -393,7 +393,7 @@ function padSpec(v, allowRemote, where) {
 				"token"
 			], where);
 			if (!Array.isArray(o.tiles) || o.tiles.length > LIMITS.TILES_MAX) reject(`${where}.tiles: array of at most ${LIMITS.TILES_MAX}`);
-			const tiles = o.tiles.map((t, i) => tileSpec(t, `${where}.tiles[${i}]`));
+			const tiles = Array.from(o.tiles, (t, i) => tileSpec(t, `${where}.tiles[${i}]`));
 			if (new Set(tiles.map((t) => t.id)).size !== tiles.length) reject(`${where}.tiles: duplicate id`);
 			const cap = Math.min(LIMITS.TILES_SELECT_MAX, tiles.filter((t) => t.off !== true).length);
 			const s = {

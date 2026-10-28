@@ -62,3 +62,25 @@ describe('SDK と host-bridge の検査の一致', () => {
     expect(checkPadSpec(spec) === null).toBe(validateGameToHost({ m: 'setPad', to: '*', spec }).ok);
   });
 });
+
+
+describe('sparse pad arrays at the SDK/bridge boundary', () => {
+  it.each([
+    { k: 'tiles', key: 'tiles', extra: { ok: '出す' } },
+    { k: 'pad', key: 'buttons', extra: {} },
+    { k: 'tilt', key: 'buttons', extra: {} },
+    { k: 'choices', key: 'options', extra: {} },
+  ])('$k rejects holes rather than forwarding invalid room frames', ({ k, key, extra }) => {
+    const dense = Array.from({ length: 3 }, (_, i) => ({ id: `a${i}`, label: '札' }));
+    const sparse = [...dense];
+    delete sparse[1];
+    for (const list of [sparse, new Array(3), dense]) {
+      const spec = { k, [key]: list, ...extra };
+      for (const value of [spec, structuredClone(spec)]) {
+        const valid = list === dense;
+        expect(checkPadSpec(value) === null).toBe(valid);
+        expect(validateGameToHost({ m: 'setPad', to: '*', spec: value }).ok).toBe(valid);
+      }
+    }
+  });
+});

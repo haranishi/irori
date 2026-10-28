@@ -358,39 +358,62 @@ test('大富豪：4台で弱い単札・パス・秘匿・退出・配り直し'
   await new CardPrivacy('daifugo', pads).scan(host);
 });
 
-test('大富豪：規則外の出し方を続けて断られても、スマホは固まらず、正しく出せば進む', HOST, async ({ rig }) => {
-  // 以前の不具合：断りの画面が前回と同じ内容だと、ホストは送り直さず、スマホが「送りました」のまま固まった（番が進まない）。
-  const host = await rig.openHost();
-  const pads = await rig.join(host, NAMES.slice(0, 3));
-  await host.choose('daifugo', pads[0]);
-  await start(pads[0]!);
-  await host.expectPhase('play');
-  const pad = await turn(host, pads, '.seat[aria-current="step"][data-seat]');
-  const others = pads.filter((p) => p !== pad);
-  const othersBefore = others.map((p) => JSON.stringify(latest(p)));
-  const refusals: string[] = [];
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const spec = latest(pad) as Tiles;
-    // 場が空のとき、数の違う2枚（ジョーカーは何にでもなるので除く）は規則外。
-    const playable = spec.tiles.filter((tile) => !tile.off && !tile.label.startsWith('ジョーカー'));
-    const first = playable[0]!;
-    const second = playable.find((tile) => tile.label.slice(1) !== first.label.slice(1));
-    expect(second, '数の違う2枚を選べる手札').toBeDefined();
-    const before = JSON.stringify(spec);
-    await pad.tiles([first.id, second!.id]);
-    await expect.poll(() => JSON.stringify(latest(pad)), { message: `${attempt}回目の断りの画面がスマホへ届く` }).not.toBe(before);
-    await expect(pad.page.locator('.irori-pad__tiles'), `${attempt}回目の断りのあとも、決定が押せる`).not.toHaveAttribute('data-sent', '', { timeout: 5_000 });
-    expect(((latest(pad) as Tiles).note ?? '')).toContain('同じ数を1〜4枚');
-    refusals.push(JSON.stringify(latest(pad)));
-  }
-  expect(new Set(refusals).size, '断りの画面は毎回違う').toBe(3);
-  expect(others.map((p) => JSON.stringify(latest(p))), '断っても、ほかの席の画面は変わらない').toEqual(othersBefore);
-  const last = latest(pad) as Tiles;
-  const single = last.tiles.find((tile) => !tile.off)!;
-  await pad.tiles([single.id]);
-  await expect.poll(() => JSON.stringify(latest(pad)), { message: '正しい出し方は、断りのあとでも受け付けられて番が進む' }).not.toBe(refusals.at(-1));
-  await expect(pad.page.locator('.irori-pad[data-kind]')).toHaveAttribute('data-kind', 'tiles');
-});
+for (const delayMs of [0, 500]) {
+  test(`大富豪：規則外の出し方を続けて断られても、スマホは固まらず、正しく出せば進む（配信遅延${delayMs}ms）`, HOST, async ({ rig }) => {
+    // 以前の不具合：断りの画面が前回と同じ内容だと、ホストは送り直さず、スマホが「送りました」のまま固まった（番が進まない）。
+    const deliveries = new Set<ReturnType<typeof setTimeout>>();
+    try {
+      const host = await rig.openHost({
+        init: async (context) => {
+          await context.routeWebSocket(/\/ws(?:\?|$)/, (route) => {
+            const server = route.connectToServer();
+            route.onMessage((message) => {
+              const frame = typeof message === 'string' && message.startsWith('{') ? JSON.parse(message) : null;
+              // ホストの進行は変えず、実Workerへ送る手札の指定だけを遅らせる。
+              if (delayMs > 0 && frame?.t === 'pad' && frame.spec?.k === 'tiles') {
+                const timer = setTimeout(() => { deliveries.delete(timer); server.send(message); }, delayMs);
+                deliveries.add(timer);
+              } else server.send(message);
+            });
+          });
+        },
+      });
+      const pads = await rig.join(host, NAMES.slice(0, 3));
+      await host.choose('daifugo', pads[0]);
+      await start(pads[0]!);
+      await host.expectPhase('play');
+      // 番の表示と手札の配信は別経路。全員の手札が届いてから内容と変更前の画面を読む。
+      for (const participant of pads) await participant.expectKind('tiles');
+      const pad = await turn(host, pads, '.seat[aria-current="step"][data-seat]');
+      const others = pads.filter((p) => p !== pad);
+      const othersBefore = others.map((p) => JSON.stringify(latest(p)));
+      const refusals: string[] = [];
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const spec = latest(pad) as Tiles;
+        // 場が空のとき、数の違う2枚（ジョーカーは何にでもなるので除く）は規則外。
+        const playable = spec.tiles.filter((tile) => !tile.off && !tile.label.startsWith('ジョーカー'));
+        const first = playable[0]!;
+        const second = playable.find((tile) => tile.label.slice(1) !== first.label.slice(1));
+        expect(second, '数の違う2枚を選べる手札').toBeDefined();
+        const before = JSON.stringify(spec);
+        await pad.tiles([first.id, second!.id]);
+        await expect.poll(() => JSON.stringify(latest(pad)), { message: `${attempt}回目の断りの画面がスマホへ届く` }).not.toBe(before);
+        await expect(pad.page.locator('.irori-pad__tiles'), `${attempt}回目の断りのあとも、決定が押せる`).not.toHaveAttribute('data-sent', '', { timeout: 5_000 });
+        expect(((latest(pad) as Tiles).note ?? '')).toContain('同じ数を1〜4枚');
+        refusals.push(JSON.stringify(latest(pad)));
+      }
+      expect(new Set(refusals).size, '断りの画面は毎回違う').toBe(3);
+      expect(others.map((p) => JSON.stringify(latest(p))), '断っても、ほかの席の画面は変わらない').toEqual(othersBefore);
+      const last = latest(pad) as Tiles;
+      const single = last.tiles.find((tile) => !tile.off)!;
+      await pad.tiles([single.id]);
+      await expect.poll(() => JSON.stringify(latest(pad)), { message: '正しい出し方は、断りのあとでも受け付けられて番が進む' }).not.toBe(refusals.at(-1));
+      await expect(pad.page.locator('.irori-pad[data-kind]')).toHaveAttribute('data-kind', 'tiles');
+    } finally {
+      for (const timer of deliveries) clearTimeout(timer);
+    }
+  });
+}
 
 test('大富豪：握手から能力を除いた旧ホストの更新案内', HOST, async ({ rig }) => {
   const host = await rig.openHost({ init: async (context) => {

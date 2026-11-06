@@ -17,7 +17,8 @@
     "games/strike-alley/*.js",
     "games/daifugo/*.js",
     "games/old-maid/*.js",
-    "games/moon-village/*.js"
+    "games/moon-village/*.js",
+    "games/bell-in-sleeve/*.js"
   ],
   "exclude": ["games/*/*.test.js", "games/*/irori.js"]
 }

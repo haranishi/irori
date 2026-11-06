@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "id": "bell-in-sleeve",
+  "title": {
+    "ja": "ふところの鈴",
+    "en": "Bell in the Sleeve"
+  },
+  "kind": {
+    "ja": "推理カード",
+    "en": "Deduction"
+  },
+  "summary": {
+    "ja": "夜の屋台で、鈴の持ち主を探そう。札をのぞき、取り替え、会話で推理。1人でもCPUと遊べます。",
+    "en": "Find the hidden bell. Peek, swap, and reason together. Solo play with CPU seats."
+  },
+  "authors": [
+    {
+      "name": "irori contributors",
+      "url": "https://github.com/haranishi/irori"
+    }
+  ],
+  "license": {
+    "code": "MIT OR Apache-2.0",
+    "assets": "original"
+  },
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "pads": [
+    "wait",
+    "tiles"
+  ],
+  "entry": {
+    "bundled": "games/bell-in-sleeve/"
+  },
+  "thumbnail": "bell-in-sleeve.jpg",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-11-06",
+  "minutes": {
+    "min": 6,
+    "max": 10
+  }
+}

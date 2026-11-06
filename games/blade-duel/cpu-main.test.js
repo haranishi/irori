@@ -6,7 +6,7 @@ const hooks=vi.hoisted(()=>({connect:vi.fn(),state:null}));
 vi.mock('./irori.js',()=>({connect:hooks.connect}));
 vi.mock('./logic.js',async(original)=>{
   const actual=await original();
-  return {...actual,createGame:(init)=>{const result=actual.createGame(init);hooks.state=result.state;return result;},updateGame:(state,event)=>{const result=actual.updateGame(state,event);hooks.state=result.state;return result;}};
+  return {...actual,createGame:(init)=>{const result=actual.createGame(init);hooks.state=result.state;return result;},updateGame:(state,event)=>{const result=actual.updateGame(state,event);hooks.state=result.state;const end=result.effects.find(e=>e.t==='end');if(end)hooks.endEffect=end;return result;}};
 });
 const logic=await vi.importActual('./logic.js');
 function host(n=1) {
@@ -39,10 +39,26 @@ it('mainで人1＋CPUの結果まで進み、SDKにCPUを送らず、全席の�
   send();
   await vi.advanceTimersByTimeAsync(100);
  }
- expect(steps).toBeLessThan(2000);expect(h.end).toHaveBeenCalledTimes(1);expect(h.end.mock.calls[0][0].map(r=>r.p)).toEqual([1]);for(const row of h.end.mock.calls[0][0])expect(Object.keys(row).sort()).toEqual(['label','p','ranked','score']);
+ expect(steps).toBeLessThan(2000);const row=h.end.mock.calls[0][0][0];const raw=hooks.endEffect.results.find(r=>r.p===1);expect(row.ranked).toBe(false);expect(Object.keys(row).sort()).toEqual(['label','p','ranked','score']);expect([...row.label].length).toBeLessThanOrEqual(12);expect(row.label).toBe(raw.label);
+ expect(h.end).toHaveBeenCalledTimes(1);expect(h.end.mock.calls[0][0].map(r=>r.p)).toEqual([1]);for(const row of h.end.mock.calls[0][0])expect(Object.keys(row).sort()).toEqual(['label','p','ranked','score']);
  expect(h.setPad.mock.calls.every(([,p])=>p===1)).toBe(true);expect(h.look.mock.calls.every(([p])=>p===1)).toBe(true);
  for(let i=1;i<=1;i++)expect(document.getElementById('stage').textContent).toContain(`CPU ${i}`);
 },30000);
 it('人2人なら補充せず、ページ破棄後はCPUが入力しない',async()=>{
  const h=host(2);await boot(h);expect(hooks.state.seats).toHaveLength(2);dispatchEvent(new Event('pagehide'));
 });
+
+it('人だけの局の終了行とlabel・rankedを変えない',async()=>{
+ const h=host(2);await boot(h);vi.useFakeTimers();hooks.endEffect=null;
+ for(let step=0;hooks.state.phase!=='ended'&&step<3000;step++){
+  for(const p of h.players){
+   const view=logic.viewFor(hooks.state,p.id);
+   let input=decide(view,p.id,()=>.3);
+
+   if(input)h.emit('input',p.id,input);
+  }
+  await vi.advanceTimersByTimeAsync(100);
+ }
+ await vi.advanceTimersByTimeAsync(10000);
+ expect(h.end).toHaveBeenCalledOnce();expect(h.end.mock.calls[0][0]).toEqual(hooks.endEffect.results);
+},30000);

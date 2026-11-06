@@ -1,4 +1,5 @@
 // @ts-check
+import {consoleResults} from './logic.js';
 import {connect} from './irori.js';
 import {createGame,publicView,updateGame,viewFor} from './logic.js';
 import {createView} from './view.js';
@@ -79,7 +80,7 @@ async function boot() {
       else if(effect.t === 'end' && !ended) {
         // end は1回だけ。最後の演出（ジョーカーを静かに見せる間）が済んでから送る。止まっている間は待つ。
         ended=true;
-        closing=hold(view.finaleMs(),()=>{dispose();irori.end(effect.results.filter((r)=>human(r.p)),effect.options);});
+        closing=hold(view.finaleMs(),()=>{dispose();irori.end(consoleResults(effect.results,cpuIds),effect.options);});
         sync();
       }
     }

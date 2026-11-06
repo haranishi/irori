@@ -1,4 +1,5 @@
 // @ts-check
+import {consoleResults} from './logic.js';
 import { connect } from './irori.js';
 import { createGame, publicView, updateGame, viewFor } from './logic.js';
 import {fillSeats,CPU_LOOK} from './cpu.js';
@@ -87,7 +88,7 @@ async function boot() {
         endSent = true;
         // SDKの結果操作へ渡す前に、遅れて届く入力と描画を解放する。
         dispose();
-        irori.end(effect.results.filter(r=>human(r.p)), effect.options);
+        irori.end(consoleResults(effect.results,cpuIds), effect.options);
       }
     }
   }

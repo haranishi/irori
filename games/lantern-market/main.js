@@ -1,4 +1,5 @@
 // @ts-check
+import {consoleResults} from './logic.js';
 import {connect} from './irori.js';
 import {createGame,publicView,updateGame,viewFor} from './logic.js';
 import {fillSeats,CPU_LOOK} from './cpu.js';
@@ -50,7 +51,7 @@ async function boot() {
     for (const effect of effects) {
       if (disposed) return;
       if (effect.t === 'pad') {if(human(effect.to)) irori.setPad(effect.spec,effect.to);}
-      else {dispose();irori.end(effect.results.filter(r=>human(r.p)),effect.options);}
+      else {dispose();irori.end(consoleResults(effect.results,cpuIds),effect.options);}
     }
   }
   /** @param {import('./logic.js').GameEvent} event */

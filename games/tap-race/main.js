@@ -1,4 +1,5 @@
 // @ts-check
+import {consoleResults} from './logic.js';
 // 連打レースの画面。規則は logic.js にあり、ここは irori とのやり取りと描画だけ。
 import {fillSeats,CPU_LOOK} from './cpu.js';
 import {createCpuDriver} from './cpu-driver.js';
@@ -51,7 +52,7 @@ function apply(/** @type {Effect[]} */ effects) {
     else if (e.t === 'buzz') {
       if(e.to === 'all') {for(const p of lanes) if(human(p)) irori.vibrate(e.ms,p);}
       else if(human(e.to)) irori.vibrate(e.ms,e.to);
-    } else {cpu.cancel();irori.end(e.results.filter(r=>human(r.p)));}
+    } else {cpu.cancel();irori.end(consoleResults(race,cpuIds));}
   }
 }
 

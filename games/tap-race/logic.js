@@ -203,3 +203,14 @@ export function createClock(realNow) {
     },
   };
 }
+
+/** CPUを含む局の順位はゲームが確定し、コンソールには人の記録だけを渡す。
+ * @param {Race} race
+ * @param {ReadonlySet<number>} cpuIds
+ * @returns {import('./irori.js').GameResult[]} */
+export function consoleResults(race,cpuIds) {
+  const rows=results(race);
+  const humans=rows.filter(row=>!cpuIds.has(row.p));
+  if(!cpuIds.size) return humans;
+  return humans.map(row=>({p:row.p,score:row.score,ranked:false,label:`${standings(race).find(s=>s.p===row.p)?.rank}位(CPUこみ)`}));
+}

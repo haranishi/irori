@@ -5,7 +5,7 @@ import {createView} from './view.js';
 
 const hooks=vi.hoisted(()=>({connect:vi.fn(),createGame:vi.fn(),updateGame:vi.fn(),publicView:vi.fn()}));
 vi.mock('./irori.js',()=>({connect:hooks.connect}));
-vi.mock('./logic.js',()=>({createGame:hooks.createGame,updateGame:hooks.updateGame,publicView:hooks.publicView}));
+vi.mock('./logic.js',async(original)=>({...await original(),createGame:hooks.createGame,updateGame:hooks.updateGame,publicView:hooks.publicView}));
 const logic=await vi.importActual('./logic.js');
 const {legalPlays}=await vi.importActual('./cards.js');
 const players=(n=3)=>Array.from({length:n},(_,i)=>({id:i+1,name:`参加者${i+1}`,online:true}));

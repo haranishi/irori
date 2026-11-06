@@ -190,3 +190,13 @@ export function viewFor(state,id) {
   return {...publicView(state),self:id,history:(state.history ?? []).map(round=>round.map(r=>({...r}))),pad:structuredClone(pad)};
 }
 /** @typedef {ReturnType<typeof viewFor>} SeatView */
+
+/** CPUを含む局の順位はゲームが確定し、コンソールには人の記録だけを渡す。
+ * @param {import('./irori.js').GameResult[]} rows
+ * @param {ReadonlySet<number>} cpuIds
+ * @returns {import('./irori.js').GameResult[]} */
+export function consoleResults(rows,cpuIds) {
+  const humans=rows.filter(row=>!cpuIds.has(row.p));
+  if(!cpuIds.size) return humans;
+  return humans.map(row=>({p:row.p,score:row.score,ranked:false,label:row.label ?? '記録なし'}));
+}

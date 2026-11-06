@@ -1,4 +1,5 @@
 // @ts-check
+import {consoleResults} from './logic.js';
 import {connect} from './irori.js';
 import {createGame, publicView, updateGame, viewFor} from './logic.js';
 import {createView} from './view.js';
@@ -77,7 +78,7 @@ async function boot() {
         // end は1回だけ。全役の画面がスマホへ届き、大画面の役の表を見る間を置いてから送る。
         const {results, options} = effect;
         // 役がまだ配られていない終わり（はじめる前に全員が席を立った）は、見せる役の表がないので置かない。
-        finale = {left:state.seats.some((s)=>s.role) ? FINALE_MS : 0, send:()=>{dispose(); irori.end(results.filter(r=>human(r.p)), options);}};
+        finale = {left:state.seats.some((s)=>s.role) ? FINALE_MS : 0, send:()=>{dispose(); irori.end(consoleResults(results,cpuIds), options);}};
         last = null;
         render();
       }

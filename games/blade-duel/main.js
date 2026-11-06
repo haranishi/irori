@@ -1,4 +1,5 @@
 // @ts-check
+import {consoleResults} from './logic.js';
 import { connect } from './irori.js';
 import { createGame, publicView, updateGame, viewFor } from './logic.js';
 import { createView } from './view.js';
@@ -56,7 +57,7 @@ async function boot() {
       else if (!ended) {
         ended = true;
         dispose();
-        irori.end(effect.results.filter(r=>human(r.p)), effect.options);
+        irori.end(consoleResults(effect.results,cpuIds), effect.options);
       }
     }
   }

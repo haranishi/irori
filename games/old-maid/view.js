@@ -1,4 +1,5 @@
 // @ts-check
+import {CPU_LOOK} from './cpu.js';
 // 大画面に出すのは公開モデル（publicView）だけ。手札の中身とジョーカーの所在は、このモジュールに来ない。
 // 文字はすべて textContent で入れる。札の裏の模様とジョーカーの灯は、自作の図形（style.css と FLAME）。
 // 演出は、直前に描いたモデルから新しいモデルへ、公開イベント（draw・pair・out）の順に動かす。
@@ -52,7 +53,7 @@ function mark(look) {
 /** @param {SeatView|undefined} seat @param {ReadonlyMap<number,Look>} looks */
 function who(seat,looks) {
   const node=el('span','who');
-  if(seat) node.append(mark(looks.get(seat.id)),el('span','who-name',`${seat.name}さん`));
+  if(seat) node.append(mark(seat.cpu ? CPU_LOOK : looks.get(seat.id)),el('span','who-name',`${seat.name}さん`));
   return node;
 }
 function backCard() {return el('span','card card--back');}
@@ -203,7 +204,8 @@ export function createView(stage,status,hooks) {
   }
   /** @param {Model} model @param {SeatView} seat @param {SeatNode} S @param {boolean} [roles] */
   function setSeat(model,seat,S,roles=true) {
-    const look=looks.get(seat.id);const lookKey=look ? `${look.color}${look.path}` : '';
+    S.root.toggleAttribute('data-cpu',seat.cpu === true);
+    const look=seat.cpu ? CPU_LOOK : looks.get(seat.id);const lookKey=look ? `${look.color}${look.path}` : '';
     if(S.look !== lookKey) {S.look=lookKey;S.mark.replaceChildren(mark(look));}
     S.name.textContent=seat.name;
     const out=seat.rank !== null && seat.count === 0;const last=model.phase === 'ended' && seat.rank !== null && seat.count>0;

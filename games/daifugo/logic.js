@@ -1,7 +1,7 @@
 // @ts-check
 import {buildDeck, classify, isLegal, legalPlays, makeRng, shuffle, strength} from './cards.js';
 /** @typedef {import('./irori.js').PlayerId} PlayerId */
-/** @typedef {import('./irori.js').PlayerInfo} PlayerInfo */
+/** @typedef {import('./irori.js').PlayerInfo & {cpu?:boolean}} PlayerInfo */
 /** @typedef {import('./irori.js').HostEnvironment} HostEnvironment */
 // 同梱SDKの同期前にも検査できるよう、追加契約だけをローカルの型で補う。
 /** @typedef {{k:'tiles',token:string,tiles:{id:string,label:string,color:'red'|'gray',off:boolean}[],min:number,max:number,ok:string,pass?:string,disabled:boolean,note:string}} TilesPadSpec */
@@ -236,8 +236,17 @@ function transition(next, before, initial = []) {
 
 /** @param {GameState} state */
 export function publicView(state) {
-  return {phase:state.phase,seats:state.seats.map((s)=>({id:s.id,name:s.name,count:s.hand.length,passed:s.passed,rank:s.rank,left:s.left,online:s.online})),
+  return {phase:state.phase,seats:state.seats.map((s)=>({id:s.id,name:s.name,...(s.cpu ? {cpu:true} : {}),count:s.hand.length,passed:s.passed,rank:s.rank,left:s.left,online:s.online})),
     table:state.table ? {...state.table,cards:[...state.table.cards]} : null,turn:state.turn,revolution:state.revolution,
     events:state.events.map((e)=>({...e,...(e.cards ? {cards:[...e.cards]} : {})})),leader:state.leader,canBegin:canBegin(state),outcome:state.outcome};
 }
 /** @typedef {ReturnType<typeof publicView>} GameViewModel */
+
+/** 本人用の情報だけを複製する。乱数状態・他席の手札・伏せ札の対応は渡さない。
+ * @param {GameState} state @param {number} p */
+export function viewFor(state,p) {
+  const seat=state.seats.find((s)=>s.id === p);
+  if (!seat) throw new RangeError('席がありません');
+  return {...publicView(state),self:p,hand:[...seat.hand],pad:structuredClone(padFor(state,seat))};
+}
+/** @typedef {ReturnType<typeof viewFor>} SeatView */

@@ -1,6 +1,6 @@
 # ババ抜き / Hearth Joker
 
-2〜8人で大画面を囲み、となりの人の札を1枚ずつ引き合う札遊びです。
+1〜8人で大画面を囲み、となりの人の札を1枚ずつ引き合う札遊びです。
 手札は本人のスマホにだけ出ます。大画面に出るのは、伏せた札の扇と枚数だけです。
 
 ## 遊び方
@@ -30,7 +30,7 @@
 
 ## 1台で試す
 
-開発サーバーで `/games/old-maid/?mock=3` を開くと、仮想プレイヤー3人で遊べます。人数は `mock=2`〜`mock=8` で変えます。
+開発サーバーで `/games/old-maid/?mock=3` を開くと、仮想プレイヤー3人で遊べます。人数は `mock=1`〜`mock=8` で変えます。
 
 - 始める：プレイヤー1のパネルの「はじめる」を押します。Space キーでも始まります。
 - 札を引く：番の人のパネルをクリックしてから、矢印で札を動き、Space で選び、Enter で「ひく」です。札を直接クリックしてもかまいません。
@@ -52,3 +52,8 @@ A card-drawing game for 2–8 players. Each phone shows only its owner's hand; t
 On your turn, pick one hidden card from the next player who still holds cards. Matching numbers are discarded automatically.
 Players who run out of cards finish in order. Whoever is left holding the joker loses.
 The drawn player's cards are reshuffled every turn, and the shared screen never shows where the joker is until the end.
+
+## CPUの席
+
+人が2人未満のときだけ、合計4席になるまで CPU を補います。2人以上なら補いません。途中では補充を変えず、次の局で決め直します。
+強さは「ふつう」。本人が見られる情報だけを使い、0.8〜2.0秒考えます。CPUのロボットの印と名前は、結果にも残ります。

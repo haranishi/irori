@@ -253,3 +253,7 @@ h1,h2,h3,p,ol {margin:0}
   .seat--turn {transform:none}
   .table-trail--back {transition:none}
 }
+
+/* CPUは人の席の色と形を借りず、ロボットと破線で区別する。 */
+[data-cpu] .seat-mark, [data-cpu] .seat-symbol {filter:drop-shadow(0 0 3px #d5d9de66)}
+[data-cpu] {outline:1px dashed #d5d9de66;outline-offset:4px}

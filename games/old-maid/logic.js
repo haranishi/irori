@@ -1,6 +1,6 @@
 // @ts-check
 import {cardText, dealAndPair, makeRng, pairOff, shuffle} from './cards.js';
-/** @typedef {import('./irori.js').PlayerInfo} PlayerInfo */
+/** @typedef {import('./irori.js').PlayerInfo & {cpu?:boolean}} PlayerInfo */
 /** @typedef {import('./irori.js').HostEnvironment} HostEnvironment */
 /** @typedef {PlayerInfo & {left:boolean, hand:string[], rank:number|null}} Seat */
 /** @typedef {import('./irori.js').PadSpec} PadSpec */
@@ -199,8 +199,17 @@ function transition(before,state,extra=[]) {
 
 /** @param {GameState} state */
 export function publicView(state) {
-  return {phase:state.phase,seats:state.seats.map((s) => ({id:s.id,name:s.name,count:s.hand.length,rank:s.rank,left:s.left,online:s.online})),
+  return {phase:state.phase,seats:state.seats.map((s) => ({id:s.id,name:s.name,...(s.cpu ? {cpu:true} : {}),count:s.hand.length,rank:s.rank,left:s.left,online:s.online})),
     turn:state.turn ? {...state.turn} : null,discard:[...state.discard],events:state.events.map((e) => e.type === 'pair' ? {...e,cards:[...e.cards]} : {...e}),
     leader:state.leader,canBegin:canBegin(state),outcome:state.outcome};
 }
 /** @typedef {ReturnType<typeof publicView>} GameViewModel */
+
+/** 本人用の情報だけを複製する。乱数状態・他席の手札・伏せ札の対応は渡さない。
+ * @param {GameState} state @param {number} p */
+export function viewFor(state,p) {
+  const seat=state.seats.find((s)=>s.id === p);
+  if (!seat) throw new RangeError('席がありません');
+  return {...publicView(state),self:p,hand:[...seat.hand],pad:structuredClone(padFor(state,seat))};
+}
+/** @typedef {ReturnType<typeof viewFor>} SeatView */

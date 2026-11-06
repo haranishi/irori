@@ -113,8 +113,9 @@ test('灯市：重複札を除き、最大の一意札が灯を得る。6市・�
     await action(pads[0]!);
   }
   // 最後の札は全員1。選択操作なしで第6市の公開に進む。
+  // 「次へ」を押した直後は、まだ第5市の公開が出ている（phase も reveal のまま）。入力が届いて第6市になるのを待ってから確かめる。
+  await expect.poll(() => host.inGame(() => document.documentElement.dataset.round), { message: '第6市の公開に進む' }).toBe('6');
   await host.expectPhase('reveal');
-  expect(await host.inGame(() => document.documentElement.dataset.round)).toBe('6');
   await action(pads[0]!);
   expect((await host.results()).map(({ seat, rank, score }) => ({ seat, rank, score }))).toEqual([
     { seat: 2, rank: 1, score: 14 }, { seat: 3, rank: 2, score: 9 }, { seat: 1, rank: 3, score: 0 },

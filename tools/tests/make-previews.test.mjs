@@ -3,9 +3,12 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
-import { GAME_PLAYERS, activityRate, editPreview, inspectMetadata, makePreviews, motionDifference, osFontUsage, parseArgs, previewFontCss, replacePreview, verifyPreview } from '../make-previews.mjs';
+import { FFMPEG, FFPROBE, GAME_PLAYERS, activityRate, editPreview, inspectMetadata, makePreviews, motionDifference, osFontUsage, parseArgs, previewFontCss, replacePreview, verifyPreview } from '../make-previews.mjs';
 import { seededRandom } from '../preview-scripts/driver.mjs';
 
+// ffmpeg・ffprobe が動かない環境（CI など）では、動画を実際に作って調べる試験だけを飛ばす。道具の探し方は make-previews.mjs と同じ。
+const mediaTools = [FFMPEG, FFPROBE].every((bin) => spawnSync(bin, ['-version'], { stdio: 'ignore' }).status === 0);
+const needsMedia = mediaTools ? {} : { skip: 'ffmpeg・ffprobe が見つかりません（IRORI_FFMPEG・IRORI_FFPROBE で指定できます）' };
 const base = join(process.cwd(), '.probe-tmp');
 mkdirSync(base, { recursive: true });
 const work = mkdtempSync(join(base, 'preview-tests-'));
@@ -15,7 +18,7 @@ const metadata = () => ({ streams: [{ codec_type: 'video', codec_name: 'h264', w
 
 const make = (name, source, audio = false) => {
   const file = join(work, `${name}.mp4`);
-  const args = ['-n', '10', process.env.IRORI_FFMPEG ?? '/opt/homebrew/bin/ffmpeg',
+  const args = ['-n', '10', FFMPEG,
     '-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', source,
     ...(audio ? ['-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono'] : []), '-t', '8',
     '-c:v', 'libx264', '-threads', '2', '-preset', 'ultrafast', '-crf', '35', '-pix_fmt', 'yuv420p',
@@ -99,7 +102,7 @@ describe('動画の検査', () => {
     assert.equal(activityRate(noise, 100, 100).activity, 0);
     assert.throws(() => activityRate(Buffer.alloc(1)), /必要なコマ/);
   });
-  it('実際のffprobeとコマ抽出で、動くMP4を通し、静止MP4と音声つきを拒む', () => {
+  it('実際のffprobeとコマ抽出で、動くMP4を通し、静止MP4と音声つきを拒む', needsMedia, () => {
     const moving = 'testsrc2=size=640x360:rate=30';
     const checked = verifyPreview(make('moving', moving));
     assert.equal(checked.moving, true);
@@ -107,10 +110,10 @@ describe('動画の検査', () => {
     assert.throws(() => verifyPreview(make('static', 'color=c=black:size=640x360:rate=30')), /先頭が動いていません/);
     assert.throws(() => verifyPreview(make('audio', moving, true)), /音声の流れ/);
   });
-  it('短い画面切替で先頭だけ動いても、ほぼ静止した動画は拒む', () => {
+  it('短い画面切替で先頭だけ動いても、ほぼ静止した動画は拒む', needsMedia, () => {
     const raw = join(work, 'brief-change.mp4');
     const edited = join(work, 'edited.mp4');
-    const r = spawnSync('nice', ['-n', '10', process.env.IRORI_FFMPEG ?? '/opt/homebrew/bin/ffmpeg',
+    const r = spawnSync('nice', ['-n', '10', FFMPEG,
       '-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i',
       "color=c=black:size=1280x720:rate=30,drawbox=x=100:y=100:w=300:h=300:color=white:t=fill:enable='between(t,1.63,1.73)'",
       '-t', '15', '-c:v', 'libx264', '-threads', '2', '-preset', 'ultrafast', '-an', raw],
@@ -131,14 +134,14 @@ describe('正式動画の安全な置き換え', () => {
     writeFileSync(output, previous);
     return { root, output, candidate, previous };
   };
-  it('不合格候補では正式ファイルを変えず、候補も残す', () => {
+  it('不合格候補では正式ファイルを変えず、候補も残す', needsMedia, () => {
     const { root, output, candidate, previous } = setup('rejected-replacement');
     copyFileSync(make('rejected', 'color=c=black:size=640x360:rate=30'), candidate);
     assert.throws(() => replacePreview(root, 'lantern-market'), /先頭が動いていません/);
     assert.deepEqual(readFileSync(output), previous);
     assert.deepEqual(readdirSync(join(root, '.probe-tmp/previews')), ['lantern-market.mp4']);
   });
-  it('合格候補に置き換える前に、旧版を時刻つきで退避する', () => {
+  it('合格候補に置き換える前に、旧版を時刻つきで退避する', needsMedia, () => {
     const { root, output, candidate, previous } = setup('accepted-replacement');
     copyFileSync(make('accepted', 'testsrc2=size=640x360:rate=30'), candidate);
     const accepted = readFileSync(candidate);

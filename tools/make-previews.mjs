@@ -13,8 +13,10 @@ export const GAME_PLAYERS = {
   'blade-duel': 2, 'lantern-market': 3, 'strike-alley': 1, daifugo: 4,
   'old-maid': 3, 'moon-village': 5, 'bell-in-sleeve': 6, poker: 4,
 };
-const FFMPEG = process.env.IRORI_FFMPEG ?? '/opt/homebrew/bin/ffmpeg';
-const FFPROBE = process.env.IRORI_FFPROBE ?? '/opt/homebrew/bin/ffprobe';
+/** 環境変数 → Homebrew の場所 → PATH の順に探す（Homebrew が無い環境でも、PATH にあれば動く）。 */
+const findTool = (env, brew, name) => process.env[env] ?? (existsSync(brew) ? brew : name);
+export const FFMPEG = findTool('IRORI_FFMPEG', '/opt/homebrew/bin/ffmpeg', 'ffmpeg');
+export const FFPROBE = findTool('IRORI_FFPROBE', '/opt/homebrew/bin/ffprobe', 'ffprobe');
 const ENDPOINT = 'ws://127.0.0.1:9333/pw';
 export const MAX_BYTES = 1_000_000;
 

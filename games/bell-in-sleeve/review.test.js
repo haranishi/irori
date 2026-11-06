@@ -61,11 +61,12 @@ describe('レビューで見つかった進行と結果の境界',()=>{
     expect(s.winner).toBe('stall');expect(s.seats.map((v)=>v.score)).toEqual([2,0,2,1]);
     expect(s.seats.map((v)=>v.rank)).toEqual([1,4,1,3]);
   });
-  it('公開結果とend結果のCPU印を保持し、終了後は全イベントで不変',()=>{
+  it('公開結果にはCPU印を保ち、end結果には人の席だけを載せ、終了後は全イベントで不変',()=>{
     let s=vote();s.seats[2].id='cpu1';s.seats[2].cpu=true;
     s=pick(s,1,1).state;s=pick(s,2,0).state;s=pick(s,'cpu1',1).state;
     expect(publicView(s).results.find((v)=>v.p==='cpu1').cpu).toBe(true);
-    const r=tick(s);s=r.state;expect(r.effects.find((e)=>e.t==='end').results.find((v)=>v.p==='cpu1').cpu).toBe(true);
+    const r=tick(s);s=r.state;const endRows=r.effects.find((e)=>e.t==='end').results;
+    expect(endRows.map((v)=>v.p)).toEqual([1,2]);expect(endRows.every((v)=>Object.keys(v).sort().join() === 'label,p,ranked,score')).toBe(true);
     const before=structuredClone(s);
     for(const e of [{t:'tick',ms:99999},{t:'input',p:1,input:{k:'tiles',ids:[],t:'old'}},{t:'players',players:[],leader:null},{t:'menu',paused:true},{t:'environment',value:null}]) {
       expect(updateGame(s,e)).toEqual({state:before,effects:[]});expect(s).toEqual(before);

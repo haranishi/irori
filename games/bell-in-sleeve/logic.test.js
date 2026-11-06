@@ -115,7 +115,7 @@ describe('5つの札の効果',()=>{
     expect(r.effects.some((e)=>e.t==='end')).toBe(false);
     r=updateGame(r.state,{t:'tick',ms:7999});expect(r.effects.some((e)=>e.t==='end')).toBe(false);
     r=updateGame(r.state,{t:'tick',ms:1});expect(r.effects.filter((e)=>e.t==='end')).toHaveLength(1);
-    expect(r.effects.find((e)=>e.t==='end').results).toMatchObject([{p:1,cpu:false},{p:2,cpu:false},{p:3,cpu:false}]);
+    expect(r.effects.find((e)=>e.t==='end').results).toEqual([{p:1,score:3,label:'1位',ranked:true},{p:2,score:0,label:'3位',ranked:true},{p:3,score:1,label:'2位',ranked:true}]);
     expect(updateGame(r.state,{t:'tick',ms:8000}).effects).toEqual([]);
   });
   it('外れた指名は減点し、すりかえの後は白印を消す',()=>{

@@ -13,7 +13,8 @@ import {CARD_NAMES,compareSeats,deal,makeRng,shuffle} from './cards.js';
 /** @typedef {{players:readonly Player[],leader:SeatId|null,seed:number,nonce:string,paused?:boolean,environment?:Environment|null}} GameInit */
 /** @typedef {{t:'input',p:SeatId,input:GameInput}|{t:'tick',ms:number}|{t:'players',players:readonly Player[],leader:SeatId|null}|{t:'menu',paused:boolean}|{t:'environment',value:Environment|null}} GameEvent */
 /** @typedef {{p:SeatId,score:number,rank:number|null,cpu:boolean,ranked:boolean,label:string}} Result */
-/** @typedef {{t:'pad',to:SeatId,spec:PadSpec}|{t:'cue',name:'deal'|'flip'|'place'|'win'|'lose'}|{t:'vibrate',to:SeatId,ms:number[]}|{t:'end',results:Result[],options:{display:'points',outcome:'complete'|'incomplete'}}} GameEffect */
+/** コンソールへ渡す結果の行。SDKの検証器（packages/protocol の validateGameEnd）は、この4項目以外を持つ行を拒む。 @typedef {{p:number,score:number,label:string,ranked:boolean}} EndRow */
+/** @typedef {{t:'pad',to:SeatId,spec:PadSpec}|{t:'cue',name:'deal'|'flip'|'place'|'win'|'lose'}|{t:'vibrate',to:SeatId,ms:number[]}|{t:'end',results:EndRow[],options:{display:'points',outcome:'complete'|'incomplete'}}} GameEffect */
 /** @typedef {{phase:'intro'|'deal'|'turn'|'talk'|'vote'|'result',step:'pickCard'|'pickTarget'|'pickSlot'|'pickGive'|'whisper'|'reveal',seats:Seat[],leader:SeatId|null,nonce:string,rngState:number,h:number,turn:SeatId|null,card:Card|null,target:SeatId|null,slots:number[],slot:number|null,remaining:number,paused:boolean,environment:Environment|null,epochs:Record<SeatId,number>,events:PublicEvent[],seq:number,observations:Record<SeatId,Observation[]>,notices:Record<SeatId,string>,picks:Record<SeatId,number>,votes:Record<SeatId,SeatId>,winner:'stall'|'bell'|null,holder:SeatId|null,outcome:'complete'|'incomplete',ended:boolean}} GameState */
 /** @typedef {{state:GameState,effects:GameEffect[]}} Transition */
 /** @param {GameState} s */
@@ -237,10 +238,16 @@ function transition(before,state,extra=[]) {
     const spec=padFor(state,v.id);
     if (!before || JSON.stringify(spec) !== JSON.stringify(padFor(before,v.id))) effects.push({t:'pad',to:v.id,spec});
   }
-  if (state.ended && !before?.ended) effects.push({t:'end',results:results(state),options:{display:'points',outcome:state.outcome}});
+  if (state.ended && !before?.ended) effects.push({t:'end',results:endRows(state),options:{display:'points',outcome:state.outcome}});
   if (state.step === 'reveal' && before?.step !== 'reveal' && state.turn !== null) effects.push({t:'vibrate',to:state.turn,ms:[60]});
   return {state,effects};
 }
+/**
+ * 終了の合図の結果。人の席だけ、SDKが受け取る4項目だけにする。順位とCPUの印は、画面用の publicView の results に残る。
+ * 余分な項目があるとコンソールが黙って拒み、「もう一度」が出なくなる（2026-11-06に実際に起きた）。
+ * @param {GameState} state @returns {EndRow[]}
+ */
+function endRows(state) { return state.seats.filter((v)=>!v.cpu && typeof v.id === 'number').map((v)=>({p:/** @type {number} */ (v.id),score:v.score,label:state.outcome === 'incomplete' ? '勝負なし' : `${v.rank}位`,ranked:state.outcome === 'complete'})); }
 /** @param {GameState} state @returns {Result[]} */
 function results(state) { return state.seats.map((v)=>({p:v.id,score:v.score,rank:v.rank,cpu:v.cpu,ranked:state.outcome === 'complete',label:state.outcome === 'incomplete' ? '勝負なし' : `${v.rank}位`})); }
 /** @param {GameState} s */

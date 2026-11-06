@@ -70,10 +70,12 @@ describe('CPUだけの全人数・全局の合法手と終了',()=>{
   it('人1人＋CPU4席と人だけの局も、同じ入力で最後まで進む',()=>{
     for(let seed=0;seed<100;seed++) {
       const r=simulate(5,seed,1);expect(r.state.seats.filter((v)=>v.cpu)).toHaveLength(4);
-      for(const results of [publicView(r.state).results,r.endResults]) {
-        expect(results.filter((v)=>v.cpu)).toHaveLength(4);
-        for(const v of r.state.seats)expect(results.find((row)=>row.p===v.id).cpu).toBe(v.cpu);
-      }
+      const shown=publicView(r.state).results;
+      expect(shown.filter((v)=>v.cpu)).toHaveLength(4);
+      for(const v of r.state.seats)expect(shown.find((row)=>row.p===v.id).cpu).toBe(v.cpu);
+      // コンソールへ渡す end の結果は、人の席だけ。SDKが受け取る4項目だけ（余分な項目は、検証器が拒む）。
+      expect(r.endResults.map((row)=>row.p)).toEqual([1]);
+      expect(r.endResults.every((row)=>Object.keys(row).sort().join() === 'label,p,ranked,score')).toBe(true);
     }
     // 人の席にも同じ公開情報の方針で入力を送る。判定はCPUかどうかで手を変えない。
     const original=createGame({players:[1,2,3].map((id)=>({id,name:`席${id}`,online:true})),leader:1,seed:1,nonce:'human',environment:{connected:true,visible:true}});

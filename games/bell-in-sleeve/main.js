@@ -71,7 +71,7 @@ async function boot() {
         if (demo) {
           seed=(seed+1)>>>0;rngs.clear();initial=first();state=initial.state;ended=false;
           view.render(publicView(state),looks);apply(initial.effects);schedule();
-        } else irori.end(e.results.filter((r)=>typeof r.p === 'number').map((r)=>({...r,p:/** @type {number} */ (r.p)})),e.options);
+        } else irori.end(e.results,e.options);
       }
     }
   }

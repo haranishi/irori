@@ -494,8 +494,8 @@
     "id": "host-w-e2e-shelf-grows-column",
     "note": "(w) 格子の幅を画面より広げると箱がQRと画面外へはみ出す",
     "file": "apps/web/src/styles/host.css",
-    "find": ".home--shelf .home__shelf { width:",
-    "replace": ".home--shelf .home__shelf { min-width: 200vw; width:",
+    "find": ".home--shelf .home__shelf { width: min(100%, calc(",
+    "replace": ".home--shelf .home__shelf { min-width: 200vw; width: min(100%, calc(",
     "command": [
       "env",
       "IRORI_HOST_E2E_PROFILE=main",

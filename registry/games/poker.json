@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "id": "poker",
+  "title": {
+    "ja": "持ち点ポーカー",
+    "en": "Hearth Poker"
+  },
+  "kind": {
+    "ja": "トランプ",
+    "en": "Cards"
+  },
+  "summary": {
+    "ja": "手札2枚と場の札で、強い5枚を作ろう。持ち点だけの6ハンド。1人でもCPUと遊べる。",
+    "en": "Make your best five cards over six hands. Play solo with CPU seats."
+  },
+  "authors": [
+    {
+      "name": "irori contributors",
+      "url": "https://github.com/haranishi/irori"
+    }
+  ],
+  "license": {
+    "code": "MIT OR Apache-2.0",
+    "assets": "original"
+  },
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "pads": [
+    "wait",
+    "tiles"
+  ],
+  "entry": {
+    "bundled": "games/poker/"
+  },
+  "thumbnail": "poker.jpg",
+  "sdk": 1,
+  "rating": "all",
+  "added": "2026-11-06",
+  "minutes": {
+    "min": 10,
+    "max": 15
+  }
+}

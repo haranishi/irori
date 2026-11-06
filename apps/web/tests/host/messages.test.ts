@@ -16,7 +16,7 @@ describe('ホストの文言', () => {
     const name = 'あ'.repeat(LIMITS.NAME_MAX_GRAPHEMES);
     for (const dict of [HOST_JA, HOST_EN]) {
       const fill = (k: string) => (dict[k] ?? '').replace('{name}', name);
-      expect(countGraphemes(fill('host.pad.remoteHint'))).toBeLessThanOrEqual(LIMITS.HINT_MAX_GRAPHEMES);
+      for (const k of ['host.pad.remoteHint', 'host.pad.qrHint', 'host.pad.resultsHint']) expect(countGraphemes(fill(k)), k).toBeLessThanOrEqual(LIMITS.HINT_MAX_GRAPHEMES);
       // 一時停止中は、同じ文がリモコンの案内（ヒントの上限）と待機の見出し（見出しの上限）の両方に入る。
       expect(countGraphemes(fill('host.pad.menu'))).toBeLessThanOrEqual(Math.min(LIMITS.HINT_MAX_GRAPHEMES, LIMITS.TITLE_MAX_GRAPHEMES));
       for (const k of ['host.pad.choosing', 'host.pad.lateTitle', 'host.pad.starting', 'host.pad.waiting']) {
@@ -30,4 +30,13 @@ describe('ホストの文言', () => {
     const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
     for (const k of Object.keys(HOST_JA)) expect(vars(HOST_EN[k] ?? ''), k).toEqual(vars(HOST_JA[k] ?? ''));
   });
+});
+
+it('日英の位置の案内は左下QRを指し、QRと結果の案内をそれぞれ持つ', () => {
+  for (const key of ['host.guide.seeAbove', 'host.guide.seeRight', 'host.guide.openQr']) {
+    expect(HOST_JA[key]).toContain('左下');
+    expect(HOST_EN[key]).toContain('bottom left');
+  }
+  expect(HOST_EN['host.pad.qrHint']).toBe('Press Back to close the QR code');
+  expect(HOST_EN['host.pad.resultsHint']).toBe('Pick Play again or Home, then press OK');
 });

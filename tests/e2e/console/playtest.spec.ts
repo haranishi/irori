@@ -9,6 +9,7 @@ import { ROOT } from '../../../tools/lib/edge-server.mjs';
 import { Playtest } from '../../../tools/playtest-server.mjs';
 import { expect, test } from './fixtures';
 import { ONLY_DC } from './lib/tags';
+import { env } from './lib/env.mjs';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -58,21 +59,20 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
     };
     const state = async () => (await call('GET', '/state')) as unknown as State;
     const pad = async (n: number) => (await state()).pads.find((p) => p.n === n)!;
-    /** 棚の選択の輪を、/state の focused を見ながら id のカードへ動かし、2回の決定で始める。 */
+    /** 棚の選択の輪を、/state の focused を見ながら id の箱へ動かし、1回の決定で始める。 */
     const choose = async (id: string, order: string[]) => {
       for (let i = 0; i < order.length; i++) {
         const f = (await state()).host.focused ?? '';
         if (f === `game:${id}`) break;
         const at = order.indexOf(f.replace('game:', ''));
-        await call('POST', '/pad/1/tap', { id: at < 0 ? 'down' : at < order.indexOf(id) ? 'right' : 'left' });
+        const row = Math.floor(at / 5), target = Math.floor(order.indexOf(id) / 5);
+        await call('POST', '/pad/1/tap', { id: at < 0 || row < target ? 'down' : row > target ? 'up' : at < order.indexOf(id) ? 'right' : 'left' });
       }
       expect((await state()).host.focused).toBe(`game:${id}`);
       await call('POST', '/pad/1/tap', { id: 'ok' });
-      expect((await state()).host.state).toBe('detail');
-      await call('POST', '/pad/1/tap', { id: 'ok' });
       await expect.poll(async () => (await state()).host.state).toBe('playing');
     };
-    const order = ['daifugo', 'moon-village', 'old-maid', 'strike-alley', 'blade-duel', 'lantern-market', 'ten-seconds', 'dot-grab', 'hello-pad', 'quiz-4', 'tap-race'];
+    const order = JSON.parse(env('shelf')) as string[];
 
     const started = await call('POST', '/start', {});
     expect(started).toMatchObject({ clock: 'paused', code: expect.stringMatching(/^[A-Z0-9]{4}$/) });

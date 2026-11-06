@@ -3,8 +3,9 @@
   "id": "dot-grab",
   "title": {
     "ja": "あつめて点",
-    "en": "Dot Grab"
+    "en": "Gather the Embers"
   },
+  "kind": {"ja": "点あつめ", "en": "Collecting"},
   "summary": {
     "ja": "スティックで動いて、光る点を集める。45秒で多く取った人の勝ち。",
     "en": "Move with the stick and collect glowing dots. Most dots in 45 seconds wins."
@@ -33,5 +34,6 @@
   "thumbnail": "dot-grab.png",
   "sdk": 1,
   "rating": "all",
-  "added": "2026-10-16"
+  "added": "2026-10-16",
+  "minutes": {"min": 1, "max": 1}
 }

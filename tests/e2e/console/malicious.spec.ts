@@ -75,8 +75,6 @@ test('悪意のあるゲーム（外部・?dev=）：自分のオリジンの外
   await listenForReport(host);
   await expect(host.page.locator('.card').first()).toHaveAttribute('data-game', 'dev');
   await host.page.locator('.card[data-game="dev"]').click();
-  await host.expectState('detail');
-  await host.page.locator('[data-nav="detail:start"]').click();
   // 外部のゲームは、開く前に接続先のホスト名を確かめる。
   await expect(host.page.locator('[data-layer="confirm"]')).toContainText(new URL(ext).host);
   await host.page.locator('[data-nav="confirm:ok"]').click();

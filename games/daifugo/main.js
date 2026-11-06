@@ -1,7 +1,10 @@
 // @ts-check
+import {consoleResults} from './logic.js';
 import {connect} from './irori.js';
-import {createGame,publicView,updateGame} from './logic.js';
+import {createGame,publicView,updateGame,viewFor} from './logic.js';
 import {createView} from './view.js';
+import {fillSeats} from './cpu.js';
+import {createCpuDriver} from './cpu-driver.js';
 
 const stage=/** @type {HTMLElement} */ (document.getElementById('stage'));
 const status=/** @type {HTMLElement} */ (document.getElementById('status'));
@@ -20,10 +23,14 @@ async function boot() {
     irori.ready();
     return;
   }
+  const cpus=fillSeats(irori.players.length);
+  const cpuIds=new Set(cpus.map((p)=>p.id));
+  const human=(/** @type {number} */ id)=>!cpuIds.has(id);
   const nonce=Array.from(crypto.getRandomValues(new Uint8Array(4)),(n)=>n.toString(16).padStart(2,'0')).join('');
   const seed=crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
-  const initial=createGame({players:irori.players,leader:irori.leader,environment:irori.environment,paused:irori.paused,nonce,seed});
+  const initial=createGame({players:[...irori.players,...cpus],leader:irori.leader,environment:irori.environment,paused:irori.paused,nonce,seed});
   let state=initial.state;
+  const cpu=createCpuDriver(cpus.map((p)=>p.id),seed,(p)=>viewFor(state,p),(p,input)=>dispatch({t:'input',p,input}));
   let ended=false;
   let disposed=false;
   let paused=irori.paused;
@@ -54,7 +61,7 @@ async function boot() {
     const turned=turn !== feltTurn;
     feltTurn=turn;
     if (paused || !environment?.connected || !environment.visible) return;
-    const reachable=new Set(model.seats.filter((seat)=>seat.online && !seat.left).map((seat)=>seat.id));
+    const reachable=new Set(model.seats.filter((seat)=>seat.online && !seat.left && human(seat.id)).map((seat)=>seat.id));
     /** 1つの更新で1席に1回だけ（後の振動が前を打ち消すため、強いほうを選ぶ）。 @type {Map<number,number[]>} */
     const buzz=new Map();
     for (const event of fresh) {
@@ -66,7 +73,7 @@ async function boot() {
   }
   function dispose() {
     if (disposed) return;
-    disposed=true;
+    disposed=true;cpu.cancel();
     for (const off of subscriptions.splice(0)) off();
     removeEventListener('pagehide',dispose);
     looks.clear();
@@ -77,13 +84,13 @@ async function boot() {
   function apply(effects) {
     for (const effect of effects) {
       if (disposed || ended) return;
-      if (effect.t === 'pad') irori.setPad(effect.spec,effect.to);
+      if (effect.t === 'pad' && human(effect.to)) irori.setPad(effect.spec,effect.to);
       else if (effect.t === 'cue') irori.cue?.(effect.name,effect.v);
-      else if (effect.t === 'vibrate') irori.vibrate(effect.ms,effect.to);
+      else if (effect.t === 'vibrate' && human(effect.to)) irori.vibrate(effect.ms,effect.to);
       else if (effect.t === 'end') {
         ended=true;
         dispose();
-        irori.end(effect.results,effect.options);
+        irori.end(consoleResults(effect.results,cpuIds),effect.options);
       }
     }
   }
@@ -96,12 +103,13 @@ async function boot() {
     view.render(model,looks);
     feel(model);
     apply(next.effects);
+    if (!ended) cpu.sync();else cpu.cancel();
   }
   subscriptions.push(
     irori.on('input',(p,input)=>dispatch({t:'input',p,input})),
     irori.on('players',(players,leader)=>{
       for (const player of players) if (!looks.has(player.id)) looks.set(player.id,irori.look(player.id));
-      dispatch({t:'players',players,leader});
+      dispatch({t:'players',players:[...players,...cpus],leader});
     }),
     irori.on('pause',()=>{paused=true;reflectAvailability();dispatch({t:'menu',paused:true});}),
     irori.on('resume',()=>{paused=false;reflectAvailability();dispatch({t:'menu',paused:false});}),
@@ -111,6 +119,7 @@ async function boot() {
   reflectAvailability();
   view.render(publicView(state),looks);
   apply(initial.effects);
+  cpu.sync();
   irori.ready();
 }
 void boot().catch(()=>{

@@ -1,4 +1,5 @@
 // @ts-check
+import {CPU_LOOK} from './cpu.js';
 /** @typedef {import('./logic.js').GameViewModel} Model */
 /** @typedef {Model['seats'][number]} PublicSeat */
 /** @typedef {{assist?: boolean}} RenderOptions */
@@ -187,6 +188,13 @@ export function createView(stage, status) {
       entry.node.style.setProperty('--order', String(index));
       const lamp = element('span', 'resident-lamp');
       lamp.setAttribute('aria-hidden', 'true');
+      if('cpu' in seat && seat.cpu) {
+        const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+        svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('role','img');svg.setAttribute('aria-label','CPUのロボット');
+        const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+        path.setAttribute('d',CPU_LOOK.path);path.setAttribute('fill',CPU_LOOK.color);svg.append(path);
+        lamp.classList.add('resident-lamp--cpu');lamp.removeAttribute('aria-hidden');lamp.append(svg);
+      }
       const info = element('span', 'resident-info');
       info.append(element('strong', 'resident-name', seat.name), element('span', 'resident-state', seat.left ? '退出' : !seat.alive ? '脱落' : !seat.online ? '接続待ち' : '生存'));
       entry.node.replaceChildren(lamp, info);

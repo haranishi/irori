@@ -19,6 +19,9 @@ export interface GameEntry {
   /** 外部のゲームのホスト名。同梱は null。 */
   host: string | null;
   dev: boolean;
+  minutes?: { min: number; max: number } | undefined;
+  kind?: string | undefined;
+  preview?: string | undefined;
 }
 
 export const REGISTRY_URL = '/registry/index.json';
@@ -43,6 +46,27 @@ function thumbOf(raw: Record<string, unknown>, file: string): string {
     if (typeof v === 'string' && v.startsWith(THUMB_DIR) && v.endsWith(`/${file}`) && !v.includes('..')) return v;
   }
   return THUMB_DIR + file;
+}
+
+/** 追加の表示情報は通信の型に混ぜず、旧登録もそのまま読めるようにする。 */
+function kindOf(raw: Record<string, unknown>, locale: Locale): string | undefined {
+  const value = raw.kind;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const values = Object.entries(value);
+  if (!values.length || !values.every(([key, text]) => ['ja', 'en'].includes(key) && typeof text === 'string' && [...text].length > 0 && [...text].length <= 12)) return undefined;
+  return pick(value as Partial<Record<Locale, string>>, locale);
+}
+
+function previewOf(raw: Record<string, unknown>): string | undefined {
+  return typeof raw.preview === 'string' && /^[a-z0-9-]+\.mp4$/.test(raw.preview)
+    ? `/registry/previews/${raw.preview}` : undefined;
+}
+
+function minutesOf(raw: Record<string, unknown>): GameEntry['minutes'] {
+  const value = raw.minutes as { min?: unknown; max?: unknown } | undefined;
+  if (!value || typeof value !== 'object' || Object.keys(value).some((key) => key !== 'min' && key !== 'max')) return undefined;
+  const { min, max } = value;
+  return typeof min === 'number' && typeof max === 'number' && Number.isInteger(min) && Number.isInteger(max) && min >= 1 && max <= 120 && min <= max ? { min, max } : undefined;
 }
 
 export function parseCatalog(json: unknown, locale: Locale): GameEntry[] {
@@ -71,6 +95,9 @@ export function parseCatalog(json: unknown, locale: Locale): GameEntry[] {
       thumb: thumbOf(item as Record<string, unknown>, m.thumbnail),
       host: hostOf(m.entry),
       dev: false,
+      minutes: minutesOf(item as Record<string, unknown>),
+      kind: kindOf(item as Record<string, unknown>, locale),
+      preview: previewOf(item as Record<string, unknown>),
     });
   }
   return out;

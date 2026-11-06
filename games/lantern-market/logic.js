@@ -175,3 +175,22 @@ export function publicView(state) {
   };
 }
 /** @typedef {ReturnType<typeof publicView>} GameViewModel */
+
+/** 本人の操作と公開情報だけを複製する。他席の回答・時計・乱数は含めない。
+ * @param {GameState} state @param {number} p */
+export function viewFor(state,p) {
+  const seat=state.seats.find(s=>s.id === p);
+  if(!seat) throw new RangeError('席がありません');
+  return {...publicView(state),self:p,hand:[...seat.hand],pad:structuredClone(padFor(state,seat))};
+}
+/** @typedef {ReturnType<typeof viewFor>} SeatView */
+
+/** CPUを含む局の順位はゲームが確定し、コンソールには人の記録だけを渡す。
+ * @param {import('./irori.js').GameResult[]} rows
+ * @param {ReadonlySet<number>} cpuIds
+ * @returns {import('./irori.js').GameResult[]} */
+export function consoleResults(rows,cpuIds) {
+  const humans=rows.filter(row=>!cpuIds.has(row.p));
+  if(!cpuIds.size) return humans;
+  return humans.map(row=>({p:row.p,score:row.score,ranked:false,label:row.ranked === false ? row.label ?? '記録なし' : `${1+rows.filter(other=>other.ranked !== false && other.score>row.score).length}位(CPUこみ)`}));
+}

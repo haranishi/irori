@@ -164,13 +164,12 @@ async function layout(host: Host, count: number): Promise<void> {
 
 test('2人で3回の記録と累計を発表し、100秒以内に総合結果へ。再戦は記録と試行を初期化する', HOST, async ({ rig }) => {
   const host = await rig.openHost({ clock: true });
-  const pads = await rig.join(host, ['たろう']);
   await host.page.locator('.card[data-game="ten-seconds"]').click();
-  await host.expectState('detail');
-  await expect(host.page.locator('[data-nav="detail:start"]')).toBeDisabled();
-  await expect(host.page.locator('#detail-reason')).toHaveText('あと1人で遊べます');
+  await host.expectState('home');
+  await expect(host.page.locator('[data-nav="shelf:play"]')).toBeDisabled();
+  await expect(host.page.locator('.hero [data-fit="need"]')).toHaveText('あと1人で遊べます');
   await host.key('Escape');
-  pads.push(...await rig.join(host, ['はなこ']));
+  const pads = await rig.join(host, ['たろう', 'はなこ']);
   await host.choose('ten-seconds', pads[0]);
   await host.expectPhase('intro');
   const frame = (await host.gameFrame())!;
@@ -530,7 +529,7 @@ for (const first of ['phone', 'visible'] as const) {
 }
 
 test('実ホストの接続が切れている間にスマホも切れると、復帰した名簿の切断を待ち、同じ回を新しい試行でやり直す', HOST, async ({ rig }) => {
-  const [port] = await pickPorts(1, { from: 5250, to: 5259 });
+  const [port] = await pickPorts(1, { from: 8887, to: 8899 });
   const line = await Line.start(Number(new URL(rig.main).port), port!);
   rig.allowSocketErrors();
   try {

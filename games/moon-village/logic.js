@@ -9,7 +9,7 @@ import {assignRoles, makeRng, rolesFor} from './roles.js';
 /** @typedef {PlayerInfo & {alive:boolean,left:boolean,role:Role|null,lastGuard:number|null}} Seat */
 /** @typedef {'intro'|'reveal'|'night'|'dawn'|'day'|'vote'|'exec'|'ended'} Phase */
 /** @typedef {{from:number,to:number|null}} Vote */
-/** @typedef {{phase:Phase,day:number,seats:Seat[],players:PlayerInfo[],leader:number|null,environment:HostEnvironment|null,paused:boolean,resumeRequired:boolean,blockers:string[],nonce:string,revision:number,epochs:Record<number,number>,seed:number,rng:number,discussMs:number,remaining:number,total:number,idleWarned:boolean,picks:Record<number,number|null>,checked:Record<number,'shown'|'done'>,showRole:Record<number,boolean>,reports:Record<number,string>,victim:number|null,runoff:boolean,candidates:number[],votes:Vote[]|null,announce:string,outcome:'complete'|'incomplete',winner:'village'|'wolf'|null}} GameState */
+/** @typedef {{phase:Phase,day:number,seats:Seat[],players:PlayerInfo[],leader:number|null,environment:HostEnvironment|null,paused:boolean,resumeRequired:boolean,blockers:string[],nonce:string,revision:number,epochs:Record<number,number>,seed:number,rng:number,discussMs:number,remaining:number,total:number,idleWarned:boolean,picks:Record<number,number|null>,checked:Record<number,'shown'|'done'>,showRole:Record<number,boolean>,reports:Record<number,string>,victim:number|null,runoff:boolean,candidates:number[],votes:Vote[]|null,announce:string,outcome:'complete'|'incomplete',winner:'village'|'wolf'|null,knowledge?:Record<number,Record<number,boolean>>}} GameState */
 /** @typedef {{players:readonly PlayerInfo[],leader:number|null,environment:Readonly<HostEnvironment>|null,paused:boolean,nonce:string,seed:number,discussMs?:number}} GameInit */
 /** @typedef {{t:'input',p:number,input:GameInput}|{t:'players',players:readonly PlayerInfo[],leader:number|null}|{t:'menu',paused:boolean}|{t:'environment',value:Readonly<HostEnvironment>|null}|{t:'tick',ms:number}} GameEvent */
 /** @typedef {{t:'pad',to:number,spec:PadSpec}|{t:'cue',name:string,v?:number}|{t:'vibrate',to:number,ms:number[]}|{t:'end',results:import('./irori.js').GameResult[],options:import('./irori.js').GameEndOptions}} GameEffect */
@@ -194,9 +194,14 @@ function resolveNight(state) {
     const target = alive.find((s)=>s.id === actions[seer.id]);
     if (target) reports[seer.id] = `${target.name}さんは${target.role === 'wolf' ? '人狼です。' : '人狼ではありません。'}`;
   }
+  const knowledge=structuredClone(state.knowledge ?? {});
+  for(const seer of alive.filter(s=>s.role === 'seer')) {
+    const target=alive.find(s=>s.id === actions[seer.id]);
+    if(target) knowledge[seer.id]={...knowledge[seer.id],[target.id]:target.role === 'wolf'};
+  }
   const seats = state.seats.map((s)=>({...s,alive:s.alive && s.id !== victim,lastGuard:s.role === 'knight' && s.alive ? actions[s.id] ?? null : s.lastGuard}));
   const name = state.seats.find((s)=>s.id === victim)?.name;
-  return judge({...state,phase:'dawn',seats,rng:rngState,picks:{},showRole:{},reports,victim,remaining:0,total:0,
+  return judge({...state,phase:'dawn',seats,knowledge,rng:rngState,picks:{},showRole:{},reports,victim,remaining:0,total:0,
     announce:name ? `${name}さんが襲われました` : '今朝は誰も襲われませんでした'});
 }
 
@@ -307,7 +312,7 @@ function transition(before,next,forceSeat) {
 export function publicView(state) {
   const roleCounts = state.phase === 'intro' && state.seats.length >= 4 && state.seats.length <= 8
     ? Object.fromEntries([...new Set(rolesFor(state.seats.length))].map((role)=>[role,rolesFor(state.seats.length).filter((r)=>r === role).length])) : null;
-  return {phase:state.phase,day:state.day,roleCounts,seats:state.seats.map(({id,name,alive,left,online})=>({id,name,alive,left,online})),announce:state.announce,
+  return {phase:state.phase,day:state.day,roleCounts,seats:state.seats.map((s)=>({id:s.id,name:s.name,alive:s.alive,left:s.left,online:s.online,...('cpu' in s && s.cpu ? {cpu:true} : {})})),announce:state.announce,
     timer:state.phase === 'day' || state.phase === 'night' || state.phase === 'vote' ? {remaining:state.remaining,total:state.total} : null,
     decided:state.phase === 'reveal' ? {count:living(state).filter((s)=>state.checked[s.id] === 'done').length,total:living(state).length} : state.phase === 'night' || state.phase === 'vote' ? {count:living(state).filter((s)=>s.id in state.picks).length,total:living(state).length} : null,
     votes:state.votes?.map((v)=>({...v})) ?? null,
@@ -315,3 +320,26 @@ export function publicView(state) {
     leader:state.leader,canBegin:canBegin(state),outcome:state.outcome};
 }
 /** @typedef {ReturnType<typeof publicView>} GameViewModel */
+
+/** 役を持つ本人だけの情報。確定前の他席の投票・夜の選択は含めない。 @param {GameState} state @param {number} id */
+export function viewFor(state,id) {
+  const seat=state.seats.find(s=>s.id === id);
+  if(!seat) throw new RangeError('席がありません');
+  const pad=!seat.online || seat.left ? /** @type {PadSpec} */ ({k:'wait',title:'待っています'}) : padFor(state,seat);
+  return {...publicView(state),self:id,role:seat.role,lastGuard:seat.lastGuard,
+    friends:seat.role === 'wolf' ? state.seats.filter(s=>s.role === 'wolf' && s.id !== id).map(s=>s.id) : [],
+    knowledge:{...(state.knowledge?.[id] ?? {})},resumeRequired:state.resumeRequired,
+    targets:pad.k === 'tiles' ? pad.tiles.map(tile=>({tile:tile.id,id:state.seats.find(s=>tileId(state,id,s.id) === tile.id)?.id ?? null})) : [],
+    pad:structuredClone(pad)};
+}
+/** @typedef {ReturnType<typeof viewFor>} SeatView */
+
+/** CPUを含む局の順位はゲームが確定し、コンソールには人の記録だけを渡す。
+ * @param {import('./irori.js').GameResult[]} rows
+ * @param {ReadonlySet<number>} cpuIds
+ * @returns {import('./irori.js').GameResult[]} */
+export function consoleResults(rows,cpuIds) {
+  const humans=rows.filter(row=>!cpuIds.has(row.p));
+  if(!cpuIds.size) return humans;
+  return humans.map(row=>({p:row.p,score:row.score,ranked:false,label:row.label ?? '記録なし'}));
+}

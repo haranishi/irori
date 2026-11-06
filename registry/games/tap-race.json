@@ -3,11 +3,12 @@
   "id": "tap-race",
   "title": {
     "ja": "連打レース",
-    "en": "Tap Race"
+    "en": "Forty Taps"
   },
+  "kind": {"ja": "連打", "en": "Tapping"},
   "summary": {
-    "ja": "3・2・1の合図で、ボタンを40回たたいて完走をめざす。早くゴールした順に得点。",
-    "en": "On 3, 2, 1, tap the button 40 times to finish. Faster finishers score more."
+    "ja": "3・2・1の合図で、ボタンを40回たたいて完走をめざす。早くゴールした順に得点。1人でも CPU と遊べる。",
+    "en": "Tap 40 times to finish. Play solo with CPUs."
   },
   "authors": [
     {
@@ -20,7 +21,7 @@
     "assets": "original"
   },
   "players": {
-    "min": 2,
+    "min": 1,
     "max": 8
   },
   "pads": [
@@ -33,5 +34,6 @@
   "thumbnail": "tap-race.png",
   "sdk": 1,
   "rating": "all",
-  "added": "2026-10-16"
+  "added": "2026-10-16",
+  "minutes": {"min": 1, "max": 1}
 }

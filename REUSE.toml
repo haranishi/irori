@@ -14,6 +14,12 @@ path = ["*.md", "docs/**", ".agent-harness/**", ".kiro/specs/**/*.md", "games/*/
 SPDX-FileCopyrightText = "2026 Ikki Nishihara and the irori contributors"
 SPDX-License-Identifier = "CC-BY-4.0"
 
+# ゲーム自身の画面を録画した、自作の無音動画。
+[[annotations]]
+path = "registry/previews/**"
+SPDX-FileCopyrightText = "2026 Ikki Nishihara and the irori contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
 # 自作の画像（ロゴ、OGP、サムネイル）。コードで描いた・画面から撮ったもので、第三者の素材を含まない。
 [[annotations]]
 path = ["registry/thumbs/**", "apps/web/public/**", "apps/web/og/**"]

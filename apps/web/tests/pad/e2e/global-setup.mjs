@@ -1,5 +1,5 @@
 // スマホの画面の実ブラウザ試験の前に、apps/web を自分専用の一時フォルダへビルドし、実 Worker を起こす。
-// apps/web/dist は共有の場所なので作らない（B1・G と同時に動くため）。ポートは B2 の範囲（8820〜8839）から選ぶ。
+// apps/web/dist は共有の場所なので作らない（B1・G と同時に動くため）。ポートは B2 の範囲（8880〜8881）から選ぶ。
 // ビルドは buildWeb()（ホストとスマホの両方）を先に試す。ホストの画面が作りかけで通らないときだけ、スマホの画面だけを
 // ビルドし直して進む（警告を出す）。上書きは回数の栓だけ（同じIPから何度も部屋を作り、存在を確かめるため）。時間は上書きしない。
 import { spawnSync } from 'node:child_process';
@@ -37,7 +37,7 @@ export default async function setup() {
     build = buildPadOnly();
     process.env[BUILD_KIND_ENV] = 'pad-only';
   }
-  const [port, inspectorPort] = await pickPorts(2, { from: 8820, to: 8839 });
+  const [port, inspectorPort] = await pickPorts(2, { from: 8880, to: 8881 });
   let edge;
   try {
     edge = await startEdge({

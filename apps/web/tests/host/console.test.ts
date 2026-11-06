@@ -150,7 +150,6 @@ describe('ゲームを開く前', () => {
     click('.card[data-game="fixture-far"]');
     await flush();
     expect(state()).toBe('detail');
-    click('[data-nav="detail:start"]');
     await flush();
     expect(root.dataset.modal).toBe('confirm');
     expect(document.querySelector('[data-layer="confirm"] .dialog__title')?.textContent).toBe('games.example.invalid のサーバーに接続します');
@@ -164,14 +163,14 @@ describe('ゲームを開く前', () => {
     expect(state()).toBe('home');
   });
 
-  it('人数が足りないゲームは、詳細の「はじめる」が押せず、理由が出る', async () => {
+  it('人数が足りないゲームはホームに留まり、名前の帯の「あそぶ」が押せず理由が出る', async () => {
     const { state } = await welcomed({}, [p(1, 'たろう')]);
     click('.card[data-game="fixture-race"]');
     await flush();
-    expect(state()).toBe('detail');
-    const start = document.querySelector<HTMLButtonElement>('[data-nav="detail:start"]');
+    expect(state()).toBe('home');
+    const start = document.querySelector<HTMLButtonElement>('[data-nav="shelf:play"]');
     expect(start?.disabled).toBe(true);
-    expect(document.querySelector('[data-layer="detail"]')?.textContent).toContain('あと1人で遊べます');
+    expect(document.querySelector('.hero')?.textContent).toContain('あと1人で遊べます');
   });
 });
 
@@ -340,7 +339,6 @@ describe('実物のGameFrameへの結果と環境の連携', () => {
     const s = await welcomed(options, players);
     sockets.push(s.sock);
     click('.card[data-game="fixture-race"]');
-    click('[data-nav="detail:start"]');
     return s;
   }
 

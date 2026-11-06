@@ -4,7 +4,8 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 // Dependency/module links and Git metadata are deliberately outside the checkout policy.
-const IGNORED_DIRS = new Set(['.git', 'node_modules']);
+// .probe-tmp は、手元の作業（エージェントの一時ファイル・撮影・ログ）の置き場で、リポジトリには入らない（.gitignore）。検査の対象にしない。
+const IGNORED_DIRS = new Set(['.git', 'node_modules', '.probe-tmp']);
 const GENERATED_DIRS = new Set(['dist', '.wrangler', 'test-results', 'playwright-report', 'coverage']);
 // Generated contents are not source inputs, but their metadata must be safe before build tools write here.
 const GENERATED = ['apps/web/public/games/', 'apps/web/public/registry/', 'apps/web/public/sdk/'];

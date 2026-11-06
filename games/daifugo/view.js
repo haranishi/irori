@@ -1,4 +1,5 @@
 // @ts-check
+import {CPU_LOOK} from './cpu.js';
 /** @typedef {import('./logic.js').GameViewModel} Model */
 /** @typedef {import('./irori.js').Look} Look */
 /** @typedef {Model['seats'][number]} Seat */
@@ -335,12 +336,12 @@ export function createView(stage,status) {
     text(edition,model.phase === 'intro' ? '3〜8人 · 54枚の読み合い' : model.phase === 'ended' ? '勝負の結果' : '手札は、手元に');
     const turn=model.seats.find((seat)=>seat.id === model.turn);
     text(turnText,model.phase === 'ended' ? model.outcome === 'incomplete' ? '今回は、勝敗なし' : '勝負がつきました' : turn ? `${turn.name}さんの番` : '次の番を待っています');
-    mark(turnMark,model.phase === 'play' && turn ? looks.get(turn.id) : undefined,true);
+    mark(turnMark,model.phase === 'play' && turn ? turn.cpu ? CPU_LOOK : looks.get(turn.id) : undefined,true);
     text(orderState,model.revolution ? '革命中' : '通常');
     text(orderDetail,model.revolution ? ' · 弱い 2 → 3 強い · ジョーカーは最強' : ' · 弱い 3 → 2 強い · ジョーカーは最強');
     const by=model.seats.find((seat)=>seat.id === model.table?.by);
     text(captionText,model.table ? `${by?.name ?? '参加者'}さんが出した${model.table.n}枚` : '場は空です');
-    mark(captionMark,model.table && by ? looks.get(by.id) : undefined,true);
+    mark(captionMark,model.table && by ? by.cpu ? CPU_LOOK : looks.get(by.id) : undefined,true);
     const fresh=model.events.filter((event)=>event.seq>lastSeq);
     if (fresh.length) lastSeq=Math.max(...fresh.map((event)=>event.seq));
     updatePile(model,fresh);
@@ -367,7 +368,8 @@ export function createView(stage,status) {
         const passed=seat.passed && !seat.left && seat.online && model.phase === 'play';
         row.node.className=`seat${isTurn ? ' seat--turn' : ''}${finished ? ' seat--finished' : ''}${seat.left ? ' seat--left' : ''}${!seat.online ? ' seat--offline' : ''}${seat.rank !== null && seat.count>0 ? ' seat--last' : ''}${seat.rank === 1 ? ' seat--first' : ''}`;
         if (isTurn) row.node.setAttribute('aria-current','step');else row.node.removeAttribute('aria-current');
-        mark(row.symbol,looks.get(seat.id));text(row.name,seat.name);
+        row.node.toggleAttribute('data-cpu',seat.cpu === true);
+        mark(row.symbol,seat.cpu ? CPU_LOOK : looks.get(seat.id));text(row.name,seat.name);
         const count=seat.left ? '退出' : model.phase === 'intro' ? '配札前' : finished && seat.count === 0 ? '上がり' : '';
         if (count) {text(row.count,count);row.shown=-1;}
         else if (row.shown !== seat.count) {

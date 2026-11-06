@@ -2,6 +2,7 @@
   "schema": 1,
   "id": "strike-alley",
   "title": { "ja": "ストライク横丁", "en": "Strike Yokocho" },
+  "kind": {"ja": "ボウリング", "en": "Bowling"},
   "summary": { "ja": "スマホに指をおいて、引いて、はなして投げる。路地裏のレーンで10本を倒そう。", "en": "Touch, pull back and let go to bowl. Topple all ten pins in a back-alley lane." },
   "authors": [{ "name": "irori contributors", "url": "https://github.com/haranishi/irori" }],
   "license": { "code": "MIT OR Apache-2.0", "assets": "original" },
@@ -11,5 +12,6 @@
   "thumbnail": "strike-alley.jpg",
   "sdk": 1,
   "rating": "all",
-  "added": "2026-10-27"
+  "added": "2026-10-27",
+  "minutes": {"min": 10, "max": 15}
 }

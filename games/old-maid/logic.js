@@ -1,6 +1,6 @@
 // @ts-check
 import {cardText, dealAndPair, makeRng, pairOff, shuffle} from './cards.js';
-/** @typedef {import('./irori.js').PlayerInfo} PlayerInfo */
+/** @typedef {import('./irori.js').PlayerInfo & {cpu?:boolean}} PlayerInfo */
 /** @typedef {import('./irori.js').HostEnvironment} HostEnvironment */
 /** @typedef {PlayerInfo & {left:boolean, hand:string[], rank:number|null}} Seat */
 /** @typedef {import('./irori.js').PadSpec} PadSpec */
@@ -100,7 +100,7 @@ export function updateGame(state,event) {
     next.events = [];
     // 配札の捨て札は discard にまとめ、イベント列は配札での上がりから始める。
     for (const id of dealt.out) markOut(next,/** @type {Seat} */ (next.seats.find((s) => s.id === id)));
-    openTurn(next,0,true);
+    openTurn(next,-Infinity,true);
     return transition(state,next,[{t:'cue',name:'deal'}]);
   }
   if (input.k !== 'tiles' || input.pass || !Array.isArray(input.ids) || input.ids.length !== 1 || p !== state.turn?.from) return {state,effects:[]};
@@ -199,8 +199,27 @@ function transition(before,state,extra=[]) {
 
 /** @param {GameState} state */
 export function publicView(state) {
-  return {phase:state.phase,seats:state.seats.map((s) => ({id:s.id,name:s.name,count:s.hand.length,rank:s.rank,left:s.left,online:s.online})),
+  return {phase:state.phase,seats:state.seats.map((s) => ({id:s.id,name:s.name,...(s.cpu ? {cpu:true} : {}),count:s.hand.length,rank:s.rank,left:s.left,online:s.online})),
     turn:state.turn ? {...state.turn} : null,discard:[...state.discard],events:state.events.map((e) => e.type === 'pair' ? {...e,cards:[...e.cards]} : {...e}),
     leader:state.leader,canBegin:canBegin(state),outcome:state.outcome};
 }
 /** @typedef {ReturnType<typeof publicView>} GameViewModel */
+
+/** 本人用の情報だけを複製する。乱数状態・他席の手札・伏せ札の対応は渡さない。
+ * @param {GameState} state @param {number} p */
+export function viewFor(state,p) {
+  const seat=state.seats.find((s)=>s.id === p);
+  if (!seat) throw new RangeError('席がありません');
+  return {...publicView(state),self:p,hand:[...seat.hand],pad:structuredClone(padFor(state,seat))};
+}
+/** @typedef {ReturnType<typeof viewFor>} SeatView */
+
+/** CPUを含む局の順位はゲームが確定し、コンソールには人の記録だけを渡す。
+ * @param {import('./irori.js').GameResult[]} rows
+ * @param {ReadonlySet<number>} cpuIds
+ * @returns {import('./irori.js').GameResult[]} */
+export function consoleResults(rows,cpuIds) {
+  const humans=rows.filter(row=>!cpuIds.has(row.p));
+  if(!cpuIds.size) return humans;
+  return humans.map(row=>({p:row.p,score:row.score,ranked:false,label:row.ranked === false ? row.label ?? '記録なし' : `${1+rows.filter(other=>other.ranked !== false && other.score>row.score).length}位(CPUこみ)`}));
+}

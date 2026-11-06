@@ -49,7 +49,10 @@ export function writeRegistry(root, games) {
   const thumbsStat = assertSafePath(root, 'registry/thumbs');
   if (thumbsStat && !thumbsStat.isDirectory()) throw new Error('Unsafe source path: registry/thumbs (expected directory)');
   assertSafeTree(root, 'registry/thumbs', { allowMissing: true });
+  assertSafeTree(root, 'registry/previews', { allowMissing: true });
   for (const game of games) {
+    if (game.minutes && (!Number.isInteger(game.minutes.min) || !Number.isInteger(game.minutes.max) || game.minutes.min < 1 || game.minutes.max > 120 || game.minutes.min > game.minutes.max)) throw new Error('Invalid minutes range');
+    if (typeof game.id !== 'string' || !/^[a-z][a-z0-9-]{1,38}[a-z0-9]$/.test(game.id)) throw new Error('Unsafe source path: invalid game id');
     if (typeof game.entry?.bundled !== 'string') continue;
     if (!/^games\/[a-z0-9-]+\/$/.test(game.entry.bundled)) throw new Error('Unsafe source path: invalid bundled game directory');
     const source = assertSafePath(root, game.entry.bundled);
@@ -64,7 +67,17 @@ export function writeRegistry(root, games) {
   rmSync(join(root, OUT_REGISTRY), { recursive: true, force: true });
   rmSync(join(root, OUT_GAMES), { recursive: true, force: true });
   mkdirSync(join(root, OUT_REGISTRY, 'thumbs'), { recursive: true });
-  const list = shelfOrder(games).map((g) => ({ ...g, thumbUrl: `/registry/thumbs/${g.thumbnail}` }));
+  mkdirSync(join(root, OUT_REGISTRY, 'previews'), { recursive: true });
+  const list = shelfOrder(games).map((g) => {
+    const file = `${g.id}.mp4`;
+    const source = join(root, 'registry/previews', file);
+    const { preview: _preview, ...manifest } = g;
+    if (existsSync(source) && statSync(source).isFile()) {
+      copyFileSync(source, join(root, OUT_REGISTRY, 'previews', file));
+      return { ...manifest, thumbUrl: `/registry/thumbs/${g.thumbnail}`, preview: file };
+    }
+    return { ...manifest, thumbUrl: `/registry/thumbs/${g.thumbnail}` };
+  });
   writeFileSync(join(root, OUT_REGISTRY, 'index.json'), `${JSON.stringify({ schema: 1, games: list }, null, 2)}\n`);
   const thumbs = join(root, 'registry/thumbs');
   let thumbCount = 0;

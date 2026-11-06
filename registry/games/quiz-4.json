@@ -5,6 +5,7 @@
     "ja": "4択クイズ",
     "en": "Four-Choice Quiz"
   },
+  "kind": {"ja": "クイズ", "en": "Quiz"},
   "summary": {
     "ja": "日本と世界の名所は、どこにある？ 4つから選ぶ全8問。早く正解するほど高得点。",
     "en": "Eight four-choice questions on landmarks. Faster right answers score more."
@@ -33,5 +34,6 @@
   "thumbnail": "quiz-4.png",
   "sdk": 1,
   "rating": "all",
-  "added": "2026-10-16"
+  "added": "2026-10-16",
+  "minutes": {"min": 3, "max": 5}
 }

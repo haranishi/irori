@@ -8,9 +8,9 @@
 /** @typedef {import('./irori.js').HostEnvironment} HostEnvironment */
 /** @typedef {'slash' | 'guard' | 'focus' | 'burst'} Move */
 /** @typedef {'intro' | 'choose' | 'reveal' | 'recover' | 'ended'} Phase */
-/** @typedef {{id:number,name:string,online:boolean,left:boolean,hp:number,energy:number}} Seat */
+/** @typedef {{id:number,name:string,online:boolean,left:boolean,hp:number,energy:number,cpu?:boolean}} Seat */
 /** @typedef {{p:number,move:Move,damage:number,hpBefore:number,energyBefore:number}} Reveal */
-/** @typedef {{phase:Phase,seats:Seat[],leader:number|null,paused:boolean,environment:HostEnvironment|null,nonce:string,seq:number,round:number,picks:Record<string,Move>,reveal:Reveal[],outcome:'complete'|'incomplete'}} GameState */
+/** @typedef {{phase:Phase,seats:Seat[],leader:number|null,paused:boolean,environment:HostEnvironment|null,nonce:string,seq:number,round:number,picks:Record<string,Move>,reveal:Reveal[],history?:Reveal[][],outcome:'complete'|'incomplete'}} GameState */
 /** @typedef {{t:'input',p:number,input:GameInput}|{t:'players',players:readonly PlayerInfo[],leader:number|null}|{t:'menu',paused:boolean}|{t:'environment',value:Readonly<HostEnvironment>}} GameEvent */
 /** @typedef {{t:'pad',to:number,spec:PadSpec}|{t:'end',results:GameResult[],options:GameEndOptions}} GameEffect */
 /** @typedef {{state:GameState,effects:GameEffect[]}} Transition */
@@ -128,7 +128,7 @@ function resolveRound(state) {
     return { ...s, hp: Math.max(0, s.hp - record.damage),
       energy: Math.min(MAX_ENERGY, s.energy - MOVES[record.move].cost + (record.move === 'focus' ? 1 : 0)) };
   });
-  return { ...state, phase: 'reveal', seats, reveal, picks: {}, seq: state.seq + 1 };
+  return { ...state, phase: 'reveal', seats, reveal, history:[...(state.history ?? []),reveal], picks: {}, seq: state.seq + 1 };
 }
 
 /** @param {GameState} state @param {Seat} seat @returns {PadSpec} */
@@ -179,4 +179,24 @@ export function publicView(state) {
     actionLabel: state.phase === 'intro' ? 'はじめる' : state.phase === 'recover' ? 'やり直す'
       : isFinished(state) ? '総合結果へ' : '次の手へ',
     finished: isFinished(state), reveal: state.phase === 'reveal' ? state.reveal.map((r) => ({ ...r })) : [], outcome: state.outcome };
+}
+
+/** 公開された履歴と本人の操作だけを複製する。 @param {GameState} state @param {number} id */
+export function viewFor(state,id) {
+  const seat=state.seats.find(s=>s.id === id);
+  if(!seat) throw new RangeError('席がありません');
+  const pad=blockersFor(state).length || seat.left || !seat.online || state.phase === 'ended'
+    ? /** @type {PadSpec} */ ({k:'wait',title:'待っています'}) : padFor(state,seat);
+  return {...publicView(state),self:id,history:(state.history ?? []).map(round=>round.map(r=>({...r}))),pad:structuredClone(pad)};
+}
+/** @typedef {ReturnType<typeof viewFor>} SeatView */
+
+/** CPUを含む局の順位はゲームが確定し、コンソールには人の記録だけを渡す。
+ * @param {import('./irori.js').GameResult[]} rows
+ * @param {ReadonlySet<number>} cpuIds
+ * @returns {import('./irori.js').GameResult[]} */
+export function consoleResults(rows,cpuIds) {
+  const humans=rows.filter(row=>!cpuIds.has(row.p));
+  if(!cpuIds.size) return humans;
+  return humans.map(row=>({p:row.p,score:row.score,ranked:false,label:row.label ?? '記録なし'}));
 }

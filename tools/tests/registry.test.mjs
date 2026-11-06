@@ -318,3 +318,40 @@ describe('コマンド', () => {
     assert.match(bad.stderr, /rating は "all" にします/);
   });
 });
+
+it('ジャンルは12文字まで、動画は同じ置き場のファイル名だけを受ける', () => {
+  const root = fixture([['game-x', manifest('game-x', { kind: { ja: '数字カード', en: 'Number cards' }, preview: 'game-x.mp4' })]]);
+  assert.deepEqual(check(root).problems, []);
+  for (const patch of [{ kind: { ja: '長'.repeat(13) } }, { kind: { other: 'Cards' } }, { preview: '../game-x.mp4' }, { preview: 'https://example.com/game.mp4' }]) {
+    assert.ok(check(fixture([['game-x', manifest('game-x', patch)]])).problems.length > 0);
+  }
+});
+
+it('存在する動画だけ自動登録して写し、消えた動画の指定と前回の写しを残さない', () => {
+  const root = fixture([['game-x', manifest('game-x', { kind: { ja: '連打' } })]], { 'registry/previews/game-x.mp4': 'video' });
+  const { games } = check(root);
+  writeRegistry(root, games);
+  const file = join(root, 'apps/web/public/registry/index.json');
+  assert.equal(JSON.parse(readFileSync(file, 'utf8')).games[0].preview, 'game-x.mp4');
+  assert.equal(readFileSync(join(root, 'apps/web/public/registry/previews/game-x.mp4'), 'utf8'), 'video');
+  rmSync(join(root, 'registry/previews/game-x.mp4'));
+  writeRegistry(root, [{ ...games[0], preview: 'game-x.mp4' }]);
+  assert.equal(JSON.parse(readFileSync(file, 'utf8')).games[0].preview, undefined);
+  assert.ok(!existsSync(join(root, 'apps/web/public/registry/previews/game-x.mp4')));
+});
+
+
+it('目安の時間は任意の整数1〜120で、一覧にも残る。逆転した範囲は書き出さない', () => {
+  const root = fixture([['game-x', manifest('game-x', { minutes: { min: 3, max: 5 } })]]);
+  const { problems, games } = check(root);
+  assert.deepEqual(problems, []);
+  writeRegistry(root, games);
+  const file = join(root, 'apps/web/public/registry/index.json');
+  const before = readFileSync(file, 'utf8');
+  assert.deepEqual(JSON.parse(before).games[0].minutes, { min: 3, max: 5 });
+  assert.throws(() => writeRegistry(root, [{ ...games[0], minutes: { min: 5, max: 3 } }]), /minutes/);
+  assert.equal(readFileSync(file, 'utf8'), before);
+  for (const minutes of [{ min: 0, max: 1 }, { min: 1, max: 121 }, { min: 1.5, max: 2 }, { min: 1 }, { min: 1, max: 2, extra: true }]) {
+    assert.ok(check(fixture([['game-x', manifest('game-x', { minutes })]])).problems.length > 0);
+  }
+});

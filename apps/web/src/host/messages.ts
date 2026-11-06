@@ -3,6 +3,16 @@
 import { addMessages } from '../shared/i18n';
 
 export const HOST_JA: Record<string, string> = {
+  'host.shelf.guide1': 'QRを読む',
+  'host.shelf.guide2': '参加する',
+  'host.shelf.guide3': 'ゲームを選ぶ',
+  'host.shelf.controls': '決定＝あそぶ · 戻る',
+  'host.shelf.minutesOne': '約{min}分',
+  'host.shelf.minutes': '約{min}〜{max}分',
+  'host.shelf.play': 'あそぶ',
+  'host.shelf.qr': 'QRを大きく表示（Q）',
+  'host.shelf.pages': 'ゲームのページ',
+  'host.shelf.page': '{n} / {total} ページ',
   'host.tagline': 'スマホがコントローラー。みんなで囲むゲーム機',
   'host.sep': '、',
   'host.connecting': '部屋を用意しています',
@@ -26,11 +36,12 @@ export const HOST_JA: Record<string, string> = {
   'host.padlink': '参加するスマホは、こちら',
   'host.join.qr': '参加用のQRコード。{url}',
 
+  'host.guide.openQr': '左下のQRを開く',
   'host.guide.title': 'はじめかた',
   'host.guide.step1': 'スマホのカメラで、QRを読む',
   'host.guide.step1Loopback': 'この画面からは、スマホは参加できません',
-  'host.guide.seeAbove': '（上の警告）',
-  'host.guide.seeRight': '（右の警告）',
+  'host.guide.seeAbove': '（左下のQRを開く）',
+  'host.guide.seeRight': '（左下のQRを開く）',
   'host.guide.afterFix': '（開き直したあと）',
   'host.guide.step2': '「参加する」を押す',
   'host.guide.step3': '最初に入った人が、スマホでゲームを選ぶ',
@@ -183,6 +194,9 @@ export const HOST_JA: Record<string, string> = {
   'host.error.version.body': 'ページを読み込み直してください。',
   'host.error.version.reload': '読み込み直す',
 
+  'host.join.loopbackShort': 'このアドレスでは、スマホは参加できません',
+  'host.pad.qrHint': 'QRを閉じるには［戻る］を押してください',
+  'host.pad.resultsHint': '「もう一度」か「ホームへ」を選んで、［決定］を押してください',
   'host.pad.remoteHint': 'ゲームを選んで、［決定］を押してください',
   'host.pad.choosing': '{name}が選んでいます',
   'host.pad.choosingBody': '大きな画面を見てください',
@@ -194,6 +208,16 @@ export const HOST_JA: Record<string, string> = {
 };
 
 export const HOST_EN: Record<string, string> = {
+  'host.shelf.guide1': 'Scan QR',
+  'host.shelf.guide2': 'Join',
+  'host.shelf.guide3': 'Choose a game',
+  'host.shelf.controls': 'Confirm = Play · Back',
+  'host.shelf.minutesOne': 'About {min} min',
+  'host.shelf.minutes': 'About {min}–{max} min',
+  'host.shelf.play': 'Play',
+  'host.shelf.qr': 'Enlarge QR (Q)',
+  'host.shelf.pages': 'Game pages',
+  'host.shelf.page': 'Page {n} of {total}',
   'host.tagline': 'Phones are the controllers. Gather around one screen.',
   'host.sep': ', ',
   'host.connecting': 'Setting up a room',
@@ -217,11 +241,12 @@ export const HOST_EN: Record<string, string> = {
   'host.padlink': 'Joining with this phone? Go here',
   'host.join.qr': 'QR code to join. {url}',
 
+  'host.guide.openQr': 'Open the QR at bottom left',
   'host.guide.title': 'How to start',
   'host.guide.step1': 'Scan the QR code with a phone camera',
   'host.guide.step1Loopback': 'Phones cannot join from this screen',
-  'host.guide.seeAbove': ' (see the warning above)',
-  'host.guide.seeRight': ' (see the warning on the right)',
+  'host.guide.seeAbove': ' (open the QR at bottom left)',
+  'host.guide.seeRight': ' (open the QR at bottom left)',
   'host.guide.afterFix': ' (after reopening)',
   'host.guide.step2': 'Tap “Join”',
   'host.guide.step3': 'The first phone to join picks a game',
@@ -374,6 +399,9 @@ export const HOST_EN: Record<string, string> = {
   'host.error.version.body': 'Please reload the page.',
   'host.error.version.reload': 'Reload',
 
+  'host.join.loopbackShort': 'Phones cannot join at this address',
+  'host.pad.qrHint': 'Press Back to close the QR code',
+  'host.pad.resultsHint': 'Pick Play again or Home, then press OK',
   'host.pad.remoteHint': 'Pick a game and press OK',
   'host.pad.choosing': '{name} is choosing',
   'host.pad.choosingBody': 'Watch the big screen',

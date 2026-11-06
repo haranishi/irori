@@ -1,5 +1,7 @@
 # 火花の間合い / Blade and Breath
 
+1人でも CPU と遊べる。人が1人ならCPUが相手になり、合計2席で遊べます（推奨2席）。公開の体力・気力・手の履歴で選ぶ、ふつうの強さです。人が元の最小人数以上なら補充しません。途中の補充は変わりません。
+
 2人で、スマホに出る手を1つ選ぶ同時選択のチャンバラです。時間制限はありません。
 両者が決めるまで手は秘密。公開を見てから、進行役のスマホで次の手へ進みます。
 
@@ -33,3 +35,5 @@ Both moves resolve together. A knockout ends the duel; after 10 rounds, remainin
 Equal health is a draw. Choices stay private until both players lock in, with no time limit.
 The leader advances each reveal. Reconnecting lets the leader replay only an unresolved round.
 If someone leaves the room, the match ends without a winner and keeps everyone's record.
+
+Play solo with CPU. CPU seats are fixed for the match; only human records reach the console.

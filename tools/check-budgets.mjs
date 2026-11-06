@@ -6,7 +6,7 @@
 //   node tools/check-budgets.mjs --dir D   … すでにあるビルドの出力 D を測る（ビルドしない）
 // 画面の JS は、HTML の script と modulepreload から、import（動的な import も）をたどって全部を集める。
 // gzip は最大の圧縮（level 9）。配信の圧縮はこれより弱いこともあるので、上限に近づいたら余裕を見て判断する。
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { buildWeb } from './lib/edge-server.mjs';
@@ -14,6 +14,15 @@ import { isDirectRun } from './lib/files.mjs';
 
 const KB = 1024;
 export const BUDGETS = { host: 80 * KB, pad: 40 * KB, sdk: 60 * KB, sdkRaw: 72 * KB };
+const PREVIEW_MAX = 1_000_000;
+
+/** 動画は圧縮済みなので、gzipでなく配信する実サイズで測る。 */
+export function previewBudgets(dir = 'registry/previews') {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter((name) => name.endsWith('.mp4')).map((name) => ({
+    path: name, bytes: statSync(join(dir, name)).size,
+  }));
+}
 
 const ATTR = /<(?:script|link)\b[^>]*\b(?:src|href)="(\/[^"]+\.js)"/g;
 const IMPORT = /(?:\bimport\s*\(\s*|\bfrom\s*|\bimport\s*)["'](\.{1,2}\/[^"']+\.js)["']/g;
@@ -73,7 +82,10 @@ if (isDirectRun(import.meta.url)) {
     for (const [name, part] of [['ホスト', m.host], ['スマホ', m.pad]]) {
       for (const f of part.files) console.log(`    ${name} ${f.path}  gzip ${n(f.gzip)} B・そのまま ${n(f.bytes)} B`);
     }
-    const over = overBudget(m);
+    const previews = previewBudgets();
+    for (const f of previews) console.log(`  動画 ${f.path} ${n(f.bytes)} B / ${n(PREVIEW_MAX)} B`);
+    const over = [...overBudget(m), ...previews.filter((f) => f.bytes > PREVIEW_MAX)
+      .map((f) => `動画 ${f.path}：${f.bytes} B（上限 ${PREVIEW_MAX} B）`)];
     if (over.length) {
       console.error(`\ncheck-budgets: 上限を超えました\n  ${over.join('\n  ')}`);
       process.exitCode = 1;

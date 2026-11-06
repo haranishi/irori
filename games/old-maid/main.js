@@ -1,7 +1,11 @@
 // @ts-check
+import {consoleResults} from './logic.js';
 import {connect} from './irori.js';
-import {createGame,publicView,updateGame} from './logic.js';
+import {createGame,publicView,updateGame,viewFor} from './logic.js';
 import {createView} from './view.js';
+import {makeRng} from './cards.js';
+import {fillSeats} from './cpu.js';
+import {createCpuDriver} from './cpu-driver.js';
 
 /** @typedef {import('./logic.js').GameEffect} GameEffect */
 /** @typedef {Extract<GameEffect,{t:'cue'}>} CueEffect */
@@ -39,12 +43,16 @@ async function boot() {
   }
   /** @type {Map<number,import('./irori.js').Look>} */
   const looks=new Map(irori.players.map((p)=>[p.id,irori.look(p.id)]));
-  const nonce=Array.from(crypto.getRandomValues(new Uint8Array(4)),(n)=>n.toString(16).padStart(2,'0')).join('');
   const seed=crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
+  const cpus=fillSeats(irori.players.length,makeRng(seed^0x98abcdef));
+  const cpuIds=new Set(cpus.map((p)=>p.id));
+  const human=(/** @type {number} */ id)=>!cpuIds.has(id);
+  const nonce=Array.from(crypto.getRandomValues(new Uint8Array(4)),(n)=>n.toString(16).padStart(2,'0')).join('');
   let paused=irori.paused;let environment=irori.environment;
   const host=()=>({paused,connected:environment?.connected === true,visible:environment?.visible === true});
-  const initial=createGame({players:irori.players,leader:irori.leader,environment,paused,nonce,seed});
+  const initial=createGame({players:[...irori.players,...cpus],leader:irori.leader,environment,paused,nonce,seed});
   let state=initial.state;
+  const cpu=createCpuDriver(cpus.map((p)=>p.id),seed,(p)=>viewFor(state,p),(p,input)=>dispatch({t:'input',p,input}));
   /** @type {(()=>void)[]} */
   const subscriptions=[];
   let disposed=false;let ended=false;
@@ -52,7 +60,7 @@ async function boot() {
   let closing=null;
   function dispose() {
     if(disposed) return;
-    disposed=true;closing?.cancel();
+    disposed=true;cpu.cancel();closing?.cancel();
     for(const off of subscriptions.splice(0)) off();
     removeEventListener('pagehide',dispose);
     looks.clear();view.dispose();
@@ -67,12 +75,12 @@ async function boot() {
   function apply(effects) {
     for(const effect of effects) {
       if(disposed) return;
-      if(effect.t === 'pad') irori.setPad(effect.spec,effect.to);
-      else if(effect.t === 'vibrate') irori.vibrate(effect.ms,effect.to);
+      if(effect.t === 'pad' && human(effect.to)) irori.setPad(effect.spec,effect.to);
+      else if(effect.t === 'vibrate' && human(effect.to)) irori.vibrate(effect.ms,effect.to);
       else if(effect.t === 'end' && !ended) {
         // end は1回だけ。最後の演出（ジョーカーを静かに見せる間）が済んでから送る。止まっている間は待つ。
         ended=true;
-        closing=hold(view.finaleMs(),()=>{dispose();irori.end(effect.results,effect.options);});
+        closing=hold(view.finaleMs(),()=>{dispose();irori.end(consoleResults(effect.results,cpuIds),effect.options);});
         sync();
       }
     }
@@ -85,10 +93,11 @@ async function boot() {
     state=next.state;
     view.render(publicView(state),looks,host(),next.effects.filter(isCue));
     apply(next.effects);
+    if (!ended) cpu.sync();else cpu.cancel();
   }
   subscriptions.push(
     irori.on('input',(p,input)=>dispatch({t:'input',p,input})),
-    irori.on('players',(players,leader)=>{for(const p of players) if(!looks.has(p.id)) looks.set(p.id,irori.look(p.id));dispatch({t:'players',players,leader});}),
+    irori.on('players',(players,leader)=>{for(const p of players) if(!looks.has(p.id)) looks.set(p.id,irori.look(p.id));dispatch({t:'players',players:[...players,...cpus],leader});}),
     irori.on('pause',()=>{paused=true;dispatch({t:'menu',paused:true});sync();}),
     irori.on('resume',()=>{paused=false;dispatch({t:'menu',paused:false});sync();}),
     irori.on('environment',(value)=>{environment=value;dispatch({t:'environment',value});sync();}),
@@ -96,6 +105,7 @@ async function boot() {
   addEventListener('pagehide',dispose,{once:true});
   view.render(publicView(state),looks,host(),[]);
   apply(initial.effects);
+  cpu.sync();
   irori.ready();
 }
 void boot().catch(()=>{view.showMessage('つながりませんでした','ゲームを開き直してください','error');});

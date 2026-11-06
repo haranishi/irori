@@ -275,26 +275,14 @@ test('ストライク横丁：番の切断・再接続・一時停止・退出�
   await expect(host.page.locator('.results [data-seat][data-rank="null"]')).toHaveCount(2);
 });
 
-// 人数不足はchoose（開始まで進める道具）を使わず、棚→詳細で止める。
-async function detail(host: Host, id: string): Promise<void> {
-  await host.expectState('home');
-  await host.page.locator(`.card[data-game="${id}"]`).click();
-  await host.expectState('detail');
-}
-
-test('大富豪：2台では開始不可・不足1人を示す', HOST, async ({ rig }) => {
+test('大富豪：2台でもCPUが席を補い、人の名簿は2人のまま', HOST, async ({ rig }) => {
   const host = await rig.openHost();
-  await rig.join(host, NAMES.slice(0, 2));
-  await detail(host, 'daifugo');
-  const begin = host.page.locator('[data-nav="detail:start"]');
-  await expect(begin).toBeDisabled();
-  const describedBy = await begin.getAttribute('aria-describedby');
-  expect(describedBy).toBeTruthy();
-  // 数値のみを検査し、案内の文言そのものをセレクタにはしない。
-  await expect(host.page.locator(`[id="${describedBy}"]`)).toContainText('1');
-  await begin.click({ force: true });
-  await host.expectState('detail');
-  await expect(host.page.locator('.stage iframe')).toHaveCount(0);
+  const pads = await rig.join(host, NAMES.slice(0, 2));
+  await expect(host.page.locator('.seat')).toHaveCount(2);
+  await host.choose('daifugo', pads[0]);
+  await expect(host.root).toHaveAttribute('data-players', '2');
+  await host.expectPhase('intro');
+  await expect((await host.gameFrame())!.locator('body')).toContainText('CPU');
 });
 
 function dealSignature(pads: Pad[]): string[][] {

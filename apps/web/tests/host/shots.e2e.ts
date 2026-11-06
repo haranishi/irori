@@ -1,8 +1,8 @@
-// 画面の確認用のスクリーンショット（評価者に渡す）。3つの幅で、ホーム（初回の案内・1人・4人・8人）・詳細・外す・
+// 画面の確認用のスクリーンショット（評価者に渡す）。3つの幅で、ホーム（初回の案内・1人・4人・8人）・選択の帯・外す・
 // ゲーム中のメニュー・結果・共有・エラー（回線・混雑・閉じた・取って代わられた）と、公開のアドレスが無いときの注意を撮る。
 // 本番と同じく PUBLIC_URL を渡した Worker で撮る（部屋の案内と共有の宛先が、公開のアドレスになる）。
 // 撮る前に、終わりのあるアニメーションの完了を待つ。ビューポートの画像を基本にし、縦に長いときだけ全体の画像も足す。
-// 重ねる板（外す・詳細・メニュー・共有・覆い）は画面に固定なので、全体の画像は撮らない（幕が途中で切れて見えるだけ）。
+// 重ねる板（外す・メニュー・共有・覆い）は画面に固定なので、全体の画像は撮らない（幕が途中で切れて見えるだけ）。
 // 実行：npx playwright test -c playwright.host.config.ts --project host-shots
 import { expect, test, type Page } from '@playwright/test';
 import { env, openHost, ScriptPad, settle, type HostPage } from './e2e/fixtures';
@@ -15,16 +15,28 @@ const SIZES = [
   { width: 390, height: 844 },
 ] as const;
 
+
+/** 狭い幅でページが分かれても、見えている箱から選ぶ。 */
+async function selectGame(host: HostPage, id: string): Promise<void> {
+  const card = host.page.locator(`.card[data-game="${id}"]`);
+  for (let n = 0; !await card.count() && n < 8; n++) {
+    const next = host.page.locator('[data-nav="shelf:next"]');
+    if (!await next.count()) break;
+    await next.click();
+  }
+  await card.focus();
+}
+
 async function imagesReady(page: Page): Promise<void> {
   await page.waitForFunction(() => [...document.images].every((i) => i.complete && i.naturalWidth > 0));
 }
 
-/** 主役のカードの中身が切れていないか・参加の板の中身が板からはみ出していないか・横にはみ出していないか。 */
+/** 選択の帯の中身が切れていないか・参加の板の中身が板からはみ出していないか・横にはみ出していないか。 */
 async function layoutProblems(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const out: string[] = [];
     const info = document.querySelector('.hero__info');
-    if (info && info.scrollHeight > info.clientHeight + 1) out.push(`主役のカードの中身が切れる: ${info.scrollHeight} > ${info.clientHeight}`);
+    if (info && info.scrollHeight > info.clientHeight + 1) out.push(`選択の帯の中身が切れる: ${info.scrollHeight} > ${info.clientHeight}`);
     const join = document.querySelector('.home__join .join');
     if (join) {
       const bottom = join.getBoundingClientRect().bottom;
@@ -36,7 +48,7 @@ async function layoutProblems(page: Page): Promise<string[]> {
     if (document.documentElement.scrollWidth > window.innerWidth + 1) out.push(`横にはみ出す: ${document.documentElement.scrollWidth} > ${window.innerWidth}`);
     // 1366×768 では、補足の文字（記録・つながっていません・共有の注記・混雑の画面の補足・部屋のコード）が、ブラウザで測って17px以上。
     if (window.innerWidth === 1366) {
-      for (const sel of ['.result__caption', '.seat__off', '[data-layer="share"] .note', '.status__hint', '.join__label']) {
+      for (const sel of ['.result__caption', '[data-layer="share"] .note', '.status__hint']) {
         for (const el of document.querySelectorAll<HTMLElement>(sel)) {
           const px = parseFloat(getComputedStyle(el).fontSize);
           if (px < 17) out.push(`1366で補足の文字が小さい: ${sel} ${px}px`);
@@ -51,7 +63,7 @@ async function layoutProblems(page: Page): Promise<string[]> {
       if (bottom('.home__top') > h * 0.2) out.push(`上の操作群が高さの2割を超える: ${Math.round(bottom('.home__top'))} > ${Math.round(h * 0.2)}`);
       if (bottom('.join__qr') > h) out.push(`QRが最初の画面に入らない: ${Math.round(bottom('.join__qr'))} > ${h}`);
       if (document.querySelector('.seat') && bottom('.seat') > h) out.push(`参加者の札が最初の画面に入らない: ${Math.round(bottom('.seat'))} > ${h}`);
-      if (document.querySelector('[data-prompt]') && bottom('.home__prompt') > h) out.push(`選び方の案内が最初の画面に入らない: ${Math.round(bottom('.home__prompt'))} > ${h}`);
+      if (document.querySelector('.home__hero') && bottom('.home__hero') > h) out.push(`選び方の案内が最初の画面に入らない: ${Math.round(bottom('.home__prompt'))} > ${h}`);
     }
     return out;
   });
@@ -89,10 +101,10 @@ for (const size of SIZES) {
     const code = await host.code();
     await shot(host.page, '01-home-first-run');
 
-    // 1人：2人からのゲームが灰色。選択を灰色のカードに合わせる。
+    // 1人：CPU補充で遊べる箱の選択の帯。
     const [a] = await joinAll(base, code, ['たろう']);
     await expect(host.page.locator('.seat')).toHaveCount(1);
-    await host.page.locator('.card[data-game="tap-race"]').focus();
+    await selectGame(host, 'tap-race');
     await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'tap-race');
     await shot(host.page, '02-home-one-player');
 
@@ -101,7 +113,7 @@ for (const size of SIZES) {
     await expect(host.page.locator('.seat')).toHaveCount(4);
     more[2]?.close();
     await expect(host.page.locator('.seat[data-seat="4"]')).toHaveAttribute('data-online', 'false');
-    await host.page.locator('.card[data-game="hello-pad"]').focus();
+    await selectGame(host, 'hello-pad');
     await shot(host.page, '03-home-four-players');
 
     // 外す人の確かめ。
@@ -111,15 +123,15 @@ for (const size of SIZES) {
     await host.page.keyboard.press('Escape');
     await expect(host.page.locator('[data-layer="kick"]')).toHaveCount(0);
 
-    // 詳細。
-    await host.page.locator('.card[data-game="tap-race"]').click();
-    await host.expectState('detail');
-    await shot(host.page, '05-detail', { full: false });
+    // 選択の帯。詳細を挟まず起動するため、箱を選んだ状態を撮る。
+    await selectGame(host, 'tap-race');
+    await host.expectState('home');
+    await shot(host.page, '05-selected', { full: false });
 
     // ゲーム中のメニュー（一時停止）。
     await host.page.keyboard.press('Escape');
+    await selectGame(host, 'hello-pad');
     await host.page.locator('.card[data-game="hello-pad"]').click();
-    await host.page.locator('[data-nav="detail:start"]').click();
     await host.expectState('playing');
     await host.page.keyboard.press('Escape');
     await host.expectState('paused');
@@ -129,8 +141,8 @@ for (const size of SIZES) {
 
     // 結果：連打レースを3人で完走させる（順位・色と形・名前・点数・ラベル）。4人目の席は猶予で空く。
     await expect(host.page.locator('.seat')).toHaveCount(3, { timeout: 20_000 });
+    await selectGame(host, 'tap-race');
     await host.page.locator('.card[data-game="tap-race"]').click();
-    await host.page.locator('[data-nav="detail:start"]').click();
     await host.expectState('playing');
     const runners = [a, more[0], more[1]].filter((p): p is ScriptPad => p !== undefined);
     for (const p of runners) await p.expectSpec((s) => s?.k === 'buzzer', '連打の画面');
@@ -185,13 +197,13 @@ for (const size of SIZES) {
     await shot(r1.page, '12-error-replaced', { full: false });
     await Promise.all([r1.context.close(), ctx2.close()]);
 
-    // 8人（満員）。参加者の札が何行になっても、主役のカードと棚が画面に収まるか。
+    // 8人（満員）。参加者の札が何行になっても、選択の帯と棚が画面に収まるか。
     const crowd = await openHost(browser, base, { viewport: size });
     await crowd.expectState('home');
     await imagesReady(crowd.page);
     const eight = await joinAll(base, await crowd.code(), EIGHT);
     await expect(crowd.page.locator('.seat')).toHaveCount(8);
-    await crowd.page.locator('.card[data-game="dot-grab"]').focus();
+    await selectGame(crowd, 'dot-grab');
     await expect(crowd.page.locator('.hero')).toHaveAttribute('data-game', 'dot-grab');
     await shot(crowd.page, '13-home-eight-players');
     for (const p of eight) p.close();
@@ -201,7 +213,8 @@ for (const size of SIZES) {
     const local = await openHost(browser, env('IRORI_HOST_E2E_MAIN'), { viewport: size });
     await local.expectState('home');
     await imagesReady(local.page);
-    await expect(local.page.locator('[data-loopback]')).toBeVisible();
+    await local.page.keyboard.press('q');
+    await expect(local.page.locator('.qr-dialog [data-loopback]')).toBeVisible();
     await shot(local.page, '14-home-loopback');
     await local.context.close();
   });

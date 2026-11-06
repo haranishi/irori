@@ -42,14 +42,18 @@ function devGameServer(port) {
 
 export default async function globalSetup() {
   const web = buildWeb();
-  const ports = await pickPorts(8, { from: 8800, to: 8819 });
-  const [devPort] = await pickPorts(1, { from: 5220, to: 5239 });
-  const specs = [
+  const allSpecs = [
     { name: 'host-main', vars: { ...BASE, PAD_GRACE_MS: '4000', HOST_GRACE_MS: '8000', DEV_FRAMES: '1' } },
     { name: 'host-caps', vars: { MAX_ROOMS_PER_DAY: '1' } },
     { name: 'host-idle', vars: { ...BASE, ROOM_IDLE_MS: '4000' } },
     { name: 'host-public', vars: { ...BASE, PAD_GRACE_MS: '4000', HOST_GRACE_MS: '8000', PUBLIC_URL } },
   ];
+  // 変異は必要なWorkerだけ起こし、別の通し試験とポートを分け合う。
+  const profile = process.env.IRORI_HOST_E2E_PROFILE;
+  const specs = profile ? allSpecs.filter(s => s.name === `host-${profile}`) : allSpecs;
+  if (!specs.length) throw new Error('未知のホスト試験profile');
+  const ports = await pickPorts(specs.length * 2 + 1, { from: 8880, to: 8899 });
+  const devPort = ports.pop();
   const [dev, ...started] = await Promise.allSettled([
     devGameServer(devPort),
     ...specs.map((s, i) => startEdge({ name: s.name, assetsDir: web.outDir, port: ports[i * 2], inspectorPort: ports[i * 2 + 1], vars: s.vars })),
@@ -65,13 +69,12 @@ export default async function globalSetup() {
     await stopAll();
     throw failed.reason;
   }
-  const [main, caps, idle, pub] = servers;
-  process.env[ENV.main] = main.url;
-  process.env[ENV.caps] = caps.url;
-  process.env[ENV.idle] = idle.url;
-  process.env[ENV.public] = pub.url;
+  specs.forEach((spec, i) => {
+    const key = spec.name.slice('host-'.length);
+    process.env[ENV[key]] = servers[i].url;
+  });
   process.env[ENV.dev] = `http://localhost:${devPort}/`;
-  const shots = join(ROOT, '.agent-harness/runs/2026-10-16-bootstrap/review/shots-host');
+  const shots = join(ROOT, '.probe-tmp/shots-m2');
   process.env[ENV.shots] = shots;
   // 撮り直すときは、前の画像を残さない（撮らなくなった画像が混ざると、評価者を迷わせる）。
   // 「--project=host-shots」も「--project host-shots」も拾う（1つの引数に入っていることがある）。

@@ -170,3 +170,7 @@ html[data-phase="ended"] .role-card { font-size: clamp(18px, 3.4vmin, 38px); }
 .intro-details { width: min(100%, 52em); min-width: 0; display: grid; gap: .5em; font-size: clamp(16px, 2.2vmin, 24px); line-height: 1.6; overflow-wrap: anywhere; }
 .composition { color: var(--glow); }
 html[data-phase="intro"] .scene { height: clamp(64px, 12vmin, 130px); }
+
+.resident-lamp--cpu { background:transparent; border:0; box-shadow:none; }
+.resident-lamp--cpu::before,.resident-lamp--cpu::after { display:none; }
+.resident-lamp--cpu svg { width:28px; height:28px; display:block; }

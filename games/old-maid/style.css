@@ -140,3 +140,7 @@ p,h1,ol,ul{margin:0}ul,ol{padding:0;list-style:none}
 }
 /* 一時停止・切断・非表示の間は、CSS の動きも止める（view.js が WAAPI の動きを止める）。 */
 [data-frozen] *,[data-frozen] *::before{animation-play-state:paused!important}
+
+/* CPUは人の席の色と形を借りず、ロボットと破線で区別する。 */
+[data-cpu] .seat-mark, [data-cpu] .seat-symbol {filter:drop-shadow(0 0 3px #d5d9de66)}
+[data-cpu] {outline:1px dashed #d5d9de66;outline-offset:4px}

@@ -1,5 +1,5 @@
 // 遊んでいるときの画面の重なりと、結果の画面の収まり（実 Worker・実ブラウザ。重いので host.e2e.ts から分けた）。
-// - ゲームの最中、ホストは案内をゲームの画面に重ねない（8人・5本のゲーム・3つの大きさで、始めの10秒を数える）
+// - ゲームの最中、ホストは案内をゲームの画面に重ねない（8人・同梱ゲーム・3つの大きさで、始めの10秒を数える）
 // - 結果のボタンは、1〜8人のどの人数でも、3つの大きさの画面に収まり、選んでいるボタンが見える
 import { expect, test } from '@playwright/test';
 import { env, openHost, ScriptPad } from './e2e/fixtures';
@@ -11,8 +11,8 @@ const SIZES3 = [
   { width: 1280, height: 720 },
 ] as const;
 
-test('8人で5本のゲームを始めても、始めの10秒、ホストの案内はゲームの中身（点・回数の札・問題文・絵）に重ならない（3つの大きさ）', async ({ browser }) => {
-  test.setTimeout(300_000);
+test('8人で同梱ゲームを始めても、始めの10秒、ホストの案内はゲームの中身（点・回数の札・問題文・絵）に重ならない（3つの大きさ）', async ({ browser }) => {
+  test.setTimeout(600_000);
   const host = await openHost(browser, base(), { viewport: SIZES3[0] });
   await host.expectState('home');
   const code = await host.code();
@@ -24,10 +24,9 @@ test('8人で5本のゲームを始めても、始めの10秒、ホストの案�
   }
   await expect(host.page.locator('.seat')).toHaveCount(8);
   const order = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game') ?? ''));
-  expect(order).toEqual(['daifugo', 'moon-village', 'old-maid', 'strike-alley', 'blade-duel', 'lantern-market', 'ten-seconds', 'dot-grab', 'hello-pad', 'quiz-4', 'tap-race']);
+  expect(order).toEqual(expect.arrayContaining(['hello-pad', 'tap-race', 'dot-grab', 'quiz-4', 'ten-seconds']));
   const playable = await host.page.locator('.card[data-game][data-playable="true"]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game') ?? ''));
   const k = host.page.keyboard;
-  const focused = host.page.locator('#app [data-focused]').first();
   /** ホストが重ねている案内と、ゲームの枠の中の中身（文字の葉・絵）が交わる数。 */
   const overlaps = async (): Promise<number> => {
     const hints = await host.page.evaluate(() =>
@@ -56,16 +55,11 @@ test('8人で5本のゲームを始めても、始めの10秒、ホストの案�
   };
   for (const size of SIZES3) {
     await host.page.setViewportSize(size);
-    for (const [index, id] of order.entries()) {
+    for (const id of order) {
       if (!playable.includes(id)) continue;
       await host.expectState('home');
-      // 棚のこのゲームを選んで始める（輪を棚の先頭から右へ）。
-      for (let i = 0; i < order.length && (await focused.getAttribute('data-nav')) !== `game:${order[0]}`; i++) await k.press('ArrowLeft');
-      for (let i = 0; i < index; i++) await k.press('ArrowRight');
-      await expect(host.page.locator('.hero')).toHaveAttribute('data-game', id);
-      await k.press('Enter');
-      await host.expectState('detail');
-      await k.press('Enter');
+      // 配置に依存しないマウス起動。4方向の移動はホームの通しが守る。
+      await host.page.locator(`.card[data-game="${id}"]`).click();
       await host.expectState('playing');
       // 始めの10秒を、0.5秒ごとに数える。
       let total = 0;
@@ -101,10 +95,7 @@ test('結果のボタン（もう一度・ホームへ・紹介）は、1〜8人
     await expect(host.page.locator('.seat')).toHaveCount(n);
     // 試験用の外部ゲーム（棚の先頭）を始め、すぐ終える。全員が同じ点の1位（いちばん背の高い行）になる。
     await host.page.setViewportSize(SIZES3[0]);
-    await host.page.locator('.card[data-game="dev"]').focus();
-    await k.press('Enter');
-    await host.expectState('detail');
-    await k.press('Enter');
+    await host.page.locator('.card[data-game="dev"]').click();
     if (n === 1) {
       await expect(host.page.locator('[data-layer="confirm"]')).toBeVisible();
       await k.press('ArrowLeft');

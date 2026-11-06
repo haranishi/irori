@@ -5,6 +5,8 @@ import { expandTarget, planPads, type PadTexts } from '../../src/host/padplan';
 
 const p = (id: number, name: string, online = true): PlayerInfo => ({ id, name, online });
 const TEXT: PadTexts = {
+  qrHint: 'QRを閉じるには［戻る］を押してください',
+  resultsHint: '「もう一度」か「ホームへ」を選んで、［決定］を押してください',
   remoteHint: 'ゲームを選んで、［決定］を押してください',
   choosing: (name) => `${name}が選んでいます`,
   choosingBody: '大きな画面を見てください',

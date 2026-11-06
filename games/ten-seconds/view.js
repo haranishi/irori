@@ -121,6 +121,7 @@ function announcement(model) {
 /** @param {HTMLElement} stage @param {HTMLElement} status */
 export function createView(stage, status) {
   let previous = '';
+  let finalResults=document.createElement('ol');
   let said = '';
 
   /** @param {string} text */
@@ -171,6 +172,13 @@ export function createView(stage, status) {
         const seat = model.participants.find((p) => p.id === row.p);
         if (seat) rows.append(resultRow(row, seat, looks));
       }
+      finalResults=document.createElement('ol');finalResults.className='results';
+      const totals=[...model.rows].sort((a,b)=>Number(a.left)-Number(b.left) || a.totalTenths-b.totalTenths || a.p-b.p);
+      for(const row of totals) {
+        const seat=model.participants.find(p=>p.id === row.p);
+        const rank=row.left ? null : 1+totals.filter(other=>!other.left && other.totalTenths<row.totalTenths).length;
+        if(seat) finalResults.append(resultRow({...row,rank},seat,looks));
+      }
       scene.append(labels, rows);
     } else if (model.phase === 'recover') {
       scene.append(element('p', 'eyebrow', 'ひと息ついて、もう一度'), element('h1', 'message-title', 'この回は、やり直し'), element('p', 'message-body', 'ここまでの記録はそのまま'));
@@ -181,6 +189,11 @@ export function createView(stage, status) {
       }
     } else {
       scene.append(element('h1', 'message-title', model.outcome === 'incomplete' ? '今回は、勝敗なし' : '総合結果'), element('p', 'message-body', 'みんなの記録を、大画面で見よう'));
+    }
+    if(model.phase === 'ended' && model.outcome === 'complete') {
+      const labels=element('div','result-labels');
+      for(const text of ['総合順位','プレイヤー','第3回の記録','10秒との差','累計ズレ']) labels.append(element('span','',text));
+      scene.append(labels,finalResults);
     }
     const footer = element('footer', 'footer');
     footer.append(element('p', 'progress-guide', progressGuide(model)));

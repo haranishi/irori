@@ -1,7 +1,10 @@
 // @ts-check
+import {consoleResults} from './logic.js';
 import {connect} from './irori.js';
-import {createGame, publicView, updateGame} from './logic.js';
+import {createGame, publicView, updateGame, viewFor} from './logic.js';
 import {createView} from './view.js';
+import {fillSeats} from './cpu.js';
+import {createCpuDriver} from './cpu-driver.js';
 
 /**
  * 終わりの見せ場（全員の役と勝った側）を出してから、結果画面へ渡すまでの時間。
@@ -22,12 +25,16 @@ async function boot() {
     irori.ready();
     return;
   }
+  const cpus=fillSeats(irori.players.length);
+  const cpuIds=new Set(cpus.map(p=>p.id));
+  const human=(/** @type {number} */ id)=>!cpuIds.has(id);
   const random = crypto.getRandomValues(new Uint32Array(2));
   const nonce = (random[0] ?? 0).toString(16).padStart(8, '0');
-  const initial = createGame({players:irori.players, leader:irori.leader, environment:irori.environment, paused:irori.paused, nonce, seed:random[1] ?? 0});
+  const initial = createGame({players:[...irori.players,...cpus], leader:irori.leader, environment:irori.environment, paused:irori.paused, nonce, seed:random[1] ?? 0});
   // 大画面のボタンは仮想プレイヤーで試すときだけ出す。本物のホストでは枠がポインタを受けない。
   const assist = irori.mode === 'mock';
   let state = initial.state;
+  const cpu=createCpuDriver(cpus.map(p=>p.id),random[1] ?? 0,p=>viewFor(state,p),(p,input)=>dispatch({t:'input',p,input}));
   let disposed = false;
   let frame = 0;
   /** @type {number|null} */
@@ -40,6 +47,7 @@ async function boot() {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    cpu.cancel();
     cancelAnimationFrame(frame);
     for (const off of subscriptions.splice(0)) off();
     removeEventListener('pagehide', dispose);
@@ -63,14 +71,14 @@ async function boot() {
   function apply(effects) {
     for (const effect of effects) {
       if (disposed) return;
-      if (effect.t === 'pad') irori.setPad(effect.spec, effect.to);
+      if (effect.t === 'pad') {if(human(effect.to)) irori.setPad(effect.spec, effect.to);}
       else if (effect.t === 'cue') irori.cue?.(/** @type {import('./irori.js').CueName} */ (effect.name), effect.v);
-      else if (effect.t === 'vibrate') irori.vibrate(effect.ms, effect.to);
+      else if (effect.t === 'vibrate') {if(human(effect.to)) irori.vibrate(effect.ms, effect.to);}
       else if (!finale) {
         // end は1回だけ。全役の画面がスマホへ届き、大画面の役の表を見る間を置いてから送る。
         const {results, options} = effect;
         // 役がまだ配られていない終わり（はじめる前に全員が席を立った）は、見せる役の表がないので置かない。
-        finale = {left:state.seats.some((s)=>s.role) ? FINALE_MS : 0, send:()=>{dispose(); irori.end(results, options);}};
+        finale = {left:state.seats.some((s)=>s.role) ? FINALE_MS : 0, send:()=>{dispose(); irori.end(consoleResults(results,cpuIds), options);}};
         last = null;
         render();
       }
@@ -86,6 +94,7 @@ async function boot() {
     state = next.state;
     render();
     apply(next.effects);
+    if(!finale) cpu.sync();else cpu.cancel();
   }
   /** @param {MouseEvent} event */
   function continueDay(event) {
@@ -114,7 +123,7 @@ async function boot() {
   try {
     subscriptions.push(
       irori.on('input', (p, input)=>dispatch({t:'input', p, input})),
-      irori.on('players', (players, leader)=>dispatch({t:'players', players, leader})),
+      irori.on('players', (players, leader)=>dispatch({t:'players', players:[...players,...cpus], leader})),
       irori.on('pause', ()=>dispatch({t:'menu', paused:true})),
       irori.on('resume', ()=>dispatch({t:'menu', paused:false})),
       irori.on('environment', (value)=>dispatch({t:'environment', value})),
@@ -124,6 +133,7 @@ async function boot() {
     render();
     apply(initial.effects);
     if (!disposed) frame = requestAnimationFrame(tick);
+    cpu.sync();
     irori.ready();
   } catch (error) {
     dispose();

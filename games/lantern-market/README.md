@@ -39,3 +39,8 @@ Prizes are 3, 6, 2, 8, 4 and 10 points. Unclaimed lanterns carry forward; the la
 The final card plays automatically. Most points wins, with equal scores sharing a rank.
 Reconnect and let the leader retry an unresolved market; committed scores and used cards stay intact.
 Leaving ends the match without a winner. There is no timer, money or gambling.
+
+## CPUと遊ぶ
+
+1人でも CPU と遊べる。元の最小人数は2人、推奨は4席。人が2人未満の局だけCPUで4席へ補い、人が2人以上なら足さない。局の途中では補充を変えない。
+CPUは本人の手札と公開済みの使用札だけを見て、中〜高の札とかぶりにくさに重みを付けて選ぶ。

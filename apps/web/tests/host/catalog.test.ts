@@ -49,3 +49,22 @@ describe('棚の一覧', () => {
     await expect(loadCatalog(ng, 'ja')).rejects.toThrow();
   });
 });
+
+it('追加のジャンルと動画は安全な値だけを表示し、旧登録も読める', () => {
+  const entry = { ...registry.games[0], kind: { ja: '連打', en: 'Tapping' }, preview: 'fixture-race.mp4' };
+  const parsed = parseCatalog([entry], 'en')[0]!;
+  expect(parsed.kind).toBe('Tapping');
+  expect(parsed.preview).toBe('/registry/previews/fixture-race.mp4');
+  expect(parseCatalog([{ ...entry, kind: { ja: '長'.repeat(13) }, preview: '../escape.mp4' }], 'ja')[0]?.kind).toBeUndefined();
+  expect(parseCatalog([{ ...entry, preview: 'https://other.invalid/file.mp4' }], 'ja')[0]?.preview).toBeUndefined();
+});
+
+
+it('時間は省略でき、整数1〜120の順序が正しい範囲だけを読む', () => {
+  for (const minutes of [{ min: 1, max: 1 }, { min: 3, max: 120 }]) {
+    expect(parseCatalog([{ ...registry.games[0], minutes }], 'ja')[0]?.minutes).toEqual(minutes);
+  }
+  for (const minutes of [null, {}, { min: 0, max: 1 }, { min: 5, max: 3 }, { min: 1.5, max: 2 }, { min: 1, max: 121 }, { min: 1, max: 2, extra: true }]) {
+    expect(parseCatalog([{ ...registry.games[0], minutes }], 'ja')[0]?.minutes).toBeUndefined();
+  }
+});

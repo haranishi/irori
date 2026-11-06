@@ -53,13 +53,15 @@ describe('ホームの描画', () => {
     view({ roster: roster([p(1, 'a')]) });
     const race = document.querySelector('.card[data-game="fixture-race"]');
     expect(race?.getAttribute('data-playable')).toBe('false');
-    expect(race?.querySelector('.card__sub')?.textContent).toBe('あと1人で遊べます');
+    expect(race?.querySelector('.card__unavailable')).not.toBeNull();
+    expect(race?.querySelector('.card__unavailable')?.textContent).toBe('2');
     expect(document.querySelector('.hero [data-fit="need"]')?.textContent).toBe('あと1人で遊べます');
     const five = roster([1, 2, 3, 4, 5].map((i) => p(i, `p${i}`)));
     view({ roster: five, selected: 1 });
     const solo = document.querySelector('.card[data-game="fixture-solo"]');
     expect(solo?.getAttribute('data-playable')).toBe('false');
-    expect(solo?.querySelector('.card__sub')?.textContent).toBe('最大4人です');
+    expect(solo?.querySelector('.card__unavailable')?.textContent).toBe('4');
+    expect(solo?.querySelector('[data-icon="people"]')).not.toBeNull();
     expect(document.querySelector('.card[data-game="fixture-race"]')?.getAttribute('data-playable')).toBe('true');
   });
 
@@ -76,7 +78,7 @@ describe('ホームの描画', () => {
   it('最初の1人が入るまで、3手順の案内を出す。入ったら参加者の帯に替わる', () => {
     const { v } = view();
     expect(document.querySelectorAll('.guide__step')).toHaveLength(3);
-    expect(document.querySelector('.guide__step')?.textContent).toContain('スマホのカメラで、QRを読む');
+    expect(document.querySelector('.guide__step')?.textContent).toContain('QRを読む');
     expect(document.querySelector('.roster')).toBeNull();
     v.update({ games: games(), catalog: 'ok', selected: 0, roster: roster([p(1, 'たろう')]), code: 'XN7Q', origin: 'https://irori.example', loopback: false, sound: 'on', soundHint: null });
     expect(document.querySelector('[data-guide]')).toBeNull();
@@ -119,7 +121,7 @@ describe('ホームの描画', () => {
     expect(el.querySelector('[data-nav="results:share"]')?.textContent).toBe('irori を紹介');
   });
 
-  it('QRとコードは右下の1か所：URLは /pad#CODE、コードは等幅の大きな文字', () => {
+  it('QRとコードは左下の1か所：URLは /pad#CODE、コードは等幅の大きな文字', () => {
     view();
     const join = document.querySelector('.home__join .join');
     expect(join?.getAttribute('data-code')).toBe('XN7Q');
@@ -166,18 +168,14 @@ describe('ホームの描画', () => {
     expect(join?.querySelector('[data-loopback]')?.textContent).toBe('このアドレスは、ほかのスマホから開けません');
     expect(join?.querySelector('[data-loopback] [data-icon="alert"]')).not.toBeNull();
     expect(join?.querySelector('.join__cover [data-icon="alert"]')).not.toBeNull();
+    expect(join?.querySelector('.dock__reason')?.textContent).toBe('このアドレスでは、スマホは参加できません');
     expect(join?.querySelector('.join__scan')).toBeNull();
     expect(join?.querySelector('[data-fix]')?.textContent).toBe('npm run dev が表示する「大画面で開くURL」で、開き直してください');
     expect(join?.textContent).not.toContain('127.0.0.1:8787/pad で');
     const first = document.querySelector('.guide__step');
-    expect(first?.textContent).toContain('この画面からは、スマホは参加できません');
-    // 警告のある場所は、広い画面では右、縦に積む画面では上（CSS で片方だけ見せる）。①の丸は「!」、②③は開き直したあとの手順。
-    expect(first?.querySelector('.guide__where--right')?.textContent).toBe('（右の警告）');
-    expect(first?.querySelector('.guide__where--above')?.textContent).toBe('（上の警告）');
-    expect(first?.querySelector('.guide__num')?.textContent).toBe('!');
-    const later = [...document.querySelectorAll('.guide__step--later')];
-    expect(later).toHaveLength(2);
-    expect(later.every((el) => el.textContent?.endsWith('（開き直したあと）'))).toBe(true);
+    expect(first?.textContent).toBe('1左下のQRを開く');
+    expect(document.querySelectorAll('.guide__step')).toHaveLength(3);
+    expect(document.querySelector('.home__guide')?.textContent).not.toMatch(/右の警告|上の警告/);
     expect(document.querySelector('.home__top .loop-band')?.textContent).toBe('このアドレスでは、スマホは参加できません');
     view({ origin: 'https://irori.example', loopback: false });
     expect(document.querySelector('[data-loopback]')).toBeNull();
@@ -337,4 +335,39 @@ it('tiles対応のゲームは棚に札のアイコンと日本語の名称を�
   const pad = document.querySelector('.hero [data-pad="tiles"]');
   expect(pad?.textContent).toBe('札の選択');
   expect(pad?.querySelector('svg')).not.toBeNull();
+});
+
+it('箱は12枠、文字は名前の帯だけ。ページ送りは先頭を選び、戻すと動画のない箱も残る', () => {
+  const entries = Array.from({ length: 13 }, (_, n) => ({ ...games()[0]!, id: `game-${n}`, kind: '連打' }));
+  const { v, on } = view({ games: entries });
+  expect(document.querySelectorAll('.card')).toHaveLength(12);
+  expect([...document.querySelectorAll('.card')].every((el) => el.querySelector('.card__thumb')?.textContent === '')).toBe(true);
+  expect(document.querySelector('.hero__kind')?.textContent).toBe('連打');
+  document.querySelector<HTMLButtonElement>('[data-nav="shelf:next"]')?.click();
+  expect(on.select).toHaveBeenCalledWith(12);
+  expect(document.querySelectorAll('.card')).toHaveLength(1);
+  expect(document.querySelectorAll('.shelf__empty')).toHaveLength(11);
+  v.update({ games: entries, catalog: 'ok', selected: 0, roster: EMPTY_ROSTER, code: null, origin: 'https://irori.example', loopback: false, sound: 'on', soundHint: null });
+  expect(document.querySelectorAll('.card')).toHaveLength(12);
+});
+
+it('タッチは1回目で選び、2回目で決定。マウス互換のクリックは二重に決定しない', () => {
+  const { on } = view();
+  const card = document.querySelector<HTMLButtonElement>('.card[data-index="1"]')!;
+  const touch = () => card.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch', cancelable: true }));
+  touch();
+  expect(on.select).toHaveBeenCalledWith(1);
+  expect(on.open).not.toHaveBeenCalled();
+  card.dispatchEvent(new PointerEvent('click', { pointerType: 'touch' }));
+  expect(on.open).not.toHaveBeenCalled();
+  touch();
+  expect(on.open).toHaveBeenCalledExactlyOnceWith(1);
+});
+
+
+it('時間は同じ値なら一つ、範囲なら両端を出し、無いときは帯に足さない', () => {
+  for (const [minutes, text] of [[{ min: 3, max: 5 }, '約3〜5分'], [{ min: 1, max: 1 }, '約1分'], [undefined, undefined]] as const) {
+    view({ games: games().map(game => ({ ...game, minutes })) });
+    expect(document.querySelector('.hero__minutes')?.textContent).toBe(text);
+  }
 });

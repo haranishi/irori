@@ -1,5 +1,5 @@
 // スマホの画面の実ブラウザ試験の土台。
-// - line：ブラウザと実 Worker のあいだの回線の模型（B2 のポート 5240〜5259 から選ぶ）。ページはここを通して開く。
+// - line：ブラウザと実 Worker のあいだの回線の模型（B2 のポート 8882〜8899 から選ぶ）。ページはここを通して開く。
 // - makeHost：Node のホスト役（部屋を作ってつなぐ）。試験の終わりに閉じる。
 // - 見張り（自動）：コンソールのエラー・警告と CSP 違反は、0件でなければ落とす。回線をわざと切る試験だけ、
 //   ブラウザが出す WebSocket の失敗の知らせを許す（allowNetworkErrors）。
@@ -30,7 +30,7 @@ export const test = base.extend<Fixtures, { lineW: Line }>({
       // 並列のワーカーが、同じ空きポートを同時に選ぶことがある（空きを調べてから使うまでの間に取られる）。
       // 取れなかったら（EADDRINUSE）、順番を乱した別のポートで、やり直す。
       const target = Number(new URL(edgeUrl()).port);
-      const candidates = Array.from({ length: 20 }, (_, i) => 5240 + i).sort(() => Math.random() - 0.5);
+      const candidates = Array.from({ length: 18 }, (_, i) => 8882 + i).sort(() => Math.random() - 0.5);
       let line: Line | undefined;
       for (const port of candidates) {
         try {
@@ -40,7 +40,7 @@ export const test = base.extend<Fixtures, { lineW: Line }>({
           if ((e as { code?: string }).code !== 'EADDRINUSE') throw e;
         }
       }
-      if (!line) throw new Error('回線の模型のポート 5240〜5259 に空きがありません');
+      if (!line) throw new Error('回線の模型のポート 8882〜8899 に空きがありません');
       await use(line);
       await line.close();
     },

@@ -1,5 +1,6 @@
 // @ts-check
 // 秘密の選択を含まない公開モデルからだけ画面を作る。
+import {CPU_LOOK} from './cpu.js';
 import { MAX_ROUNDS, MOVES } from './logic.js';
 /** @typedef {import('./logic.js').GameViewModel} GameViewModel */
 /** @typedef {import('./logic.js').Seat} Seat */
@@ -51,7 +52,7 @@ function sword(cls) {
 
 /** @param {Seat} seat @param {GameViewModel} model @param {ReadonlyMap<number,Look>} looks @param {number} index */
 function fighter(seat, model, looks, index) {
-  const look = looks.get(seat.id);
+  const look = seat.cpu ? CPU_LOOK : looks.get(seat.id);
   const panel = el('section', `fighter fighter--${index === 0 ? 'left' : 'right'}`);
   panel.dataset.seat = String(seat.id);
   panel.style.setProperty('--seat-color', look?.color ?? '#ffd9a0');

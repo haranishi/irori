@@ -164,18 +164,22 @@
   },
   {
     "id": "host-a-e2e-no-grey",
-    "note": "(a) を実ブラウザで：1人のとき、2人からのゲームが灰色にならない",
+    "note": "(a) 参加者0人でも箱が起動可能になり、不足の印と理由が消える",
     "file": "apps/web/src/host/roster.ts",
     "find": "  if (count < range.min) return { ok: false, why: 'need', n: range.min - count };",
     "replace": "",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
       "--project=host-chromium",
-      "host.e2e.ts"
+      "host.e2e.ts",
+      "--grep",
+      "ホーム・参加者"
     ],
     "timeoutMs": 420000
   },
@@ -202,13 +206,17 @@
     "find": "  if (isLoopback(loc.hostname) && canonical) {",
     "replace": "  if (false) {",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=public",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
       "--project=host-chromium",
-      "host.e2e.ts"
+      "host.e2e.ts",
+      "--grep",
+      "公開のアドレス"
     ],
     "timeoutMs": 420000
   },
@@ -294,17 +302,22 @@
   },
   {
     "id": "host-n-e2e-narrow-top-tall",
-    "note": "(n) 撮影の門番が生きているか：狭い幅の上の帯を高くする（上の操作群が高さの2割を超える）→ 撮影の試験が数えて赤くなる",
+    "note": "(n) 狭い大画面の上の道具を高くし、画面の2割を超えさせる",
     "file": "apps/web/src/styles/host.css",
-    "find": "    min-height: 48px;\n    padding: 0 1rem;",
-    "replace": "    min-height: 148px;\n    padding: 0 1rem;",
+    "find": ".home--shelf .home__top { flex: 0 0 48px;",
+    "replace": ".home--shelf .home__top { flex: 0 0 180px;",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
-      "--project=host-shots"
+      "--project=host-chromium",
+      "home-guards.e2e.ts",
+      "--grep",
+      "狭い大画面"
     ],
     "timeoutMs": 420000
   },
@@ -342,34 +355,43 @@
   },
   {
     "id": "host-q-e2e-narrow-join-last",
-    "note": "(q) スマホの幅で、参加の板（QR・コード）を最後に回す（最初の画面に参加の入口が入らない）",
+    "note": "(q) 狭い幅でも最初の画面に参加できる入口を保つ：左下QRカードを画面の下へ追い出す",
     "file": "apps/web/src/styles/host.css",
-    "find": "  .home__join {\n    order: 1;\n  }",
-    "replace": "  .home__join {\n    order: 9;\n  }",
+    "find": ".home--shelf .home__dock { position: relative;",
+    "replace": ".home--shelf .home__dock { transform: translateY(100vh); position: relative;",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
       "--project=host-chromium",
-      "host.e2e.ts"
+      "home-guards.e2e.ts",
+      "--grep",
+      "狭い大画面"
     ],
     "timeoutMs": 420000
   },
   {
     "id": "host-r-unplayable-says-choose",
-    "note": "(r) 人数が足りないゲームにも「このゲームを選びます」と出す（あと何人かを出さない）",
+    "note": "(r) 選択した箱の名前の帯から人数不足の理由を消す",
     "file": "apps/web/src/host/view-home.ts",
-    "find": "      const text = f.why === 'need' ? t('host.start.need', { n: f.n }) : t('host.start.over', { max: f.max });\n      this.prompt.replaceChildren(h('p', { class: 'start-prompt start-prompt--wait', data: { prompt: f.why } }, ...tx(text)));\n      return;",
-    "replace": "      void f;",
+    "find": "          reason && !f.ok ? h('p', { class: 'fit fit--no',",
+    "replace": "          false ? h('p', { class: 'fit fit--no',",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
-      "vitest",
-      "run",
-      "--root",
-      "apps/web",
-      "tests/host"
+      "playwright",
+      "test",
+      "-c",
+      "apps/web/playwright.host.config.ts",
+      "--project=host-chromium",
+      "host.e2e.ts",
+      "--grep",
+      "ホーム・参加者"
     ],
     "timeoutMs": 180000
   },
@@ -391,17 +413,22 @@
   },
   {
     "id": "host-t-shots-small-caption-1366",
-    "note": "(t) 結果の「記録」の文字を小さくする（1366×768 で17px未満）→ 撮影の試験が、ブラウザで測って赤くなる",
+    "note": "(t) 結果の記録の補足を1366幅で17px未満にする",
     "file": "apps/web/src/styles/host.css",
     "find": ".result__caption {\n  font-size: 1rem;",
     "replace": ".result__caption {\n  font-size: 0.85rem;",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
-      "--project=host-shots"
+      "--project=host-chromium",
+      "home-guards.e2e.ts",
+      "--grep",
+      "1366幅の結果"
     ],
     "timeoutMs": 420000
   },
@@ -428,13 +455,17 @@
     "find": "  if (!l.seats.has(p)) return l;\n  const seats = new Set(l.seats);",
     "replace": "  return l;\n  const seats = new Set(l.seats);",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
       "--project=host-chromium",
-      "host.e2e.ts"
+      "host.e2e.ts",
+      "--grep",
+      "ゲームの途中で空いた席"
     ],
     "timeoutMs": 420000
   },
@@ -445,30 +476,38 @@
     "find": "    if (this.fallbackFocus === scope.key) {",
     "replace": "    if (false) {",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
       "--project=host-chromium",
-      "host.e2e.ts"
+      "host.e2e.ts",
+      "--grep",
+      "棚の一覧が部屋より遅く"
     ],
     "timeoutMs": 420000
   },
   {
     "id": "host-w-e2e-shelf-grows-column",
-    "note": "(w) 主の列の幅を中身で広げる（棚が増えると、右の参加の板に重なる）",
+    "note": "(w) 格子の幅を画面より広げると箱がQRと画面外へはみ出す",
     "file": "apps/web/src/styles/host.css",
-    "find": "  grid-template-columns: minmax(0, 1fr);\n  grid-template-rows: minmax(0, 1fr);",
-    "replace": "  grid-template-rows: minmax(0, 1fr);",
+    "find": ".home--shelf .home__shelf { width: min(100%, calc(",
+    "replace": ".home--shelf .home__shelf { min-width: 200vw; width: min(100%, calc(",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
       "--project=host-chromium",
-      "host.e2e.ts"
+      "host.e2e.ts",
+      "--grep",
+      "棚が12本"
     ],
     "timeoutMs": 420000
   },
@@ -479,13 +518,17 @@
     "find": "    if (scopeKey !== 'screen:home' || dir !== 'down' || !cur.closest('.home__top')) return undefined;",
     "replace": "    return undefined;",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
       "--project=host-chromium",
-      "host.e2e.ts"
+      "host.e2e.ts",
+      "--grep",
+      "キーボードでも同じ操作"
     ],
     "timeoutMs": 420000
   },
@@ -512,30 +555,38 @@
     "find": "    if (scopeKey !== 'layer:menu' || (dir !== 'up' && dir !== 'down')) return undefined;",
     "replace": "    return undefined;",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
       "--project=host-chromium",
-      "host.e2e.ts"
+      "host.e2e.ts",
+      "--grep",
+      "キーボードでも同じ操作"
     ],
     "timeoutMs": 420000
   },
   {
     "id": "host-bb-e2e-lock-text-fixed-size",
-    "note": "(bb) 締め切りの札の文字を QR の幅に合わせない（低い画面で左右が切れる）",
+    "note": "(bb) 小さいQRに重ねる締切の印を固定の大きさにし、QRの枠からはみ出させる",
     "file": "apps/web/src/styles/host.css",
-    "find": "  font-size: min(1.05rem, 9cqi);",
-    "replace": "  font-size: 1.05rem;",
+    "find": ".home--shelf .join__lock { padding: 2px; font-size: 0; }",
+    "replace": ".home--shelf .join__lock { padding: 2px; font-size: 100px; }",
     "command": [
+      "env",
+      "IRORI_HOST_E2E_PROFILE=main",
       "npx",
       "playwright",
       "test",
       "-c",
       "apps/web/playwright.host.config.ts",
       "--project=host-chromium",
-      "host.e2e.ts"
+      "host.e2e.ts",
+      "--grep",
+      "参加の締め切り"
     ],
     "timeoutMs": 420000
   },

@@ -70,7 +70,7 @@ export function eventText(m, e) {
     check: 'そのまま',
     call: `あわせた ${e.amount}`,
     raise: `ふやした ${e.amount}`,
-    all: `ぜんぶ ${e.amount}`,
+    all: `${e.capLabel ?? 'ぜんぶ'} ${e.amount}`,
     'auto-check': '時間切れでそのまま',
     'auto-fold': '時間切れでおりた'
   };
@@ -163,10 +163,11 @@ export function createView(stage, status) {
         center.append(board);
         if (m.phase === 'showdown') center.append(el('p', 'fine', '光っている席が、このハンドの勝者'));
       }
+      const guides = [];
       if (!['showdown', 'result'].includes(m.phase)) {
         const guide = el('p', 'role-guide');
         guide.append(el('span', '', '強い順：ストレートフラッシュ＞フォーカード＞フルハウス＞フラッシュ'), el('span', '', '＞ストレート＞スリーカード＞ツーペア＞ワンペア'));
-        center.append(guide);
+        guides.push(guide);
       }
       const seats = el('div', 'seats');
       m.seats.forEach((s, i) => {
@@ -190,6 +191,7 @@ export function createView(stage, status) {
           }
         }
         who.append(el('span', 'name', short(s.name, 12)));
+        if (m.phase === 'showdown' && m.winners.includes(s.id)) who.append(el('span', 'winner-mark', '勝者'));
         if (s.id === m.dealer)
           who.append(el('span', 'dealer', '親'));
         node.append(who, el('div', 'points', `${s.points} 点`));
@@ -201,7 +203,7 @@ export function createView(stage, status) {
           for (let j = 0; j < s.count; j++)
             hand.append(el('i', 'back'));
         const meta = m.phase === 'showdown' && s.received > 0 ? `＋${s.received}点`
-          : s.left ? '退出しました' : s.points === 0 ? '見るだけ'
+          : s.left ? '退出しました' : s.points === 0 ? (!s.folded && s.count === 2 && !['showdown', 'result'].includes(m.phase) ? '勝負待ち' : '見るだけ')
           : s.folded ? 'おりた'
           : m.phase === 'showdown' ? (m.winners.includes(s.id) ? 'このハンドの勝者' : '勝負')
           : m.phase === 'result' ? '局が終わりました'
@@ -220,7 +222,7 @@ export function createView(stage, status) {
       if (!m.events.length)
         events.append(el('li', '', 'お金・景品は使いません。持ち点はゲームの中だけ。'));
       footer.append(el('span', 'log-label', '卓の便り'), events);
-      stage.replaceChildren(header, line, table, footer);
+      stage.replaceChildren(header, line, table, ...guides, footer);
       const next = `${m.phase}:${m.turn}:${m.events.at(-1)?.seq}`;
       if (scene !== next) {
         status.textContent = heading(m);

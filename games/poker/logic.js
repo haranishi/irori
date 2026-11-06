@@ -6,14 +6,14 @@ import { cardText, compareHands, deal, evaluate, makeRng } from './cards.js';
 /** @typedef {{connected:boolean,visible:boolean}} Environment */
 /** @typedef {Player & {cpu:boolean,hand:string[],points:number,street:number,paid:number,folded:boolean,left:boolean,rank:number|null}} Seat */
 /** @typedef {{id:string,label:string,sub?:string,off?:boolean}} Tile */
-/** @typedef {{k:'tiles',token:string,tiles:Tile[],min:number,max:number,ok:string,disabled:boolean,note:string}} PadSpec */
+/** @typedef {{k:'tiles',token:string,tiles:Tile[],min:number,max:number,ok:string,disabled:boolean,note:string,hint?:string}} PadSpec */
 /** @typedef {{k:string,ids?:string[],t?:string,pass?:boolean}} GameInput */
 /** @typedef {{players:readonly Player[],leader:SeatId|null,seed:number,nonce:string,paused?:boolean,environment?:Environment|null}} GameInit */
 /** @typedef {{t:'input',p:SeatId,input:GameInput}|{t:'tick',ms:number}|{t:'players',players:readonly Player[],leader:SeatId|null}|{t:'menu',paused:boolean}|{t:'environment',value:Environment|null}} GameEvent */
 /** @typedef {{p:SeatId,score:number,rank:number|null,cpu:boolean,label:string,ranked:boolean}} Result */
 /** @typedef {{p:number,score:number,label:string,ranked:boolean}} EndRow */
 /** @typedef {{t:'pad',to:SeatId,spec:PadSpec}|{t:'cue',name:'deal'|'flip'|'place'|'win'|'lose'}|{t:'end',results:EndRow[],options:{display:'points',outcome:'complete'|'incomplete'}}} GameEffect */
-/** @typedef {{seq:number,p:SeatId,type:string,amount:number}} PublicEvent */
+/** @typedef {{seq:number,p:SeatId,type:string,amount:number,capLabel?:string}} PublicEvent */
 /** @typedef {{
  * phase:'intro'|'deal'|'turn'|'flop'|'river'|'fourth'|'showdown'|'result',
  * streetIndex:number,
@@ -71,9 +71,9 @@ function bump(s) {
   for (const v of s.seats)
     s.epochs[v.id] = (s.epochs[v.id] ?? 0) + 1;
 }
-/** @param {GameState} s @param {SeatId} p @param {string} type @param {number} amount */
-function record(s, p, type, amount) {
-  s.events.push({ seq: ++s.seq, p, type, amount });
+/** @param {GameState} s @param {SeatId} p @param {string} type @param {number} amount @param {string} [capLabel] */
+function record(s, p, type, amount, capLabel) {
+  s.events.push({ seq: ++s.seq, p, type, amount, ...(capLabel ? { capLabel } : {}) });
   s.events = s.events.slice(-4);
 }
 /** @param {GameState} s @param {Seat} v @param {number} amount */
@@ -168,7 +168,9 @@ function padFor(s, p) {
   }
   let note = '手札2枚と場で役を作ろう。おりる＝やめる／そのまま＝出さずに進む／あわせる＝同じ額を出す／ふやす＝上乗せ／上限まで＝出せる最大／ぜんぶ＝持ち点すべて';
   if (s.phase !== 'intro') {
-    if (own.points === 0 && own.hand.length === 0) {
+    if (own.points === 0 && !own.folded && own.hand.length === 2 && !['showdown', 'result'].includes(s.phase)) {
+      note = '持ち点0：勝負待ちです。勝負のあとで受取が決まります。';
+    } else if (own.points === 0) {
       note = '持ち点0：この局は見るだけです。役の早見：ロイヤル＞ストフラ＞フォーカード＞フルハウス＞フラッシュ＞ストレート＞スリーカード＞ツーペア＞ワンペア＞なし';
     } else {
       const personal = `あなた：${own.hand.map(cardText).join(' ')}｜いまの役：${currentRole(own.hand, s.board)}`;
@@ -185,7 +187,7 @@ function padFor(s, p) {
     ...(['call', 'raise', 'all'].includes(a.kind)
       ? { sub: `${a.kind === 'call' ? '出す' : '合計'}${a.amount}点` } : {}),
   })) : own.hand.map((c, i) => ({ id: `${t}_${i}`, label: cardText(c), off: true }));
-  return { k: 'tiles', token: t, tiles, min: actions.length ? 1 : 0, max: actions.length ? 1 : 0, ok: '決定', disabled: !actions.length, note };
+  return { k: 'tiles', token: t, tiles, min: actions.length ? 1 : 0, max: actions.length ? 1 : 0, ok: '決定', disabled: !actions.length, note, ...(s.phase === 'turn' && actions.length ? { hint: '25秒以内に決めよう' } : {}) };
 }
 /** @param {GameState} s */
 function startHand(s) {
@@ -322,7 +324,8 @@ function act(s, p, action, auto = false) {
     return;
   }
   const own = seat(s, p);
-  record(s, p, auto ? `auto-${action.kind}` : action.kind, action.amount);
+  record(s, p, auto ? `auto-${action.kind}` : action.kind, action.amount,
+    action.kind === 'all' ? (action.amount === own.points ? 'ぜんぶ' : '上限まで') : undefined);
   s.pending = s.pending.filter(id => id !== p);
   if (action.kind === 'fold')
     own.folded = true;

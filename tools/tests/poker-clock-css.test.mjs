@@ -23,3 +23,10 @@ test('小さい画面でも役と席の補足は15px、早見と便りは14px以
   assert.match(rule('role-guide'), /font-size:\s*14px/);
   assert.match(css, /\.hand \.number\[data-digits='2'\]\s*\{\s*width:\s*30px/);
 });
+
+test('早見の帯は卓の外で高さを確保し、縮まらず通常の配置に従う', () => {
+  assert.match(rule('role-guide'), /flex:\s*none/);
+  assert.match(rule('role-guide'), /position:\s*relative/);
+  assert.doesNotMatch(rule('role-guide'), /(?:top|bottom|transform):/);
+  assert.match(rule('table'), /min-height:\s*0/);
+});

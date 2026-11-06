@@ -529,10 +529,12 @@ html[data-demo=true] .irori-mock {
   }
 }
 
-/* 早見は公開前の中央だけに置き、勝負の手札を読む場所を空ける。 */
+/* 卓の外の帯に高さを確保し、人数による席の配置と早見を分離する。 */
 .role-guide {
   font-size: 14px;
   line-height: 1.4;
+  flex: none;
+  position: relative;
   margin: 6px auto 0;
   width: max-content;
   max-width: 100%;
@@ -553,4 +555,11 @@ html[data-demo=true] .irori-mock {
 
 #stage:not([data-phase=showdown]):not([data-phase=result]):not([data-phase=intro]) .center {
   top: 44.5%;
+}
+
+.winner-mark {
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  border-bottom: 2px solid currentColor;
 }

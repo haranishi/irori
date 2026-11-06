@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
-import { activityRate, editPreview, inspectMetadata, makePreviews, motionDifference, parseArgs, replacePreview, verifyPreview } from '../make-previews.mjs';
+import { GAME_PLAYERS, activityRate, editPreview, inspectMetadata, makePreviews, motionDifference, parseArgs, replacePreview, verifyPreview } from '../make-previews.mjs';
 import { seededRandom } from '../preview-scripts/driver.mjs';
 
 const base = join(process.cwd(), '.probe-tmp');
@@ -27,9 +27,12 @@ const make = (name, source, audio = false) => {
 
 
 describe('動画の引数と出力の境界', () => {
-  it('既定の11本と対象の絞り込みを受け取る', () => {
-    assert.equal(parseArgs([]).ids.length, 11);
+  it('既定の13本と対象の絞り込みを受け取る', () => {
+    assert.equal(parseArgs([]).ids.length, 13);
     assert.deepEqual(parseArgs(['--only', 'old-maid']).ids, ['old-maid']);
+    assert.equal(GAME_PLAYERS['bell-in-sleeve'], 6);
+    assert.equal(GAME_PLAYERS.poker, 4);
+    for (const id of ['bell-in-sleeve', 'poker']) assert.deepEqual(parseArgs(['--only', id]).ids, [id]);
     assert.equal(parseArgs(['--base-url', 'http://127.0.0.1:8888/']).baseUrl, 'http://127.0.0.1:8888');
     assert.equal(parseArgs(['--verify-only']).verifyOnly, true);
   });

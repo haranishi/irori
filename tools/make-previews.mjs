@@ -10,7 +10,7 @@ import { seededRandom, step } from './preview-scripts/driver.mjs';
 export const GAME_PLAYERS = {
   'hello-pad': 3, 'tap-race': 3, 'dot-grab': 3, 'quiz-4': 3, 'ten-seconds': 3,
   'blade-duel': 2, 'lantern-market': 3, 'strike-alley': 1, daifugo: 4,
-  'old-maid': 3, 'moon-village': 5,
+  'old-maid': 3, 'moon-village': 5, 'bell-in-sleeve': 6, poker: 4,
 };
 const FFMPEG = process.env.IRORI_FFMPEG ?? '/opt/homebrew/bin/ffmpeg';
 const FFPROBE = process.env.IRORI_FFPROBE ?? '/opt/homebrew/bin/ffprobe';
@@ -222,7 +222,8 @@ async function capture(browser, root, id, baseUrl) {
     const born = performance.now();
     video = page.video();
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto(`${baseUrl}/games/${id}/?mock=${script.players ?? GAME_PLAYERS[id]}`, { timeout: 20_000 });
+    const query = script.query ?? `mock=${script.players ?? GAME_PLAYERS[id]}`;
+    await page.goto(`${baseUrl}/games/${id}/?${query}`, { timeout: 20_000 });
     await page.locator('.irori-mock[data-ready]').waitFor({ state: 'attached', timeout: 15_000 });
     await page.addStyleTag({ content: '.irori-mock__banner,.irori-mock__panel,.irori-mock__results { opacity:0!important; pointer-events:none!important } body { cursor:none!important }' });
     const rng = seededRandom(20261106);

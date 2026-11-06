@@ -16,7 +16,7 @@
 - 検査：大きさ・長さ・音声の流れが無いこと・先頭が動いていること（先頭と3コマ後の差）を、道具が確かめる。
 
 ## 対象
-全11本（hello-pad・tap-race・dot-grab・quiz-4・ten-seconds・blade-duel・lantern-market・strike-alley・daifugo・old-maid・moon-village）。新作は、完成後に足す。
+全13本（hello-pad・tap-race・dot-grab・quiz-4・ten-seconds・blade-duel・lantern-market・strike-alley・daifugo・old-maid・moon-village・bell-in-sleeve・poker）。新作2本は暫定撮影済み。仕上げ後に同じ台本で撮り直す。検証の証拠は [preview-2.md](../../../.agent-harness/runs/2026-11-06-pack3/reports/preview-2.md)。
 
 ## 範囲外
 BGM・字幕・長い宣伝動画（本人の Drive 用の別編集）、生成AIの映像、スマホ側の画面を並べた構成（箱では小さすぎて読めない。必要になったら別仕様）。

@@ -19,3 +19,6 @@ apps/web/public/licenses.txt
 
 # 採点用のスクリーンショット（再生成できる。OS の書体で描かれ、容量も大きいので、公開しない）
 .agent-harness/runs/*/review/shots*/
+
+# 手元の作業の一時置き場（エージェントの一時ファイル・撮影・ログ）。公開しない。
+.probe-tmp/

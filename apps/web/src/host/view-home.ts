@@ -1,13 +1,10 @@
-// ホーム：主役は選択中のゲームのカード1枚。その下に棚（4:3のカード）と、選び方の案内の1行。QRとコードは右の1か所。
-// 参加者は下の帯（色と形・名前・接続中か・リーダー）。最初の1人が入るまで、帯の場所に3手順の案内（はじめかた）を出す。
-// 狭い画面では、置き場所はそのままに、見る順を CSS の order で「参加の板 → 参加者 → 主役 → 棚 → 案内 → はじめかた」にする。
-// 文言はすべて文節のあいだでだけ折り返す（tx）。スマホから来た名前は textContent で入れる（nameEl・withName）。
 import type { PlayerId } from '@irori/protocol';
 import { h, type Child } from '../shared/dom';
 import { t } from '../shared/i18n';
 import type { GameEntry } from './catalog';
 import { icon, logoMark, type IconName } from './icons';
 import { padUrl, qrSvg } from './qr';
+import { PreviewMotion } from './preview';
 import { fit, type Fit, type Roster } from './roster';
 import { button, link, nameEl, seatLabel, seatMark, sentences, tx, withName } from './ui';
 
@@ -39,6 +36,7 @@ export interface HomeHandlers {
   share(): void;
   retryCatalog(): void;
   kick(id: PlayerId): void;
+  qr?(): void;
 }
 
 /** 参加の板の状態。full＝満員（n/max人）。 */
@@ -108,6 +106,8 @@ export function externalNote(g: GameEntry): HTMLElement | null {
 
 /** 狭い画面の道具のボタンに添える、短い名前（読み上げには、長い名前のほうを使う）。 */
 function short(el: HTMLElement, key: string): HTMLElement {
+  const label = el.querySelector('.btn__label, .link__label')?.textContent;
+  if (label) { el.setAttribute('aria-label', label); el.setAttribute('title', label); }
   el.append(h('span', { class: 'btn__short', attrs: { 'aria-hidden': 'true' } }, t(key)));
   return el;
 }
@@ -115,12 +115,37 @@ function short(el: HTMLElement, key: string): HTMLElement {
 /** 「ライセンスとクレジット」。狭い画面では、紙の絵と短い名前のボタンにたたむ（長い名前は読み上げに残す）。 */
 function licensesLink(): HTMLElement {
   const a = link(t('host.licenses'), '/licenses.txt', 'tool:licenses', 'link toolbar__link');
+  a.setAttribute('aria-label', t('host.licenses'));
+  a.setAttribute('title', t('host.licenses'));
   a.prepend(icon('doc', 'icon toolbar__doc'));
   return short(a, 'host.tool.short.licenses');
 }
 
 export class HomeView {
   readonly el: HTMLElement;
+  private readonly previews = new PreviewMotion();
+  private page = 0;
+  private columns = this.columnCount();
+  private columnCount(): number {
+    return window.innerWidth >= 1700 ? 6 : window.innerWidth >= 1200 ? 5 : window.innerWidth >= 900 ? 4 : 3;
+  }
+  private get pageSize(): number { return this.columns * 3; }
+  private touched: number | null = null;
+  private data: HomeData | null = null;
+
+  reveal(): void { this.el.dataset.revealed = ''; }
+  setActive(active: boolean): void { this.previews.setActive(active); }
+  firstOnPage(): number { return this.page * this.pageSize; }
+  private turn(delta: number): void {
+    const d = this.data;
+    if (!d) return;
+    this.page = (this.page + delta + Math.ceil(d.games.length / this.pageSize)) % Math.ceil(d.games.length / this.pageSize);
+    this.touched = null;
+    this.reveal();
+    this.on.select(this.page * this.pageSize);
+    this.update({ ...d, selected: this.page * this.pageSize });
+    this.shelf.querySelector<HTMLButtonElement>('.card')?.focus();
+  }
   private readonly top: HTMLElement;
   private readonly hero: HTMLElement;
   private readonly shelf: HTMLElement;
@@ -131,6 +156,7 @@ export class HomeView {
   private readonly keys = { top: '', hero: '', shelf: '', prompt: '', people: '', guide: '', join: '' };
 
   constructor(private readonly on: HomeHandlers) {
+    window.addEventListener('resize', () => { if (this.data && this.columns !== this.columnCount()) this.update(this.data); });
     this.top = h('header', { class: 'home__top' });
     this.hero = h('section', { class: 'home__hero', attrs: { 'aria-live': 'polite' } });
     this.shelf = h('section', { class: 'home__shelf', attrs: { 'aria-label': t('host.shelf.title') } });
@@ -138,10 +164,14 @@ export class HomeView {
     this.people = h('section', { class: 'home__people' });
     this.guide = h('section', { class: 'home__guide' });
     this.join = h('aside', { class: 'home__join', attrs: { 'aria-label': t('host.join.title') } });
-    this.el = h('main', { class: 'screen home' }, this.top, h('div', { class: 'home__main' }, this.hero, this.shelf, this.prompt, this.people, this.guide), this.join);
+    this.el = h('main', { class: 'screen home home--shelf' }, this.top, h('div', { class: 'home__main' }, this.shelf, this.hero, this.prompt), this.guide, h('footer', { class: 'home__dock' }, this.join), h('p', { class: 'home__controls' }, t('host.shelf.controls')));
   }
 
   update(d: HomeData): void {
+    this.columns = this.columnCount();
+    this.el.style.setProperty('--shelf-columns', String(this.columns));
+    this.data = d;
+    this.page = Math.floor(d.selected / this.pageSize);
     const r = d.roster;
     const count = r.players.length;
     const game = d.games[d.selected];
@@ -151,7 +181,7 @@ export class HomeView {
     if (count === 0) this.el.dataset.empty = '';
     else delete this.el.dataset.empty;
     this.patch('hero', `${d.catalog}|${game?.id ?? ''}|${count}`, () => this.renderHero(d, game, count));
-    this.patch('shelf', `${d.catalog}|${d.games.map((g) => g.id).join(',')}|${count}`, () => this.renderShelf(d, count));
+    this.patch('shelf', `${d.catalog}|${d.games.map((g) => `${g.id}:${g.preview ?? ""}`).join(',')}|${count}|${this.page}|${this.columns}`, () => this.renderShelf(d, count));
     const f = game ? fit(game.players, count) : null;
     this.patch('prompt', `${leader ?? '\u0000'}|${JSON.stringify(f)}`, () => this.renderPrompt(f ? leader : undefined, f));
     this.patch('people', JSON.stringify([r.players, r.leader, r.max]), () => this.renderPeople(d));
@@ -170,6 +200,7 @@ export class HomeView {
   }
 
   private renderTop(d: HomeData): void {
+
     const locked = d.roster.locked;
     // このページをスマホで開いた人のための、参加のページへの細い帯（広い画面では CSS で隠す）。部屋のコードは付けない。
     // ほかの端末から開けないアドレスのときは、スマホでは参加できないので出さない（代わりに警告の帯）。
@@ -212,10 +243,11 @@ export class HomeView {
         licensesLink(),
       ),
     );
-    const lockBtn = this.top.querySelector('[data-action="lock"]');
+    this.top.insertBefore(this.people, this.top.querySelector('.toolbar'));
+    const lockBtn = this.el.querySelector('[data-action="lock"]');
     lockBtn?.setAttribute('aria-pressed', String(locked));
     lockBtn?.setAttribute('title', locked ? t('host.tool.unlockHint') : t('host.tool.lockHint'));
-    this.top.querySelector('[data-action="sound"]')?.setAttribute('aria-pressed', String(d.sound !== 'off'));
+    this.el.querySelector('[data-action="sound"]')?.setAttribute('aria-pressed', String(d.sound !== 'off'));
   }
 
   private renderHero(d: HomeData, g: GameEntry | undefined, count: number): void {
@@ -231,14 +263,17 @@ export class HomeView {
       h(
         'article',
         { class: 'hero', data: { game: g.id, playable: String(f.ok) } },
-        thumb(g, 'hero__thumb'),
+
         h(
           'div',
           { class: 'hero__info' },
+          g.kind ? h('span', { class: 'hero__kind' }, g.kind) : null,
           h('h2', { class: 'hero__title' }, ...tx(g.title)),
           h('p', { class: 'hero__summary' }, ...sentences(g.summary)),
           h('div', { class: 'hero__chips' }, h('span', { class: 'players-chip' }, icon('people'), h('span', {}, playersText(g))), padChips(g)),
+          g.minutes ? h('span', { class: 'hero__minutes' }, t(g.minutes.min === g.minutes.max ? 'host.shelf.minutesOne' : 'host.shelf.minutes', { min: g.minutes.min, max: g.minutes.max })) : null,
           externalNote(g),
+          button(t('host.shelf.play'), { nav: 'shelf:play', disabled: !f.ok, kind: 'primary', onPress: () => this.on.open(d.selected) }),
           reason && !f.ok ? h('p', { class: 'fit fit--no', data: { fit: f.why } }, icon('info'), h('span', {}, ...tx(reason))) : null,
         ),
       ),
@@ -252,23 +287,48 @@ export class HomeView {
       return;
     }
     const row = h('ul', { class: 'shelf' });
-    d.games.forEach((g, i) => {
+    d.games.slice(this.page * this.pageSize, this.page * this.pageSize + this.pageSize).forEach((g, offset) => {
+      const i = this.page * this.pageSize + offset;
       const f = fit(g.players, count);
       const reason = fitText(f);
       const card = h(
         'button',
         {
           class: 'card',
-          attrs: { type: 'button', 'aria-label': `${g.title}${t('host.sep')}${reason ?? playersText(g)}` },
+          attrs: { type: 'button', 'aria-label': `${g.title}${t('host.sep')}${playersText(g)}${reason ? t('host.sep') + reason : ''}` },
           data: { nav: `game:${g.id}`, game: g.id, index: String(i), playable: String(f.ok) },
-          on: { focus: () => this.on.select(i), click: () => this.on.open(i) },
+          on: {
+            focus: () => this.on.select(i),
+            pointerenter: (event) => { if (event.pointerType === 'mouse') { this.reveal(); (event.currentTarget as HTMLElement).focus({ preventScroll: true }); this.on.select(i); } },
+            pointerdown: (event) => {
+              if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+                event.preventDefault();
+                this.reveal();
+                (event.currentTarget as HTMLElement).focus({ preventScroll: true });
+                if (this.touched === i) { this.touched = null; this.on.open(i); }
+                else { this.touched = i; this.on.select(i); }
+              }
+            },
+            click: (event) => {
+              if ((event as PointerEvent).pointerType === 'touch' || (event as PointerEvent).pointerType === 'pen') return;
+              this.reveal(); this.on.open(i);
+            },
+          },
         },
         thumb(g, 'card__thumb'),
-        h('span', { class: 'card__caption' }, h('span', { class: 'card__title' }, g.title), h('span', { class: reason ? 'card__sub card__sub--no' : 'card__sub' }, reason ?? playersText(g))),
+        g.preview && offset < 12 ? this.video(g) : null,
+        !f.ok && f.why === 'need' ? h('span', { class: 'card__unavailable', attrs: { 'aria-hidden': 'true' } }, icon('people'), h('span', {}, String(g.players.min))) : null,
       );
       row.append(h('li', { class: 'shelf__item' }, card));
     });
-    this.shelf.replaceChildren(title, row);
+    for (let n = row.children.length; n < this.pageSize; n++) row.append(h('li', { class: 'shelf__empty', attrs: { 'aria-hidden': 'true' } }));
+    const pages = Math.ceil(d.games.length / this.pageSize);
+    const paging = pages > 1 ? h('nav', { class: 'shelf__pages', attrs: { 'aria-label': t('host.shelf.pages') } },
+      button('←', { nav: 'shelf:prev', onPress: () => this.turn(-1) }),
+      h('span', { attrs: { 'aria-label': t('host.shelf.page', { n: this.page + 1, total: pages }) } }, ...Array.from({ length: pages }, (_, n) => h('span', { class: n === this.page ? 'page-dot is-current' : 'page-dot' }))),
+      button('→', { nav: 'shelf:next', onPress: () => this.turn(1) })) : null;
+    this.shelf.replaceChildren(title, row, ...(paging ? [paging] : []));
+    this.previews.replace(this.shelf);
   }
 
   /**
@@ -360,7 +420,7 @@ export class HomeView {
       ? [...tx(t('host.guide.step1Loopback')), h('span', { class: 'pp-nw guide__where guide__where--right' }, t('host.guide.seeRight')), h('span', { class: 'pp-nw guide__where guide__where--above' }, t('host.guide.seeAbove'))]
       : tx(t('host.guide.step1'));
     const after = (key: string): Child[] => (loopback ? [...tx(t(key)), h('span', { class: 'pp-nw guide__after' }, t('host.guide.afterFix'))] : tx(t(key)));
-    const steps: Child[][] = [first, after('host.guide.step2'), after('host.guide.step3')];
+    const steps: Child[][] = loopback ? [first, after('host.guide.step2'), after('host.guide.step3')] : [tx(t('host.shelf.guide1')), tx(t('host.shelf.guide2')), tx(t('host.shelf.guide3'))];
     this.guide.replaceChildren(
       h(
         'div',
@@ -380,8 +440,22 @@ export class HomeView {
     );
   }
 
+  private video(g: GameEntry): HTMLVideoElement {
+    const video = h('video', { class: 'card__video', attrs: { src: g.preview, poster: g.thumb ?? undefined, muted: true, loop: true, playsinline: true, autoplay: true, preload: 'none', 'aria-hidden': 'true', hidden: true } });
+    video.muted = true;
+    video.addEventListener('error', () => { video.hidden = true; });
+    return video;
+  }
+
   private renderJoin(d: HomeData, full: JoinState['full']): void {
-    this.join.replaceChildren(joinPanel(d.code, d.origin, { locked: d.roster.locked, loopback: d.loopback, full }));
+    const panel = joinPanel(d.code, d.origin, { locked: d.roster.locked, loopback: d.loopback, full });
+    const qr = panel.querySelector('.join__qr');
+    if (qr) {
+      const open = h('button', { class: 'dock__qr', attrs: { type: 'button', 'aria-label': t('host.shelf.qr') }, data: { nav: 'dock:qr' }, on: { click: () => this.on.qr?.() } });
+      qr.replaceWith(open);
+      open.append(qr);
+    }
+    this.join.replaceChildren(panel);
   }
 }
 

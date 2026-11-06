@@ -5,6 +5,7 @@
     "ja": "ハローパッド",
     "en": "Hello Pad"
   },
+  "kind": { "ja": "お試し", "en": "Try it" },
   "summary": {
     "ja": "スティックで四角を動かして、ぴょんとふくらませよう。まず試すのにちょうどいい、いちばん小さなゲーム。",
     "en": "Move a square with the stick and make it pop. The smallest game to try first."

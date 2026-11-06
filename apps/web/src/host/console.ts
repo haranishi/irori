@@ -18,7 +18,8 @@ import { rankResults, type ResultRow } from './results';
 import { applyFrame, EMPTY_ROSTER, fit, nextLeader, withLocked, type Roster } from './roster';
 import { RoomLink, type HostSocket, type Welcome } from './session';
 import { canNativeShare, copyText, nativeShare, shareLinks } from './share';
-import { fitText, HomeView, soundHintText, type SoundHint, type SoundState } from './view-home';
+import { dialog, button } from './ui';
+import { fitText, HomeView, joinPanel, soundHintText, type SoundHint, type SoundState } from './view-home';
 import { confirmLayer, coverLayer, detailLayer, kickLayer, launchOverlay, menuLayer, resultsScreen, shareLayer, statusScreen, type MenuView } from './view-panels';
 import { WakeKeeper } from './wake';
 
@@ -42,7 +43,7 @@ interface Running {
   sentPlayers: string;
 }
 
-type Modal = { kind: 'share' } | { kind: 'kick'; p: PlayerId } | { kind: 'confirm'; host: string; game: GameEntry };
+type Modal = { kind: 'qr' } | { kind: 'share' } | { kind: 'kick'; p: PlayerId } | { kind: 'confirm'; host: string; game: GameEntry };
 
 interface Busy {
   reason: 'daily' | 'rate';
@@ -140,11 +141,21 @@ export class Console {
       },
       open: (i) => {
         this.selected = i;
+        this.home.reveal();
+        if (!this.game || !fit(this.game.players, this.roster.players.length).ok) {
+          this.render();
+          return;
+        }
         this.play('decide');
         this.signal('open');
+        this.requestStart();
       },
       toggleSound: (from) => this.toggleSound(from),
       toggleLock: () => this.toggleLock(),
+      qr: () => {
+        this.modal = { kind: 'qr' };
+        this.render();
+      },
       share: () => this.openShare(),
       retryCatalog: () => void this.loadGames(),
       kick: (p) => {
@@ -569,6 +580,12 @@ export class Console {
 
   private readonly onKey = (e: KeyboardEvent): void => {
     this.onGesture();
+    if ((e.key === 'q' || e.key === 'Q') && !e.ctrlKey && !e.metaKey && !e.altKey && this.m.phase === 'home' && !this.m.cover && !this.stale) {
+      e.preventDefault();
+      this.modal = this.modal?.kind === 'qr' ? null : { kind: 'qr' };
+      this.render();
+      return;
+    }
     const a = keyAction(e);
     if (!a) return;
     e.preventDefault();
@@ -637,6 +654,15 @@ export class Console {
       case 'results':
         this.goHome();
         return;
+      case 'home': {
+        this.selected = this.home.firstOnPage();
+        this.focusMemo.set('screen:home', `game:${this.game?.id}`);
+        this.home.reveal();
+        this.render();
+        const first = this.home.el.querySelector<HTMLElement>(`[data-nav="game:${this.game?.id}"]`);
+        if (first) this.setFocus('screen:home', first);
+        return;
+      }
       default:
         return;
     }
@@ -651,7 +677,7 @@ export class Console {
   }
 
   private focusables(scope: HTMLElement): HTMLElement[] {
-    return [...scope.querySelectorAll<HTMLElement>('[data-nav]')].filter((el) => !(el as HTMLButtonElement).disabled && el.getClientRects().length > 0);
+    return [...scope.querySelectorAll<HTMLElement>('[data-nav]')].filter((el) => !(el as HTMLButtonElement).disabled && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
   }
 
   private move(dir: Dir): void {
@@ -665,6 +691,7 @@ export class Console {
     }
     const target = this.jump(scope.key, items, cur, dir) ?? this.nearest(items, cur, dir) ?? this.wrap(scope.key, items, dir);
     if (target) {
+      if (scope.key === 'screen:home') this.home.reveal();
       this.setFocus(scope.key, target, true);
       this.play('move');
     }
@@ -715,6 +742,7 @@ export class Console {
     if (!el || el.dataset.focused !== undefined || !this.d.root.contains(el)) return;
     const scope = this.activeScope();
     if (!scope.el.contains(el)) return;
+    if (scope.key === 'screen:home' && el.matches('.card')) this.home.reveal();
     // マウスやTabで人が選んだもの。仮の選択ではない。
     this.fallbackFocus = null;
     this.setFocus(scope.key, el);
@@ -860,6 +888,7 @@ export class Console {
       this.screenKey = key;
       this.screenEl.replaceChildren(build());
     }
+    this.home.setActive(key === 'home');
     if (key === 'home') {
       this.home.update({
         games: this.games,
@@ -924,6 +953,17 @@ export class Console {
       });
     }
     const modal = this.modal;
+    if (modal?.kind === 'qr') {
+      want.push({ key: `qr|${this.link.code}|${this.roster.locked}|${this.roster.players.length}`, build: () => {
+        const close = () => { this.modal = null; this.render(); };
+        const layer = dialog('qr', t('host.join.title'), [
+          joinPanel(this.link.code, this.where.origin, { locked: this.roster.locked, loopback: this.where.loopback, full: this.roster.players.length >= this.roster.max ? { n: this.roster.players.length, max: this.roster.max } : null }),
+          button(t('host.detail.back'), { nav: 'qr:back', onPress: close }),
+        ], 'qr-dialog');
+        layer.addEventListener('click', (event) => { if (event.target === layer) close(); });
+        return layer;
+      } });
+    }
     if (modal?.kind === 'confirm' && this.m.phase === 'detail') {
       want.push({
         key: `confirm|${modal.host}`,

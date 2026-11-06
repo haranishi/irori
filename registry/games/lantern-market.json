@@ -2,6 +2,7 @@
   "schema": 1,
   "id": "lantern-market",
   "title": { "ja": "灯市のかけひき", "en": "Lanterns Unclaimed" },
+  "kind": {"ja": "数字カード", "en": "Number cards"},
   "summary": { "ja": "同じ札は、みんな失格。6枚の札で読み合い、灯を集めよう。", "en": "Matching bids cancel out. Read the room and collect lanterns with six cards." },
   "authors": [{ "name": "irori contributors", "url": "https://github.com/haranishi/irori" }],
   "license": { "code": "MIT OR Apache-2.0", "assets": "original" },
@@ -11,5 +12,6 @@
   "thumbnail": "lantern-market.png",
   "sdk": 1,
   "rating": "all",
-  "added": "2026-10-26"
+  "added": "2026-10-26",
+  "minutes": {"min": 4, "max": 6}
 }

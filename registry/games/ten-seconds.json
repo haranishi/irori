@@ -5,6 +5,7 @@
     "ja": "せーので10秒",
     "en": "Ten Seconds Together"
   },
+  "kind": {"ja": "タイミング", "en": "Timing"},
   "summary": {
     "ja": "10秒だと思ったら1回押す。3回の合計のズレが小さい人の勝ち。",
     "en": "Press when you feel 10 seconds pass. Least total error over 3 rounds wins."
@@ -33,5 +34,6 @@
   "thumbnail": "ten-seconds.png",
   "sdk": 1,
   "rating": "all",
-  "added": "2026-10-18"
+  "added": "2026-10-18",
+  "minutes": {"min": 3, "max": 3}
 }

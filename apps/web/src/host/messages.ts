@@ -3,6 +3,16 @@
 import { addMessages } from '../shared/i18n';
 
 export const HOST_JA: Record<string, string> = {
+  'host.shelf.guide1': 'QRを読む',
+  'host.shelf.guide2': '参加する',
+  'host.shelf.guide3': 'ゲームを選ぶ',
+  'host.shelf.controls': '決定＝あそぶ · 戻る',
+  'host.shelf.minutesOne': '約{min}分',
+  'host.shelf.minutes': '約{min}〜{max}分',
+  'host.shelf.play': 'あそぶ',
+  'host.shelf.qr': 'QRを大きく表示（Q）',
+  'host.shelf.pages': 'ゲームのページ',
+  'host.shelf.page': '{n} / {total} ページ',
   'host.tagline': 'スマホがコントローラー。みんなで囲むゲーム機',
   'host.sep': '、',
   'host.connecting': '部屋を用意しています',
@@ -194,6 +204,16 @@ export const HOST_JA: Record<string, string> = {
 };
 
 export const HOST_EN: Record<string, string> = {
+  'host.shelf.guide1': 'Scan QR',
+  'host.shelf.guide2': 'Join',
+  'host.shelf.guide3': 'Choose a game',
+  'host.shelf.controls': 'Confirm = Play · Back',
+  'host.shelf.minutesOne': 'About {min} min',
+  'host.shelf.minutes': 'About {min}–{max} min',
+  'host.shelf.play': 'Play',
+  'host.shelf.qr': 'Enlarge QR (Q)',
+  'host.shelf.pages': 'Game pages',
+  'host.shelf.page': 'Page {n} of {total}',
   'host.tagline': 'Phones are the controllers. Gather around one screen.',
   'host.sep': ', ',
   'host.connecting': 'Setting up a room',

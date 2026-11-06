@@ -2,6 +2,7 @@
   "schema": 1,
   "id": "blade-duel",
   "title": { "ja": "火花の間合い", "en": "Blade and Breath" },
+  "kind": {"ja": "チャンバラ", "en": "Swordplay"},
   "summary": {
     "ja": "斬る、受ける、溜める。スマホで選んで一斉勝負。気力3の大技が守りを崩す。",
     "en": "Choose in secret, clash together. Charge a powerful strike to break the guard."
@@ -14,5 +15,6 @@
   "thumbnail": "blade-duel.jpg",
   "sdk": 1,
   "rating": "all",
-  "added": "2026-10-26"
+  "added": "2026-10-26",
+  "minutes": {"min": 3, "max": 5}
 }

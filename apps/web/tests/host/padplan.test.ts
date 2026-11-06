@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { expandTarget, planPads, type PadPlanInput, type PadTexts } from '../../src/host/padplan';
 
 const text: PadTexts = {
+  qrHint: 'QRを閉じるには［戻る］を押してください',
+  resultsHint: '「もう一度」か「ホームへ」を選んで、［決定］を押してください',
   remoteHint: 'ゲームを選んで、［決定］を押してください',
   choosing: (name) => `${name}が選んでいます`,
   choosingBody: '大きな画面を見てください',
@@ -60,4 +62,17 @@ describe('席ごとのスマホの画面', () => {
     expect(expandTarget(3, parts)).toEqual([3]);
     expect(expandTarget(2, parts)).toEqual([]);
   });
+});
+
+it.each(['qr', 'results'] as const)('リーダーだけ画面に合う案内：%s', (screen) => {
+  const plan = planPads(base({ screen }));
+  expect(plan.get(1)).toEqual({ k: 'remote', hint: screen === 'qr' ? text.qrHint : text.resultsHint });
+  expect(plan.get(2)).toEqual(planPads(base({})).get(2));
+  expect(validatePadSpec(plan.get(1), true).ok).toBe(true);
+});
+
+it('一時停止中にQRを重ねても、リーダーはQRの案内、ほかの席はメニュー待機', () => {
+  const plan = planPads(base({ paused: true, screen: 'qr' }));
+  expect(plan.get(1)).toEqual({ k: 'remote', hint: text.qrHint });
+  expect(plan.get(2)).toEqual(planPads(base({ paused: true })).get(2));
 });

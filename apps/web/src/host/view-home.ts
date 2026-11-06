@@ -212,7 +212,7 @@ export class HomeView {
     const padlink = d.loopback ? null : h('a', { class: 'padlink', attrs: { href: '/pad' } }, h('span', {}, ...tx(t('host.padlink'))), icon('arrow', 'icon padlink__arrow'));
     // ほかの端末から開けないアドレスのとき、狭い画面では、最初の画面の上にも短く知らせる（板の中の警告と同じ意味）。
     const loopBand = d.loopback ? h('p', { class: 'loop-band', attrs: { role: 'note' } }, icon('alert'), h('span', {}, ...tx(t('host.join.loopbackBand')))) : null;
-    // 音の状態は、下の音のボタンの1か所だけで示す（帯は出さない）。まだ鳴らないあいだは「音：クリックで開始」。
+    // 音の状態は、右上の音のボタンの1か所だけで示す（帯は出さない）。まだ鳴らないあいだは「音：クリックで開始」。
     const sound = d.sound;
     this.top.replaceChildren(
       ...(padlink ? [padlink] : []),
@@ -322,7 +322,7 @@ export class HomeView {
         },
         thumb(g, 'card__thumb'),
         g.preview && offset < 12 ? this.video(g) : null,
-        !f.ok && f.why === 'need' ? h('span', { class: 'card__unavailable', attrs: { 'aria-hidden': 'true' } }, icon('people'), h('span', {}, String(g.players.min))) : null,
+        !f.ok ? h('span', { class: 'card__unavailable', attrs: { 'aria-hidden': 'true' } }, icon('people'), h('span', {}, String(f.why === 'need' ? g.players.min : g.players.max))) : null,
       );
       row.append(h('li', { class: 'shelf__item' }, card));
     });
@@ -414,18 +414,14 @@ export class HomeView {
     );
   }
 
-  /** はじめかた（最初の1人が入るまで）。ほかの端末から開けないアドレスのときは、①を「参加できない」に差し替える。 */
+  /** はじめかた（最初の1人が入るまで）。ほかの端末から開けないアドレスのときは、①をQRの注意を開く案内に差し替える。 */
   private renderGuide(show: boolean, loopback: boolean): void {
     if (!show) {
       this.guide.replaceChildren();
       return;
     }
-    // 警告は、広い画面では右の参加の板、縦に積む画面では上にある。どちらを指すかは CSS で出し分ける。
-    const first: Child[] = loopback
-      ? [...tx(t('host.guide.step1Loopback')), h('span', { class: 'pp-nw guide__where guide__where--right' }, t('host.guide.seeRight')), h('span', { class: 'pp-nw guide__where guide__where--above' }, t('host.guide.seeAbove'))]
-      : tx(t('host.guide.step1'));
-    const after = (key: string): Child[] => (loopback ? [...tx(t(key)), h('span', { class: 'pp-nw guide__after' }, t('host.guide.afterFix'))] : tx(t(key)));
-    const steps: Child[][] = loopback ? [first, after('host.guide.step2'), after('host.guide.step3')] : [tx(t('host.shelf.guide1')), tx(t('host.shelf.guide2')), tx(t('host.shelf.guide3'))];
+    // 参加できない理由と開き直す方法は、左下のQRに集める。
+    const steps: Child[][] = [tx(t(loopback ? 'host.guide.openQr' : 'host.shelf.guide1')), tx(t('host.shelf.guide2')), tx(t('host.shelf.guide3'))];
     this.guide.replaceChildren(
       h(
         'div',
@@ -435,10 +431,8 @@ export class HomeView {
           'ol',
           { class: 'guide__steps' },
           ...steps.map((s, i) => {
-            // 警告のときは、①の丸を「!」にし、②③は「開き直したあと」の手順として淡くする。
-            const alert = loopback && i === 0;
-            const cls = loopback ? (alert ? 'guide__step guide__step--alert' : 'guide__step guide__step--later') : 'guide__step';
-            return h('li', { class: cls }, h('span', { class: 'guide__num', attrs: { 'aria-hidden': 'true' } }, alert ? '!' : String(i + 1)), h('span', { class: 'guide__text' }, ...s));
+            const cls = 'guide__step';
+            return h('li', { class: cls }, h('span', { class: 'guide__num', attrs: { 'aria-hidden': 'true' } }, String(i + 1)), h('span', { class: 'guide__text' }, ...s));
           }),
         ),
       ),
@@ -460,6 +454,7 @@ export class HomeView {
       qr.replaceWith(open);
       open.append(qr);
     }
+    if (d.loopback) panel.querySelector('.join__codebox')?.append(h('p', { class: 'dock__reason' }, ...tx(t('host.join.loopbackShort'))));
     this.join.replaceChildren(panel);
   }
 }
@@ -489,7 +484,7 @@ function fixLine(): Child[] {
 }
 
 /**
- * 参加の板（QR・コード・入力の案内）。ホームの右と、メニューの「QRを表示」で同じものを使う。
+ * 参加の板（QR・コード・入力の案内）。ホームの左下と、メニューの「QRを表示」で同じものを使う。
  * 読んでも入れないとき（締め切り・満員・ほかの端末から開けないアドレス）は、QRを薄くして理由を重ね、「カメラでQRを読む」を出さない。
  * ほかの端末から開けないアドレスのときは、警告を板の全幅に出し、手入力の案内を「開き直す先」に差し替える。
  */

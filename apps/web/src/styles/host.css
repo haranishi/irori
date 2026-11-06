@@ -2451,3 +2451,55 @@ h2 {
   .home--shelf .shelf__pages { right: -22px; }
   .home--shelf .shelf__pages .btn { padding-inline: 2px; min-width: 24px; }
 }
+
+/* 補足も離れた席から読める大きさにし、棚と下部の案内の間を空ける。 */
+.home--shelf { --shelf-copy: clamp(16px, 1.25vw, 24px); --shelf-guide: clamp(18px, 1.40625vw, 27px); }
+.home--shelf .home__main { padding-bottom: 90px; }
+.home--shelf .home__shelf { max-width: calc(100% - 64px); }
+.home--shelf .hero__summary, .home--shelf .players-chip,
+.home--shelf .hero__minutes, .home--shelf .home__controls { font-size: var(--shelf-copy); }
+.home--shelf .home__hero { right: calc(var(--shelf-copy) * 9 + 36px); }
+.home--shelf .hero__info { grid-template-columns: auto minmax(0, 1fr) auto; }
+.home--shelf .hero__info > .btn { background: var(--ember); color: #1a1411; border: 2px solid var(--ember); box-shadow: 0 3px 16px #ff8a3d40; }
+.home--shelf .hero__info > .btn:disabled { background: transparent; color: var(--text-dim); border: 2px solid var(--line-ui); box-shadow: none; opacity: .5; }
+.home--shelf .home__guide { left: clamp(48px, 4vw, 64px); right: auto; bottom: 148px; max-width: calc(100vw - 96px); }
+.home--shelf .guide { border: 1px solid var(--line-ui); padding: 10px 14px; }
+.home--shelf .guide__steps { gap: 18px; margin: 0; }
+.home--shelf .guide__step { font-size: var(--shelf-guide); gap: 8px; }
+.home--shelf .guide__num { width: 30px; height: 30px; font-size: var(--shelf-guide); flex-shrink: 0; background: var(--ember); color: #1a1411; }
+.home--shelf .dock__reason { max-width: 110px; font-size: 14px; line-height: 1.4; margin: 4px 0 0; }
+.home--shelf:has(.toolbar :focus, .dock__qr:focus, .shelf__pages :focus) .card[data-selected] { transform: none; border-color: var(--glow); box-shadow: none; }
+.home--shelf .dock__qr:focus, .home--shelf .toolbar :focus, .home--shelf .shelf__pages .btn:focus { outline: 3px solid var(--glow); outline-offset: 4px; box-shadow: 0 0 24px #ff8a3d70; }
+.home--shelf .shelf__pages { right: -56px; width: 40px; }
+.home--shelf .shelf__pages .btn { min-width: 40px; padding-inline: 4px; }
+@media (min-width: 1700px) {
+  .home--shelf .home__hero { left: 320px; right: calc(var(--shelf-copy) * 9 + 36px); }
+  .home--shelf .home__main { padding-bottom: 120px; }
+}
+@media (max-width: 1199px) and (min-width: 600px) {
+  .home--shelf .home__hero { left: 300px; right: 48px; bottom: 40px; }
+  .home--shelf .home__controls { bottom: 10px; }
+}
+@media (max-width: 899px) {
+  .home--shelf .home__guide { left: 24px; max-width: calc(100vw - 48px); }
+}
+@media (max-width: 599px) {
+  .home--shelf .home__main { padding-bottom: 230px; }
+  .home--shelf .home__shelf { max-width: calc(100% - 48px); }
+  .home--shelf .shelf { gap: 18px; }
+  .home--shelf .shelf__pages { right: -48px; }
+  .home--shelf .home__hero { left: 24px; right: 24px; bottom: 150px; }
+  .home--shelf .home__guide { bottom: 150px; }
+  .home--shelf .guide__steps { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .home--shelf .hero__info { grid-template-columns: auto minmax(0, 1fr); }
+  .home--shelf .hero__info > .btn { grid-column: 2; grid-row: 4; justify-self: end; }
+  .home--shelf .hero .fit { grid-column: 1; grid-row: 4; }
+}
+@media (min-width: 600px) and (max-width: 899px) {
+  .home--shelf .home__main { padding-bottom: 230px; }
+  .home--shelf .home__hero { left: 24px; right: 24px; bottom: 150px; }
+}
+@media (max-width: 599px) {
+  /* 2列の箱を140px保ち、矢印の分だけ格子を左へ寄せる。 */
+  .home--shelf .home__shelf { width: min(298px, calc(100% - 44px)); max-width: none; flex-shrink: 0; left: -8px; }
+}

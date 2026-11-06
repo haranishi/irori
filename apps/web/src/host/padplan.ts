@@ -6,6 +6,8 @@ import { validatePadSpec, type GamePadSpec, type PadSpec, type PlayerId, type Pl
 
 export interface PadTexts {
   remoteHint: string;
+  qrHint: string;
+  resultsHint: string;
   choosing: (name: string) => string;
   choosingBody: string;
   lateTitle: string;
@@ -17,6 +19,7 @@ export interface PadTexts {
 }
 
 export interface PadPlanInput {
+  screen?: 'home' | 'qr' | 'results';
   owner: 'console' | 'game' | 'none';
   players: readonly PlayerInfo[];
   leader: PlayerId | null;
@@ -42,12 +45,12 @@ export function planPads(input: PadPlanInput): Map<PlayerId, PadSpec> {
     const leaderName = input.players.find((p) => p.id === input.leader)?.name;
     if (input.paused) {
       for (const p of input.players) {
-        out.set(p.id, safe(p.id === input.leader ? { k: 'remote', hint: t.menu } : { k: 'wait', title: t.menu, body: t.choosingBody }));
+        out.set(p.id, safe(p.id === input.leader ? { k: 'remote', hint: input.screen === 'qr' ? t.qrHint : t.menu } : { k: 'wait', title: t.menu, body: t.choosingBody }));
       }
       return out;
     }
     for (const p of input.players) {
-      if (p.id === input.leader) out.set(p.id, safe({ k: 'remote', hint: t.remoteHint }));
+      if (p.id === input.leader) out.set(p.id, safe({ k: 'remote', hint: input.screen === 'qr' ? t.qrHint : input.screen === 'results' ? t.resultsHint : t.remoteHint }));
       else if (leaderName !== undefined) out.set(p.id, safe({ k: 'wait', title: t.choosing(leaderName), body: t.choosingBody }));
       else out.set(p.id, { k: 'wait', title: t.waiting });
     }

@@ -820,6 +820,8 @@ export class Console {
   private padTexts(): PadTexts {
     return {
       remoteHint: t('host.pad.remoteHint'),
+      qrHint: t('host.pad.qrHint'),
+      resultsHint: t('host.pad.resultsHint'),
       choosing: (name) => t('host.pad.choosing', { name }),
       choosingBody: t('host.pad.choosingBody'),
       lateTitle: t('host.pad.lateTitle'),
@@ -1137,6 +1139,7 @@ export class Console {
     const owner = this.link.socketState === 'open' ? padOwner(this.m) : 'none';
     this.plan = planPads({
       owner,
+      screen: this.modal?.kind === 'qr' || (this.m.phase === 'paused' && this.menuView === 'qr') ? 'qr' : this.m.phase === 'results' ? 'results' : 'home',
       players: this.roster.players,
       leader: this.roster.leader,
       participants: this.running?.lineup.seats ?? null,

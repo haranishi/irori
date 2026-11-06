@@ -60,7 +60,8 @@ describe('ホームの描画', () => {
     view({ roster: five, selected: 1 });
     const solo = document.querySelector('.card[data-game="fixture-solo"]');
     expect(solo?.getAttribute('data-playable')).toBe('false');
-    expect(solo?.querySelector('.card__unavailable')).toBeNull();
+    expect(solo?.querySelector('.card__unavailable')?.textContent).toBe('4');
+    expect(solo?.querySelector('[data-icon="people"]')).not.toBeNull();
     expect(document.querySelector('.card[data-game="fixture-race"]')?.getAttribute('data-playable')).toBe('true');
   });
 
@@ -120,7 +121,7 @@ describe('ホームの描画', () => {
     expect(el.querySelector('[data-nav="results:share"]')?.textContent).toBe('irori を紹介');
   });
 
-  it('QRとコードは右下の1か所：URLは /pad#CODE、コードは等幅の大きな文字', () => {
+  it('QRとコードは左下の1か所：URLは /pad#CODE、コードは等幅の大きな文字', () => {
     view();
     const join = document.querySelector('.home__join .join');
     expect(join?.getAttribute('data-code')).toBe('XN7Q');
@@ -167,18 +168,14 @@ describe('ホームの描画', () => {
     expect(join?.querySelector('[data-loopback]')?.textContent).toBe('このアドレスは、ほかのスマホから開けません');
     expect(join?.querySelector('[data-loopback] [data-icon="alert"]')).not.toBeNull();
     expect(join?.querySelector('.join__cover [data-icon="alert"]')).not.toBeNull();
+    expect(join?.querySelector('.dock__reason')?.textContent).toBe('このアドレスでは、スマホは参加できません');
     expect(join?.querySelector('.join__scan')).toBeNull();
     expect(join?.querySelector('[data-fix]')?.textContent).toBe('npm run dev が表示する「大画面で開くURL」で、開き直してください');
     expect(join?.textContent).not.toContain('127.0.0.1:8787/pad で');
     const first = document.querySelector('.guide__step');
-    expect(first?.textContent).toContain('この画面からは、スマホは参加できません');
-    // 警告のある場所は、広い画面では右、縦に積む画面では上（CSS で片方だけ見せる）。①の丸は「!」、②③は開き直したあとの手順。
-    expect(first?.querySelector('.guide__where--right')?.textContent).toBe('（右の警告）');
-    expect(first?.querySelector('.guide__where--above')?.textContent).toBe('（上の警告）');
-    expect(first?.querySelector('.guide__num')?.textContent).toBe('!');
-    const later = [...document.querySelectorAll('.guide__step--later')];
-    expect(later).toHaveLength(2);
-    expect(later.every((el) => el.textContent?.endsWith('（開き直したあと）'))).toBe(true);
+    expect(first?.textContent).toBe('1左下のQRを開く');
+    expect(document.querySelectorAll('.guide__step')).toHaveLength(3);
+    expect(document.querySelector('.home__guide')?.textContent).not.toMatch(/右の警告|上の警告/);
     expect(document.querySelector('.home__top .loop-band')?.textContent).toBe('このアドレスでは、スマホは参加できません');
     view({ origin: 'https://irori.example', loopback: false });
     expect(document.querySelector('[data-loopback]')).toBeNull();

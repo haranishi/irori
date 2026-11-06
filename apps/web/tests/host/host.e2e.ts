@@ -68,7 +68,7 @@ test('ホーム・参加者の帯・灰色・リーダーのリモコン（実�
   await expect(host.page.locator('.join__scan')).toHaveCount(0);
   await expect(host.page.locator('.qr-dialog [data-fix]')).toContainText('npm run dev');
   await host.page.keyboard.press('Escape');
-  await expect(host.page.locator('.guide__step').first()).toContainText('この画面からは、スマホは参加できません');
+  await expect(host.page.locator('.guide__step').first()).toContainText('左下のQRを開く');
   // 最初の1人が入るまで、3手順の案内。
   await expect(host.page.locator('.guide__step')).toHaveCount(3);
   // 誰もいないので、どのゲームも灰色。
@@ -140,6 +140,11 @@ test('ゲームの起動・メニュー・終了・結果・「もう一度」�
   const p2 = await PagePad.join(browser, base(), code, 'はなこ');
   const p3 = await PagePad.join(browser, base(), code, 'じろう');
   await p1.expectKind('remote');
+  await expect(p1.page.locator('.irori-pad__hint')).toHaveText('ゲームを選んで、［決定］を押してください');
+  await host.page.keyboard.press('q');
+  await expect(p1.page.locator('.irori-pad__hint')).toHaveText('QRを閉じるには［戻る］を押してください');
+  await p1.press('back');
+  await expect(host.page.locator('.qr-dialog')).toHaveCount(0);
 
   // 格子から選び、決定1回で起動する。
   await focusGame(host, 'hello-pad', key => p1.press(({ ArrowRight: 'right', ArrowLeft: 'left', ArrowDown: 'down', ArrowUp: 'up' } as const)[key as 'ArrowRight']));
@@ -164,6 +169,10 @@ test('ゲームの起動・メニュー・終了・結果・「もう一度」�
   await p1.expectKind('remote');
   await p3.expectKind('wait');
   await expect(focused(host)).toHaveAttribute('data-nav', 'menu:continue');
+  await host.page.locator('[data-nav="menu:qr"]').click();
+  await expect(p1.page.locator('.irori-pad__hint')).toHaveText('QRを閉じるには［戻る］を押してください');
+  await p1.press('back');
+  await expect(p1.page.locator('.irori-pad__hint')).toHaveText('メニューを操作中です');
   // 「続ける」でゲームに戻ると、ゲームの画面が戻る。
   await p1.press('ok');
   await host.expectState('playing');
@@ -176,6 +185,7 @@ test('ゲームの起動・メニュー・終了・結果・「もう一度」�
   await expect(focused(host)).toHaveAttribute('data-nav', 'results:again');
   await p1.expectKind('remote');
   await p2.expectKind('wait');
+  await expect(p1.page.locator('.irori-pad__hint')).toHaveText('「もう一度」か「ホームへ」を選んで、［決定］を押してください');
   // もう一度 → また遊べる → もう一度終える。
   await p1.press('ok');
   await host.expectState('playing');

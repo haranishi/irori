@@ -138,7 +138,7 @@ body {
   background: #ddcbb040;
 }
 .fine {
-  font-size: clamp(13px,1.1vw,20px);
+  font-size: clamp(14px,1.1vw,20px);
   line-height: 1.5;
   margin: 10px 0 0;
 }
@@ -186,7 +186,7 @@ body {
   font-weight: 650;
 }
 .seat-meta,.role {
-  font-size: clamp(13px,1vw,19px);
+  font-size: clamp(15px,1vw,19px);
   min-height: 18px;
 }
 .role {
@@ -253,7 +253,7 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 4px 24px;
   flex: 1;
-  font-size: clamp(13px,1.1vw,20px);
+  font-size: clamp(14px,1.1vw,20px);
   line-height: 1.45;
 }
 .events li:first-child {
@@ -398,7 +398,7 @@ html[data-demo=true] .irori-mock {
   ;
   }
   .role,.seat-meta {
-    font-size: 13px;
+    font-size: 15px;
     min-height: 16px
   ;
   }
@@ -473,7 +473,7 @@ html[data-demo=true] .irori-mock {
   height: 24px;
 }
 .kicker {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
 }
 .result-guide {
@@ -527,4 +527,30 @@ html[data-demo=true] .irori-mock {
   .result-guide {
     margin-bottom: 4px;
   }
+}
+
+/* 早見は公開前の中央だけに置き、勝負の手札を読む場所を空ける。 */
+.role-guide {
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 6px auto 0;
+  width: max-content;
+  max-width: 100%;
+}
+.role-guide span {
+  display: block;
+}
+.number[data-digits='2'] {
+  width: 90%;
+}
+.hand .number[data-digits='2'] {
+  width: 30px;
+  flex: none;
+}
+.hand .face:has([data-digits='2']) {
+  width: 60px;
+}
+
+#stage:not([data-phase=showdown]):not([data-phase=result]):not([data-phase=intro]) .center {
+  top: 44.5%;
 }

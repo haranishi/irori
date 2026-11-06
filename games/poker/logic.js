@@ -1,5 +1,5 @@
 // @ts-check
-import { currentRole, roleText, primaryKey } from './presentation.js';
+import { currentRole, roleText, primaryKey, kickerText } from './presentation.js';
 import { cardText, compareHands, deal, evaluate, makeRng } from './cards.js';
 /** @typedef {import('./cards.js').SeatId} SeatId */
 /** @typedef {{id:SeatId,name:string,online:boolean,cpu?:boolean}} Player */
@@ -41,6 +41,7 @@ import { cardText, compareHands, deal, evaluate, makeRng } from './cards.js';
  * winners:SeatId[],
  * revealed:SeatId[],
  * outcome:'complete'|'incomplete',
+ * ready:SeatId[],
  * ended:boolean
  * }} GameState */
 /** @typedef {{state:GameState,effects:GameEffect[]}} Transition */
@@ -92,12 +93,13 @@ export function legalActions(s, p) {
   if (s.phase !== 'turn' || s.turn !== p || own.folded)
     return [];
   const cap = Math.min(...live(s).map(v => v.points + v.street)), due = s.current - own.street;
+  const capLabel = cap === own.points + own.street ? 'ぜんぶ' : '上限まで';
   /** @type {Action[]} */
   const out = [{ kind: 'fold', amount: 0, label: 'おりる' }];
   if (due === 0)
     out.push({ kind: 'check', amount: 0, label: 'そのまま' });
   else if (s.current <= cap)
-    out.push({ kind: own.street + due === cap ? 'all' : 'call', amount: due, label: own.street + due === cap ? `ぜんぶ ${due}` : `あわせる ${due}` });
+    out.push({ kind: own.street + due === cap ? 'all' : 'call', amount: due, label: own.street + due === cap ? `${capLabel} ${due}` : `あわせる ${due}` });
   const widths = [40, Math.floor(s.pot / 2), s.pot], seen = new Set();
   for (const width of widths) {
     const target = s.current + width;
@@ -107,7 +109,7 @@ export function legalActions(s, p) {
     out.push({ kind: 'raise', amount: target - own.street, label: `ふやす +${width}` });
   }
   if (cap > s.current && cap > own.street)
-    out.push({ kind: 'all', amount: cap - own.street, label: `ぜんぶ ${cap - own.street}` });
+    out.push({ kind: 'all', amount: cap - own.street, label: `${capLabel} ${cap - own.street}` });
   return out;
 }
 /** @param {GameInit} init @returns {Transition} */
@@ -151,6 +153,7 @@ export function createGame(init) {
     winners: [],
     revealed: [],
     outcome: 'complete',
+    ready: [],
     ended: false
   };
   return transition(null, s);
@@ -158,7 +161,12 @@ export function createGame(init) {
 /** @param {GameState} s @param {SeatId} p @returns {PadSpec} */
 function padFor(s, p) {
   const own = seat(s, p), t = token(s, p), actions = legalActions(s, p);
-  let note = '手札2枚と場の札で役を作ろう。持ち点は1000から。';
+  if (s.phase === 'result' && !own.cpu && !own.left) {
+    const waiting = s.ready.includes(p);
+    const enabled = !waiting && !blocked(s) && own.online && !s.ended;
+    return { k: 'tiles', token: t, tiles: [{ id: `${t}_next`, label: '次へ' }], min: enabled ? 1 : 0, max: enabled ? 1 : 0, ok: '決定', disabled: !enabled, note: waiting ? 'ほかの人を待っています' : '全員が次へを押すと先へ進みます。' };
+  }
+  let note = '手札2枚と場で役を作ろう。おりる＝やめる／そのまま＝出さずに進む／あわせる＝同じ額を出す／ふやす＝上乗せ／上限まで＝出せる最大／ぜんぶ＝持ち点すべて';
   if (s.phase !== 'intro') {
     if (own.points === 0 && own.hand.length === 0) {
       note = '持ち点0：この局は見るだけです。役の早見：ロイヤル＞ストフラ＞フォーカード＞フルハウス＞フラッシュ＞ストレート＞スリーカード＞ツーペア＞ワンペア＞なし';
@@ -287,7 +295,7 @@ function settle(s) {
   s.turn = null;
   s.pending = [];
   s.phase = 'showdown';
-  s.remaining = 3500;
+  s.remaining = s.revealed.length >= 3 ? 10000 : s.revealed.length === 2 ? 6000 : 3500;
 }
 /** @param {GameState} s */
 function finish(s) {
@@ -303,6 +311,7 @@ function finish(s) {
   s.turn = null;
   s.pending = [];
   s.remaining = 20000;
+  s.ready = [];
   for (const v of s.seats)
     v.rank = s.outcome === 'complete' ? 1 + s.seats.filter(other => other.points > v.points).length : null;
 }
@@ -313,7 +322,7 @@ function act(s, p, action, auto = false) {
     return;
   }
   const own = seat(s, p);
-  record(s, p, auto ? 'auto' : action.kind, action.amount);
+  record(s, p, auto ? `auto-${action.kind}` : action.kind, action.amount);
   s.pending = s.pending.filter(id => id !== p);
   if (action.kind === 'fold')
     own.folded = true;
@@ -370,7 +379,7 @@ export function publicView(s) {
         points: v.points, street: v.street, paid: v.paid,
         folded: v.folded, left: v.left, rank: v.rank, count: hand.length,
         received: s.phase === 'showdown' ? (s.payouts[v.id] ?? 0) : 0,
-        ...(rank ? { hand: [...hand], role: roleText(rank), kicker: Boolean(kicker) } : {}),
+        ...(rank ? { hand: [...hand], role: roleText(rank), kicker: Boolean(kicker), kickerRank: kicker ? kickerText(rank, [...ranks.values()]) : '' } : {}),
       };
     }),
     events: s.events.map(e => ({ ...e })), results: results(s),
@@ -404,6 +413,11 @@ function transition(previous, s) {
     effects.push({ t: 'end', results: endRows(s), options: { display: 'points', outcome: s.outcome } });
   return { state: s, effects };
 }
+/** CPUだけの観戦は20秒の自動進行を保つ。 @param {GameState} s */
+function endIfReady(s) {
+  const humans = s.seats.filter(v => !v.cpu && !v.left);
+  if (humans.length && humans.every(v => s.ready.includes(v.id))) s.ended = true;
+}
 /** @param {GameState} state @param {GameEvent} event @returns {Transition} */
 export function updateGame(state, event) {
   if (state.ended)
@@ -420,8 +434,15 @@ export function updateGame(state, event) {
       s.epochs[event.p] = (s.epochs[event.p] ?? 0) + 1;
       return transition(state, s);
     }
-    act(s, event.p, /** @type {Action} */ (legalActions(s, event.p)[i]));
-    bump(s);
+    if (s.phase === 'result') {
+      s.ready.push(event.p);
+      endIfReady(s);
+      // 同時に届く他席の次へを古い入力にしない。
+      s.epochs[event.p] = (s.epochs[event.p] ?? 0) + 1;
+    } else {
+      act(s, event.p, /** @type {Action} */ (legalActions(s, event.p)[i]));
+      bump(s);
+    }
   }
   else if (event.t === 'tick') {
     s.remaining = Math.max(0, s.remaining - event.ms);
@@ -480,6 +501,7 @@ export function updateGame(state, event) {
         openTurn(s);
       }
     }
+    if (s.phase === 'result') endIfReady(s);
     bump(s);
   }
   return transition(state, s);

@@ -46,10 +46,10 @@ describe('読み取れる行動と勝負の説明',()=>{
     s=pick(pick(s,'check'),'check');const m=publicView(s);
     expect(m.seats[0].role).toBe(m.seats[1].role);
     expect(m.seats.map(v=>v.kicker)).toEqual([true,false]);
-    expect(render(s).querySelector('[data-id="1"]').textContent).toContain('残りの札で勝ち');
-    expect(render(s).querySelector('[data-id="2"]').textContent).not.toContain('残りの札で勝ち');
+    expect(render(s).querySelector('[data-id="1"]').textContent).toContain('残りの札 A');
+    expect(render(s).querySelector('[data-id="2"]').textContent).not.toContain('残りの札 A');
   });
-  it('役の数字が違う勝負を残りの札で勝ちと呼ばない',()=>{
+  it('役の数字が違う勝負を残りの札 Aと呼ばない',()=>{
     let s=river();s.seats[0].hand=['h13','d14'];s.seats[1].hand=['d12','h12'];
     s=pick(pick(s,'check'),'check');expect(publicView(s).seats.some(v=>v.kicker)).toBe(false);
   });
@@ -61,7 +61,7 @@ describe('読み取れる行動と勝負の説明',()=>{
     expect(stage.querySelector('.pot').textContent).toBe('たまり 100 点');
     expect(stage.querySelector('[data-id="1"] .seat-meta').textContent).toBe('＋100点');
     expect(s.pot+s.seats.reduce((n,v)=>n+v.points,0)).toBe(total);
-    s=updateGame(s,{t:'tick',ms:3500}).state;
+    s=updateGame(s,{t:'tick',ms:s.remaining}).state;
     expect(s.phase).toBe('deal');expect(s.settledPot).toBe(0);expect(s.payouts).toEqual({});
     expect(publicView(s).seats.every(v=>v.received===0)).toBe(true);
   });

@@ -29,3 +29,16 @@ describe('持ち点ポーカーの終了契約',()=>{
   it('最後の人が退出したら勝負なしで終了',()=>{const {end}=play(1,'all');expect(end.options.outcome).toBe('incomplete');expect(end.results[0]).toMatchObject({ranked:false,label:'勝負なし'});});
   it('余分な項目は拒まれる',()=>expect(validateGameEnd([{p:1,score:1000,label:'1位',ranked:true,cpu:false}],{display:'points',outcome:'complete'})).toEqual({ok:false,reason:'result-shape'}));
 });
+
+// 次へで早く終える経路も、通常の時間終了と同じ4項目に限定する。
+it('全員の次へによるendもCPUを除く4項目で検証を通る',()=>{
+  const players=[{id:1,name:'席1',online:true},...fillSeats(1)];
+  let s:any=createGame({players,leader:1,seed:7,nonce:'next',environment:{connected:true,visible:true}}).state;
+  s.phase='showdown';s.handNumber=6;s.remaining=1;
+  s=updateGame(s,{t:'tick',ms:1}).state;
+  const pad=viewFor(s,1).pad;
+  const r=updateGame(s,{t:'input',p:1,input:{k:'tiles',t:pad.token,ids:[pad.tiles[0].id]}});
+  const end:any=r.effects.find((e:any)=>e.t==='end');
+  expect(end).toBeDefined();expect(validateGameEnd(end.results,end.options).ok).toBe(true);
+  expect(end.results).toEqual([{p:1,score:1000,label:'1位(CPUこみ)',ranked:false}]);
+});

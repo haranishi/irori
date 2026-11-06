@@ -41,6 +41,7 @@ export function cardFace(card) {
   const number = document.createElementNS(SVG, 'svg');
   number.setAttribute('viewBox', label === '10' ? '0 0 32 25' : '0 0 16 25');
   number.setAttribute('class', 'number');
+  number.dataset.digits = String(label.length);
   number.setAttribute('aria-hidden', 'true');
   const letters = {
     J: 'M2 2H13V17Q13 24 5 22L1 18',
@@ -54,7 +55,7 @@ export function cardFace(card) {
     path.setAttribute('transform', `translate(${i * 16} 0)`);
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke', 'currentColor');
-    path.setAttribute('stroke-width', '2.7');
+    path.setAttribute('stroke-width', '3.4');
     path.setAttribute('stroke-linejoin', 'round');
     number.append(path);
   }
@@ -70,7 +71,8 @@ export function eventText(m, e) {
     call: `あわせた ${e.amount}`,
     raise: `ふやした ${e.amount}`,
     all: `ぜんぶ ${e.amount}`,
-    auto: '時間でおまかせ'
+    'auto-check': '時間切れでそのまま',
+    'auto-fold': '時間切れでおりた'
   };
   return short(`${name} · ${words[ /** @type {keyof typeof words} */(e.type)] ?? '札が進んだ'}`, 64);
 }
@@ -158,7 +160,13 @@ export function createView(stage, status) {
         const board = el('div', 'board');
         for (let i = 0; i < 5; i++)
           board.append(m.board[i] ? cardFace(/** @type {string} */ (m.board[i])) : el('div', 'empty-card'));
-        center.append(board, el('p', 'fine', m.phase === 'showdown' ? '光っている席が、このハンドの勝者' : '手札2枚と場の札から、強い5枚を作ろう'));
+        center.append(board);
+        if (m.phase === 'showdown') center.append(el('p', 'fine', '光っている席が、このハンドの勝者'));
+      }
+      if (!['showdown', 'result'].includes(m.phase)) {
+        const guide = el('p', 'role-guide');
+        guide.append(el('span', '', '強い順：ストレートフラッシュ＞フォーカード＞フルハウス＞フラッシュ'), el('span', '', '＞ストレート＞スリーカード＞ツーペア＞ワンペア'));
+        center.append(guide);
       }
       const seats = el('div', 'seats');
       m.seats.forEach((s, i) => {
@@ -197,11 +205,12 @@ export function createView(stage, status) {
           : s.folded ? 'おりた'
           : m.phase === 'showdown' ? (m.winners.includes(s.id) ? 'このハンドの勝者' : '勝負')
           : m.phase === 'result' ? '局が終わりました'
+          : m.phase === 'turn' && s.id === m.turn ? '行動を選んでいます'
           : !s.online ? '接続待ち' : s.street ? `この周 ${s.street}点` : '待っています';
         node.append(hand, el('div', 'seat-meta', meta));
         if (s.role && m.phase === 'showdown')
           node.append(el('div', 'role', s.role));
-        if (s.kicker && m.phase === 'showdown') node.append(el('div', 'kicker', '残りの札で勝ち'));
+        if (s.kicker && m.phase === 'showdown') node.append(el('div', 'kicker', `残りの札 ${s.kickerRank}`));
         seats.append(node);
       });
       table.append(center, seats);

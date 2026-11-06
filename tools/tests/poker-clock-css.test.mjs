@@ -15,3 +15,11 @@ test('時計の文字は無地で、残り時間の輪は文字と重ならな�
   assert.doesNotMatch(rule('clock-ring'), /position:\s*absolute/);
   assert.match(rule('clock'), /display:\s*flex/);
 });
+
+test('小さい画面でも役と席の補足は15px、早見と便りは14px以上を保つ', () => {
+  assert.match(css, /\.seat-meta,\.role\s*\{\s*font-size:\s*clamp\(15px/);
+  assert.match(css, /\.role,\.seat-meta\s*\{\s*font-size:\s*15px/);
+  assert.match(rule('events'), /font-size:\s*clamp\(14px/);
+  assert.match(rule('role-guide'), /font-size:\s*14px/);
+  assert.match(css, /\.hand \.number\[data-digits='2'\]\s*\{\s*width:\s*30px/);
+});

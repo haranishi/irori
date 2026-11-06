@@ -53,7 +53,7 @@ describe('入力の拒否・時間・席',()=>{
   });
   it('時間切れはそのまま又はおりる。接続切れでも時計は進む',()=>{
     let s=start(),p=s.turn;s.seats.find(v=>v.id===p).online=false;s=updateGame(s,{t:'tick',ms:25000}).state;expect(s.seats.find(v=>v.id===p).folded).toBe(true);
-    s=start();s.current=s.seats.find(v=>v.id===s.turn).street;p=s.turn;s=updateGame(s,{t:'tick',ms:25000}).state;expect(s.seats.find(v=>v.id===p).folded).toBe(false);expect(s.events.at(-1).type).toBe('auto');
+    s=start();s.current=s.seats.find(v=>v.id===s.turn).street;p=s.turn;s=updateGame(s,{t:'tick',ms:25000}).state;expect(s.seats.find(v=>v.id===p).folded).toBe(false);expect(s.events.at(-1).type).toBe('auto-check');
   });
   it.each([{t:'menu',paused:true},{t:'environment',value:null},{t:'environment',value:{connected:false,visible:true}},{t:'environment',value:{connected:true,visible:false}}])('停止中は時計と入力を止める %j',e=>{
     const s=updateGame(start(),e).state;expect(updateGame(s,{t:'tick',ms:99999}).state).toBe(s);expect(viewFor(s,s.turn).pad.disabled).toBe(true);

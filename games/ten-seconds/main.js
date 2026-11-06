@@ -1,6 +1,8 @@
 // @ts-check
 import { connect } from './irori.js';
-import { createGame, publicView, updateGame } from './logic.js';
+import { createGame, publicView, updateGame, viewFor } from './logic.js';
+import {fillSeats,CPU_LOOK} from './cpu.js';
+import {createCpuDriver} from './cpu-driver.js';
 import { createView } from './view.js';
 
 /** @typedef {import('./logic.js').GameState} GameState */
@@ -28,13 +30,22 @@ async function boot() {
   /** @type {Map<PlayerId, Look>} */
   const looks = new Map();
   for (const p of irori.players) looks.set(p.id, irori.look(p.id));
+  const cpus=fillSeats(irori.players.length);
+  const cpuIds=new Set(cpus.map(p=>p.id));
+  const human=(/** @type {number} */ id)=>!cpuIds.has(id);
+  for(const cpu of cpus) looks.set(cpu.id,CPU_LOOK);
+  const seed=crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
   const nonce = Array.from(crypto.getRandomValues(new Uint8Array(4)), (n) => n.toString(16).padStart(2, '0')).join('');
   const initial = createGame({
-    players: irori.players, leader: irori.leader, environment: irori.environment,
+    players: [...irori.players,...cpus], leader: irori.leader, environment: irori.environment,
     paused: irori.paused, nonce, nowMs: performance.now(),
   });
   /** @type {GameState | null} */
   let state = initial.state;
+  const cpu=createCpuDriver(cpus.map(p=>p.id),seed,(p)=>{
+    if(!state) throw new Error('終了した局です');
+    return viewFor(state,p);
+  },(p,input)=>{if(input.k === 'btn') dispatch({t:'press',p,id:input.id,down:input.d === 1,nowMs:performance.now()});});
   /** @type {(() => void)[]} */
   const subscriptions = [];
   let raf = 0;
@@ -43,7 +54,7 @@ async function boot() {
 
   function dispose() {
     if (disposed) return;
-    disposed = true;
+    disposed = true;cpu.cancel();
     cancelAnimationFrame(raf);
     raf = 0;
     for (const off of subscriptions.splice(0)) off();
@@ -71,12 +82,12 @@ async function boot() {
   function apply(effects) {
     for (const effect of effects) {
       if (disposed) return;
-      if (effect.t === 'pad') irori.setPad(effect.spec, effect.to);
+      if (effect.t === 'pad') {if(human(effect.to)) irori.setPad(effect.spec, effect.to);}
       else if (!endSent) {
         endSent = true;
         // SDKの結果操作へ渡す前に、遅れて届く入力と描画を解放する。
         dispose();
-        irori.end(effect.results, effect.options);
+        irori.end(effect.results.filter(r=>human(r.p)), effect.options);
       }
     }
   }
@@ -89,6 +100,7 @@ async function boot() {
     state = next.state;
     view.render(publicView(state), looks);
     apply(next.effects);
+    if(!disposed) cpu.sync(performance.now());
     queueFrame();
   }
 
@@ -98,7 +110,7 @@ async function boot() {
     }),
     irori.on('players', (players, leader) => {
       for (const p of players) if (!looks.has(p.id)) looks.set(p.id, irori.look(p.id));
-      dispatch({ t: 'players', nowMs: performance.now(), players, leader });
+      dispatch({ t: 'players', nowMs: performance.now(), players:[...players,...cpus], leader });
     }),
     irori.on('pause', () => dispatch({ t: 'menu', nowMs: performance.now(), paused: true })),
     irori.on('resume', () => dispatch({ t: 'menu', nowMs: performance.now(), paused: false })),

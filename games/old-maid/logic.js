@@ -100,7 +100,7 @@ export function updateGame(state,event) {
     next.events = [];
     // 配札の捨て札は discard にまとめ、イベント列は配札での上がりから始める。
     for (const id of dealt.out) markOut(next,/** @type {Seat} */ (next.seats.find((s) => s.id === id)));
-    openTurn(next,0,true);
+    openTurn(next,-Infinity,true);
     return transition(state,next,[{t:'cue',name:'deal'}]);
   }
   if (input.k !== 'tiles' || input.pass || !Array.isArray(input.ids) || input.ids.length !== 1 || p !== state.turn?.from) return {state,effects:[]};

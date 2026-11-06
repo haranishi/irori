@@ -1,8 +1,10 @@
 // @ts-check
-/** @param {number} humans @returns {(import('./logic.js').PlayerInfo & {cpu:true})[]} */
-export function fillSeats(humans) {
+/** @param {number} humans @param {()=>number} [rng] @returns {(import('./logic.js').PlayerInfo & {cpu:true})[]} */
+export function fillSeats(humans,rng=()=>.999999) {
   if (!Number.isSafeInteger(humans) || humans < 0 || humans > 8) throw new RangeError('人数が不正です');
-  return humans >= 2 ? [] : Array.from({length:4-humans},(_,i)=>({id:-(i+1),name:`CPU ${i+1}`,online:true,cpu:true}));
+  if (humans >= 2) return [];
+  const before=Math.floor(rng()*(5-humans));
+  return Array.from({length:4-humans},(_,i)=>({id:i<before ? -(i+1) : Number.MAX_SAFE_INTEGER-i,name:`CPU ${i+1}`,online:true,cpu:true}));
 }
 /** @param {()=>number} rng */
 export function thinkMs(rng) {return 800+Math.floor(rng()*1201);}

@@ -125,6 +125,7 @@ export function createView(stage,status) {
       const total=model.phase === 'reveal' && model.reveal ? model.reveal.prize+model.reveal.carried : (model.prizes[model.roundIndex] ?? 0)+model.carry;
       lot.append(copy,lantern(String(total),'この市の灯 / 点'));content.append(lot,upcoming(model),board(model,looks));
     }
+    if(model.phase === 'ended') content.append(board(model,looks));
     const footer=element('footer','footer');footer.append(element('p','progress-guide',guide(model)),element('p','fine-print',model.phase === 'intro' ? '札が全部重なったら灯は持ち越し。最後の1枚は自動で出します。' : '使った札は戻りません · 同点は同順位 · 時間制限なし'));
     stage.replaceChildren(header,content,footer);
     const say=`第${model.roundIndex+1}市。${model.phase === 'choose' ? '札を選んでください' : model.phase === 'reveal' ? winnerAnnouncement(model) : guide(model)}`;

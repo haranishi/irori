@@ -175,3 +175,12 @@ export function publicView(state) {
   };
 }
 /** @typedef {ReturnType<typeof publicView>} GameViewModel */
+
+/** 本人の操作と公開情報だけを複製する。他席の回答・時計・乱数は含めない。
+ * @param {GameState} state @param {number} p */
+export function viewFor(state,p) {
+  const seat=state.seats.find(s=>s.id === p);
+  if(!seat) throw new RangeError('席がありません');
+  return {...publicView(state),self:p,hand:[...seat.hand],pad:structuredClone(padFor(state,seat))};
+}
+/** @typedef {ReturnType<typeof viewFor>} SeatView */

@@ -2,6 +2,7 @@
 import {connect} from './irori.js';
 import {createGame,publicView,updateGame,viewFor} from './logic.js';
 import {createView} from './view.js';
+import {makeRng} from './cards.js';
 import {fillSeats} from './cpu.js';
 import {createCpuDriver} from './cpu-driver.js';
 
@@ -41,11 +42,11 @@ async function boot() {
   }
   /** @type {Map<number,import('./irori.js').Look>} */
   const looks=new Map(irori.players.map((p)=>[p.id,irori.look(p.id)]));
-  const cpus=fillSeats(irori.players.length);
+  const seed=crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
+  const cpus=fillSeats(irori.players.length,makeRng(seed^0x98abcdef));
   const cpuIds=new Set(cpus.map((p)=>p.id));
   const human=(/** @type {number} */ id)=>!cpuIds.has(id);
   const nonce=Array.from(crypto.getRandomValues(new Uint8Array(4)),(n)=>n.toString(16).padStart(2,'0')).join('');
-  const seed=crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
   let paused=irori.paused;let environment=irori.environment;
   const host=()=>({paused,connected:environment?.connected === true,visible:environment?.visible === true});
   const initial=createGame({players:[...irori.players,...cpus],leader:irori.leader,environment,paused,nonce,seed});

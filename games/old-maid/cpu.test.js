@@ -31,6 +31,11 @@ describe('CPUの補充と本人用の情報',()=>{
     }
     for (const n of [-1,1.5,9,NaN]) expect(()=>fillSeats(n)).toThrow(RangeError);
   });
+  it('種つきの席位置は人の前後4通りを使い、IDが重ならない',()=>{
+    const positions=new Set();
+    for(let seed=0;seed<2000;seed++){const rng=makeRng(seed^0x98abcdef),a=fillSeats(1,rng);expect(a).toEqual(fillSeats(1,makeRng(seed^0x98abcdef)));positions.add(a.filter(p=>p.id<1).length);expect(new Set([1,...a.map(p=>p.id)]).size).toBe(4);}
+    expect(positions.size).toBe(4);
+  });
   it('思考時間は0.8〜2.0秒で種から再現する',()=>{
     const a=makeRng(9),b=makeRng(9);
     for (let i=0;i<2000;i++) {const ms=thinkMs(a);expect(ms).toBe(thinkMs(b));expect(ms).toBeGreaterThanOrEqual(800);expect(ms).toBeLessThanOrEqual(2000);}
@@ -67,12 +72,15 @@ describe('全段階の合法手と有限進行',()=>{
     console.info(`${n}席の1位回数: ${wins.join(',')}`);
   },120000);
   it('人1＋CPUを2000局、CPUだけを2000局、人だけを1局、自動入力で終える',()=>{
-    const mixed=[...humans(1),...fillSeats(1)],cpus=fillSeats(0);
+    const cpus=fillSeats(0);
     let wins=0;
     for (let seed=0;seed<2000;seed++) {
+      const mixed=[...humans(1),...fillSeats(1,makeRng(seed^0x98abcdef))];
       const result=run(mixed,seed);if (result.find((s)=>s.id===1).rank===1) wins++;
       run(cpus,seed);
     }
+    expect(wins/2000).toBeGreaterThanOrEqual(.21);
+    expect(wins/2000).toBeLessThanOrEqual(.29);
     run(humans(2),91);
     console.info(`人席を同じ方針で操作した1位: ${wins}/2000`);
   },120000);

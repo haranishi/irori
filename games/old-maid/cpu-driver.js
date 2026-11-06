@@ -6,7 +6,7 @@ import {makeRng} from './cards.js';
  * @param {(p:number)=>import('./logic.js').SeatView} read
  * @param {(p:number,input:NonNullable<ReturnType<typeof decide>>)=>void} send */
 export function createCpuDriver(ids,seed,read,send) {
-  const streams=new Map(ids.map((id)=>[id,makeRng((seed+id*2654435761)>>>0)]));
+  const streams=new Map(ids.map((id)=>[id,makeRng((seed^Math.imul(id>>>0,2654435761)^Math.floor(id/4294967296))>>>0)]));
   /** @type {ReturnType<typeof setTimeout>[]} */
   let timers=[];
   function cancel() {for (const timer of timers) clearTimeout(timer);timers=[];}

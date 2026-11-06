@@ -1,5 +1,7 @@
 // @ts-check
 // 連打レースの画面。規則は logic.js にあり、ここは irori とのやり取りと描画だけ。
+import {fillSeats,CPU_LOOK} from './cpu.js';
+import {createCpuDriver} from './cpu-driver.js';
 import { connect } from './irori.js';
 import { RACE_MS, TAPS_TO_FINISH, begin, createClock, createRace, standings, tap, tick, updatePlayers } from './logic.js';
 
@@ -27,41 +29,50 @@ try {
 }
 
 const clock = createClock(() => performance.now());
-const race = createRace(irori.players, clock.now());
+const cpus=fillSeats(irori.players.length);
+const cpuIds=new Set(cpus.map(p=>p.id));
+const human=(/** @type {number} */ id)=>!cpuIds.has(id);
+const players=[...irori.players,...cpus];
+const race = createRace(players, clock.now());
+const seed=crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
+const cpu=createCpuDriver(cpus.map(p=>p.id),seed,(p)=>({self:p,pad:!clock.paused && race.phase === 'race' && race.runners.get(p)?.state === 'run' ? {k:'buzzer',label:'連打!'} : {k:'wait'}}),(p,input)=>apply(tap(race,p,input,clock.now(),clock.now())));
 const lanes = [...race.runners.keys()];
-const names = new Map(irori.players.map((p) => [p.id, p.name]));
+const names = new Map(players.map((p) => [p.id, p.name]));
 /** 席ごとの色と、形を塗る Path2D。色だけで区別しないよう、印は必ず両方で描く。 */
 const marks = new Map(lanes.map((p) => {
-  const look = irori.look(p);
+  const look = human(p) ? irori.look(p) : CPU_LOOK;
   return [p, { color: look.color, path: new Path2D(look.path) }];
 }));
 
 /** 規則が返した「やること」を、irori に渡す。 */
 function apply(/** @type {Effect[]} */ effects) {
   for (const e of effects) {
-    if (e.t === 'pad') irori.setPad(e.spec, e.to);
-    else if (e.t === 'buzz') irori.vibrate(e.ms, e.to);
-    else irori.end(e.results);
+    if (e.t === 'pad') {if(human(e.to)) irori.setPad(e.spec, e.to);}
+    else if (e.t === 'buzz') {
+      if(e.to === 'all') {for(const p of lanes) if(human(p)) irori.vibrate(e.ms,p);}
+      else if(human(e.to)) irori.vibrate(e.ms,e.to);
+    } else {cpu.cancel();irori.end(e.results.filter(r=>human(r.p)));}
   }
 }
 
 irori.on('input', (p, input, T) => {
   // 一時停止のあいだの連打は数えない（時計も止まっている）。
-  if (!clock.paused) apply(tap(race, p, input, clock.now(), T));
+  if (!clock.paused) apply(tap(race, p, input, clock.now(), cpus.length ? clock.now() : T));
 });
 irori.on('players', (players) => {
   for (const pl of players) names.set(pl.id, pl.name);
-  apply(updatePlayers(race, players));
+  apply(updatePlayers(race, [...players,...cpus]));
 });
-irori.on('pause', () => {
-  clock.pause();
-  stop();
-  draw();
-});
-irori.on('resume', () => {
-  clock.resume();
-  start();
-});
+let paused=irori.paused;
+let environment=irori.environment;
+function syncAvailability() {
+  if(paused || environment?.connected === false || environment?.visible === false) {clock.pause();stop();cpu.cancel();draw();}
+  else {clock.resume();start();}
+}
+irori.on('pause',()=>{paused=true;syncAvailability();});
+irori.on('resume',()=>{paused=false;syncAvailability();});
+irori.on('environment',value=>{environment=value;syncAvailability();});
+addEventListener('pagehide',()=>{stop();cpu.cancel();},{once:true});
 addEventListener('resize', () => {
   fit();
   draw();
@@ -92,6 +103,7 @@ function frame(/** @type {number} */ t) {
   lastFrame = t;
   skip = slow > 30 && !skip;
   apply(tick(race, clock.now()));
+  cpu.sync(clock.now());
   if (race.phase === 'over') stop();
   if (!skip || race.phase === 'over') draw();
 }
@@ -129,7 +141,7 @@ function draw() {
   lanes.forEach((p, i) => lane(p, y0 + laneH * (i + 0.5), laneH, ranks.get(p)));
   if (race.phase === 'count') countdown(now);
   else if (race.phase === 'race' && now - race.goAt < 700) flash('連打!', 1 - (now - race.goAt) / 700);
-  if (race.phase === 'over') banner('おわり', race.why === 'finish' ? '全員完走！' : race.why === 'time' ? '時間切れ' : '全員退出');
+  if (race.phase === 'over') text('結果 · '+(race.why === 'finish' ? '全員完走！' : race.why === 'time' ? '時間切れ' : '全員退出'),928,100,20,COLOR.glow,'right');
   else if (clock.paused) banner('一時停止中', 'メニューを閉じると続きから');
 }
 
@@ -272,4 +284,4 @@ fit();
 apply(begin(race));
 draw();
 irori.ready();
-start();
+syncAvailability();

@@ -907,3 +907,14 @@ html[data-demo=true] .irori-mock {
 #stage[data-count='8'] .seat:nth-child(8) .badges {
   left:calc(50% + 12px);
 }
+
+/* 最小画面の8席だけ、上の印と中央の見出しに文字の余白を残す。 */
+@media(max-width:1024px) and (max-height:620px) {
+  #stage[data-count='8'][data-phase=result] .pile-label {
+    transform:translateY(20px);
+  }
+
+  #stage[data-count='8'][data-phase=turn] .progress {
+    letter-spacing:-1px;
+  }
+}

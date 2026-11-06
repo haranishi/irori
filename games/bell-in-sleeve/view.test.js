@@ -48,7 +48,11 @@ describe('ふところの鈴：公開の画面',()=>{
     state.seats.forEach((s)=>{s.rank=s.id === 'cpu2' ? 1 : 2;s.score=s.id === 'cpu2' ? 4 : 0;});
     const {stage,view}=fixture();view.render(publicView(state));
     expect(stage.querySelector('[data-id="cpu2"] .bell')).not.toBeNull();expect(stage.querySelectorAll('.cat')).toHaveLength(1);
-    expect(stage.querySelectorAll('.results li')).toHaveLength(5);expect(stage.querySelector('.results').textContent).toContain('1位 CPU 2（CPU） 4点');
+    expect(stage.querySelectorAll('.results li')).toHaveLength(5);
+    expect(stage.querySelector('.clock').textContent).toContain('次の画面へ');
+    expect(stage.querySelectorAll('.score-reasons,.vote-detail')).toHaveLength(10);
+    expect(stage.querySelector('.progress').textContent).toContain('周目・あと');
+    expect(stage.querySelector('.results').textContent).toContain('1位 CPU 2（CPU） 4点');
     const bell=stage.querySelector('.bell');state.remaining=5000;view.render(publicView(state));expect(stage.querySelector('.bell')).toBe(bell);
     state.outcome='incomplete';state.seats.forEach((s)=>{s.rank=null;s.score=0;});view.render(publicView(state));
     expect(stage.querySelector('.bell,.cat')).toBeNull();expect(stage.textContent).toContain('今回は勝負なし');expect(stage.querySelector('.results').textContent).not.toContain('1位');
@@ -112,7 +116,7 @@ describe('SDKと公開の画面の接続',()=>{
     host.emit('input',1,{k:'tiles',ids:[pad.tiles[0].id],t:pad.token});
     host.emit('pause');const seconds=document.querySelector('.clock').textContent;
     await vi.advanceTimersByTimeAsync(60000);expect(document.querySelector('.clock').textContent).toBe(seconds);
-    expect(host.pads.get(1).k).toBe('wait');
+    expect(host.pads.get(1)).toMatchObject({k:'tiles',disabled:true});
     host.emit('resume');await vi.advanceTimersByTimeAsync(1000);
     expect(document.querySelector('.clock').textContent).not.toBe(seconds);
     host.emit('players',[],null);expect(host.end).toHaveBeenCalledTimes(1);

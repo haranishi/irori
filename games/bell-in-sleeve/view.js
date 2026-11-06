@@ -57,21 +57,23 @@ export function createView(stage,status) {
       stage.dataset.phase=model.phase;stage.dataset.count=String(model.seats.length);stage.dataset.frozen=String(held || model.blocked);
       const scene=`${model.phase}:${model.step}:${model.turn}:${model.events.at(-1)?.seq ?? 0}`;
       stage.dataset.scene=scene;
+      const clockText=()=>model.phase === 'intro' ? '準備' : model.phase === 'result' ? `あと${Math.ceil(model.remaining/1000)}秒で、次の画面へ` : `${Math.ceil(model.remaining/1000)}秒`;
       const duration=model.phase === 'talk' ? 45000 : model.phase === 'vote' || model.step === 'whisper' ? 30000 : model.phase === 'deal' || model.phase === 'result' ? 8000 : model.step === 'reveal' ? 3000 : 25000;
       const fingerprint=JSON.stringify({...model,remaining:0});
       const oldClock=stage.querySelector('.clock');
       if (fingerprint === lastModel && oldClock instanceof HTMLElement) {
-        oldClock.textContent=model.phase === 'intro' ? '準備' : `${Math.ceil(model.remaining/1000)}秒`;
+        oldClock.textContent=clockText();
         oldClock.style.setProperty('--time',String(Math.min(1,Math.max(0,model.remaining/duration))));
         oldClock.setAttribute('aria-label',`残り時間 ${oldClock.textContent}`);return;
       }
       lastModel=fingerprint;
       const header=el('header','masthead');
       const brand=el('div','brand');brand.append(el('span','eyebrow','夜の屋台通り · 推理カード'),el('h1','title','ふところの鈴'));
-      const clock=el('div','clock',model.phase === 'intro' ? '準備' : `${Math.ceil(model.remaining/1000)}秒`);
+      const clock=el('div','clock',clockText());
       clock.style.setProperty('--time',String(Math.min(1,Math.max(0,model.remaining/duration))));
       clock.setAttribute('aria-label',`残り時間 ${clock.textContent}`);header.append(brand,clock);
       const line=el('h2','turn-line',heading(model));
+      const progress=el('div','progress',`${model.progress.round}周目・あと${model.progress.left}手${model.phase === 'intro' ? '' : ` ｜ 出された札${model.discard.length}枚・${model.phase === 'result' ? '持ち主を公開' : '鈴の位置は結果まで秘密'}`}`);
       const table=el('section','table');table.setAttribute('aria-label','席と出された札');
       const center=el('div','center');
       if (model.phase === 'intro') {
@@ -84,7 +86,7 @@ export function createView(stage,status) {
           const face=el('div',`face face--${card}`);face.append(symbol(card),el('span','',CARD_NAMES[card]));pile.append(face);
         }
         if (!model.discard.length) pile.append(el('div','empty-pile','まだ、手がかりはありません'));
-        center.append(pile,el('small','pile-count',`${model.discard.length}枚 · 鈴の位置は結果まで秘密`));
+        center.append(pile);
       }
       const seats=el('div','seats');
       model.seats.forEach((seat,i)=>{
@@ -112,7 +114,7 @@ export function createView(stage,status) {
         if (model.clear.includes(seat.id)) badges.append(el('span','clear','いまは持っていない'));
         node.append(badges);
         if (model.phase === 'result' && model.holder === seat.id && model.outcome === 'complete') {
-          const reveal=el('div','reveal');node.dataset.holder='true';reveal.append(icon('cat'),icon('bell'));node.append(reveal);
+          const reveal=el('div','reveal');node.dataset.holder='true';reveal.append(icon('cat'),icon('bell'));fan.replaceChildren(reveal);
         }
         seats.append(node);
       });
@@ -122,7 +124,10 @@ export function createView(stage,status) {
         const board=el('ol','results');board.setAttribute('aria-label','得点表');
         for (const r of [...model.results].sort((a,b)=>(a.rank ?? 99)-(b.rank ?? 99))) {
           const name=short(model.seats.find((s)=>s.id === r.p)?.name ?? '',12);
-          board.append(el('li','',`${r.rank === null ? '—' : `${r.rank}位`} ${name}${r.cpu ? '（CPU）' : ''} ${r.score}点`));
+          const row=el('li','',`${r.rank === null ? '—' : `${r.rank}位`} ${name}${r.cpu ? '（CPU）' : ''} ${r.score}点`);
+          row.append(el('div','score-reasons',r.reasons.map((reason)=>`${reason.label}${reason.score >= 0 ? '＋' : '−'}${Math.abs(reason.score)}`).join('・')));
+          const target=model.seats.find((s)=>s.id === r.voteFor)?.name;
+          row.append(el('div','vote-detail',`指名：${target ?? 'なし'} ／ 得票${r.votesReceived}票`));board.append(row);
         }
         footer.append(board);
       } else {
@@ -131,7 +136,7 @@ export function createView(stage,status) {
         if (!model.events.length) logs.append(el('li','','手札は自分のスマホだけ。大画面には映りません。'));
         footer.append(logs);
       }
-      stage.replaceChildren(header,line,table,footer);
+      stage.replaceChildren(header,line,progress,table,footer);
       if (scene !== lastScene) {status.textContent=heading(model);lastScene=scene;}
     },
     /** @param {boolean} value */

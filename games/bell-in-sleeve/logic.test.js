@@ -207,7 +207,8 @@ describe('秘匿とpadの契約',()=>{
     const s=effect(standard(),'peek').state;
     const a=pick(s,1,0),other=structuredClone(s);other.seats[1].hand[s.slots[0]]='whisper';const b=pick(other,1,0);
     expect(a.effects.find((e)=>e.t==='pad'&&e.to===3)).toEqual(b.effects.find((e)=>e.t==='pad'&&e.to===3));
-    expect(viewFor(a.state,2).pad.note).toBe(viewFor(b.state,2).pad.note);
+    expect(viewFor(a.state,2).observations).toEqual(viewFor(b.state,2).observations);
+    expect(viewFor(a.state,3).pad.note).toBe(viewFor(b.state,3).pad.note);
     for(const e of a.effects.filter((e)=>e.t==='pad'))expect(e.to).toBeDefined();
   });
   it('日本語と長い名前を含む全段階のpadが独立した上限の検査を通る',()=>{

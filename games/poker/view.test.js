@@ -22,7 +22,7 @@ describe('公開の卓',()=>{
   });
   it('CPUの図形と全席の結果と直近4件、停止と動きの設定を示す',()=>{
     const s=initial();s.seats[1].cpu=true;s.phase='result';s.seats.forEach(v=>v.rank=1);s.events=Array.from({length:6},(_,i)=>({seq:i,p:1,type:'check',amount:0}));view.render(publicView(s));
-    expect(stage.querySelectorAll('.robot')).toHaveLength(1);expect(stage.querySelectorAll('.results li')).toHaveLength(8);expect(stage.querySelector('.results').textContent).toContain('1位(CPUこみ)');expect(stage.querySelectorAll('.events li')).toHaveLength(4);expect(stage.dataset.motion).toBe('reduce');view.hold(true);expect(stage.dataset.frozen).toBe('true');view.dispose();expect(listeners.size).toBe(0);
+    expect(stage.querySelectorAll('.robot')).toHaveLength(1);expect(stage.querySelectorAll('.results li')).toHaveLength(8);expect(stage.querySelector('.result-guide').textContent).toContain('CPUを含む全席の順位');expect(stage.querySelectorAll('.events li')).toHaveLength(4);expect(stage.dataset.motion).toBe('reduce');view.hold(true);expect(stage.dataset.frozen).toBe('true');view.dispose();expect(listeners.size).toBe(0);
     s.outcome='incomplete';s.seats.forEach(v=>v.rank=null);view.render(publicView(s));expect(stage.textContent).toContain('勝負なし');expect(stage.querySelector('.results').textContent).not.toContain('位');
   });
 });

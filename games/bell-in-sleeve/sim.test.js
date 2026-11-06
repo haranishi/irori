@@ -5,9 +5,9 @@ import {buildDeck,makeRng} from './cards.js';
 // 共有部品を読み込まず、公開されたpadの上限を独立に確かめる。
 function validPad(pad) {
   if (!['wait','tiles'].includes(pad.k)) return false;
-  const allowed=pad.k==='wait'?['k','title','body']:['k','token','tiles','min','max','ok','disabled','note'];
+  const allowed=pad.k==='wait'?['k','title','body']:['k','token','tiles','min','max','ok','disabled','note','hint'];
   if (Object.keys(pad).some((k)=>!allowed.includes(k))) return false;
-  for(const [key,max] of [['title',24],['body',120],['note',120],['ok',12]])if(pad[key]!==undefined&&[...pad[key]].length>max)return false;
+  for(const [key,max] of [['title',24],['body',120],['note',120],['ok',12],['hint',40]])if(pad[key]!==undefined&&[...pad[key]].length>max)return false;
   if(pad.k==='wait')return true;
   const tiles=pad.tiles;
   if(!/^[a-z0-9_-]{1,24}$/.test(pad.token)||tiles.length>20||new Set(tiles.map((t)=>t.id)).size!==tiles.length)return false;

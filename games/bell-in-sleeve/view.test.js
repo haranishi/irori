@@ -100,13 +100,13 @@ describe('SDKと公開の画面の接続',()=>{
     host.emit('input',1,{k:'tiles',ids:['invalid'],t:'old'});
     expect(host.pads.get(1).token).not.toBe(oldToken);
   });
-  it('人1席とCPUの通常終了で、人の結果だけを8秒後に1回渡す',async()=>{
+  it('人1席とCPUの通常終了で、人の結果だけを20秒後に1回渡す',async()=>{
     const host=await boot();const pad=host.pads.get(1);
     host.emit('input',1,{k:'tiles',ids:[pad.tiles[0].id],t:pad.token});
     for (let i=0;i<120 && document.documentElement.dataset.phase !== 'result';i++) await vi.advanceTimersByTimeAsync(5000);
     expect(document.documentElement.dataset.phase).toBe('result');expect(host.end).not.toHaveBeenCalled();
     expect(document.querySelectorAll('.results li')).toHaveLength(5);
-    await vi.advanceTimersByTimeAsync(8100);expect(host.end).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(20100);expect(host.end).toHaveBeenCalledTimes(1);
     expect(host.end.mock.calls[0][0].map((r)=>r.p)).toEqual([1]);
     expect(host.end.mock.calls[0][1].outcome).toBe('complete');
     await vi.advanceTimersByTimeAsync(30000);expect(host.end).toHaveBeenCalledTimes(1);

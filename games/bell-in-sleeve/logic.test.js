@@ -4,9 +4,9 @@ import {CARD_NAMES} from './cards.js';
 // 共有部品を読み込まず、公開されたpadの上限を独立に確かめる。
 function validPad(pad) {
   if (!['wait','tiles'].includes(pad.k)) return false;
-  const allowed=pad.k==='wait'?['k','title','body']:['k','token','tiles','min','max','ok','disabled','note'];
+  const allowed=pad.k==='wait'?['k','title','body']:['k','token','tiles','min','max','ok','disabled','note','hint'];
   if (Object.keys(pad).some((k)=>!allowed.includes(k))) return false;
-  for(const [key,max] of [['title',24],['body',120],['note',120],['ok',12]])if(pad[key]!==undefined&&[...pad[key]].length>max)return false;
+  for(const [key,max] of [['title',24],['body',120],['note',120],['ok',12],['hint',40]])if(pad[key]!==undefined&&[...pad[key]].length>max)return false;
   if(pad.k==='wait')return true;
   const tiles=pad.tiles;
   if(!/^[a-z0-9_-]{1,24}$/.test(pad.token)||tiles.length>20||new Set(tiles.map((t)=>t.id)).size!==tiles.length)return false;
@@ -108,12 +108,12 @@ describe('5つの札の効果',()=>{
     expect(r.state.step).toBe('reveal');expect(viewFor(r.state,2).observations.at(-1).card).toBe('guard');
     expect(r.state.events.filter((e)=>e.type==='auto').map((e)=>e.p)).toEqual([2]);
   });
-  it('つかまえるが当たれば得点を付け、8秒後に一度だけend',()=>{
+  it('つかまえるが当たれば得点を付け、20秒後に一度だけend',()=>{
     const s=scenario([['catch','guard'],['bell','peek'],['swap','guard']]);
     let r=effect(s,'catch');expect(r.state.phase).toBe('result');expect(r.state.winner).toBe('stall');
     expect(r.state.seats.map((v)=>v.score)).toEqual([3,0,1]);expect(r.state.seats.map((v)=>v.rank)).toEqual([1,3,2]);
     expect(r.effects.some((e)=>e.t==='end')).toBe(false);
-    r=updateGame(r.state,{t:'tick',ms:7999});expect(r.effects.some((e)=>e.t==='end')).toBe(false);
+    r=updateGame(r.state,{t:'tick',ms:19999});expect(r.effects.some((e)=>e.t==='end')).toBe(false);
     r=updateGame(r.state,{t:'tick',ms:1});expect(r.effects.filter((e)=>e.t==='end')).toHaveLength(1);
     expect(r.effects.find((e)=>e.t==='end').results).toEqual([{p:1,score:3,label:'1位',ranked:true},{p:2,score:0,label:'3位',ranked:true},{p:3,score:1,label:'2位',ranked:true}]);
     expect(updateGame(r.state,{t:'tick',ms:8000}).effects).toEqual([]);

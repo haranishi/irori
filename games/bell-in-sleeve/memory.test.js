@@ -53,7 +53,7 @@ describe('手元の記憶と進み具合',()=>{
   });
   it('札の効果は12文字以内、使用前の制限も保つ',()=>{
     const s=scene();s.seats[0].hand=['peek','swap','whisper','catch','guard','bell'];
-    expect(viewFor(s,1).pad.tiles.map((t)=>t.sub)).toEqual(['ひとりの札を見る','札を取りかえる','見せ合う','ひとりを指名','つかまえるを防ぐ','出せない']);
+    expect(viewFor(s,1).pad.tiles.map((t)=>t.sub)).toEqual(['ひとりの札を見る','札を取りかえる','見せ合う','指名・外れ−1点','つかまえるを防ぐ','出せない']);
     expect(viewFor(s,1).pad.tiles.every((t)=>[...t.sub].length <= 12)).toBe(true);
     s.seats[0].played=0;expect(viewFor(s,1).pad.tiles[3]).toMatchObject({sub:'二周目から',off:true});
   });
@@ -83,7 +83,7 @@ describe('結果の数字と理由',()=>{
       const rows=publicView(s).results;
       expect(rows[caught ? 0 : 1].reasons).toContainEqual({label:caught ? '当てた' : '逃げ切り',score:caught ? 3 : 4});
       for (const r of rows) expect(r.reasons.reduce((n,v)=>n+v.score,0)).toBe(r.score);
-      const end=updateGame(s,{t:'tick',ms:8000}).effects.find((e)=>e.t === 'end');
+      const end=updateGame(s,{t:'tick',ms:20000}).effects.find((e)=>e.t === 'end');
       expect(end.results.every((r)=>Object.keys(r).sort().join() === 'label,p,ranked,score')).toBe(true);
     }
   });

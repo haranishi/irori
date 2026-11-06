@@ -8,7 +8,7 @@ import {CARD_NAMES,compareSeats,deal,makeRng,shuffle} from './cards.js';
 /** @typedef {{seq:number,type:string,p:SeatId,target?:SeatId,card?:Card,auto?:boolean}} PublicEvent */
 /** @typedef {{seq:number,type:'peek'|'swap'|'whisper',target:SeatId,card:Card}} Observation */
 /** @typedef {{id:string,label:string,sub?:string,off?:boolean}} Tile */
-/** @typedef {{k:'wait',title:string,body?:string}|{k:'tiles',token:string,tiles:Tile[],min:number,max:number,ok:string,disabled:boolean,note:string}} PadSpec */
+/** @typedef {{k:'wait',title:string,body?:string}|{k:'tiles',token:string,tiles:Tile[],min:number,max:number,ok:string,disabled:boolean,note:string,hint?:string}} PadSpec */
 /** @typedef {{k:string,ids?:string[],t?:string,pass?:boolean}} GameInput */
 /** @typedef {{players:readonly Player[],leader:SeatId|null,seed:number,nonce:string,paused?:boolean,environment?:Environment|null}} GameInit */
 /** @typedef {{t:'input',p:SeatId,input:GameInput}|{t:'tick',ms:number}|{t:'players',players:readonly Player[],leader:SeatId|null}|{t:'menu',paused:boolean}|{t:'environment',value:Environment|null}} GameEvent */
@@ -51,7 +51,7 @@ export function createGame(init) {
     environment:init.environment ? {...init.environment} : null,epochs:{},events:[],seq:0,observations:{},notices:{},picks:{},votes:{},ready:{},winner:null,holder:null,outcome:'complete',ended:false};
   return transition(null,state);
 }
-const CARD_SUB={peek:'ひとりの札を見る',swap:'札を取りかえる',whisper:'見せ合う',catch:'ひとりを指名',guard:'つかまえるを防ぐ',bell:'出せない'};
+const CARD_SUB={peek:'ひとりの札を見る',swap:'札を取りかえる',whisper:'見せ合う',catch:'指名・外れ−1点',guard:'つかまえるを防ぐ',bell:'出せない'};
 /** @param {GameState} s */
 function progress(s) {
   const left=s.seats.reduce((n,v)=>n+Math.max(0,s.h-1-v.played),0);
@@ -71,10 +71,10 @@ export function shortNames(seats) {
 /** 手札と最新の事実を優先。古い事実は短縮し、全文が入るものだけ新しい順に残す。 @param {GameState} s @param {SeatId} p @param {string} instruction */
 function memoryNote(s,p,instruction) {
   const own=seat(s,p),now=progress(s);
-  const parts=[`${now.round}周目・あと${now.left}手`,`手札:${own.hand.map((c)=>CARD_NAMES[c]).join('・')}`,short(instruction,22)];
+  const parts=[short(instruction,22),`${now.round}周目・あと${now.left}手`,`手札:${own.hand.map((c)=>CARD_NAMES[c]).join('・')}`];
   if (s.notices[p]) parts.push(short(s.notices[p],18));
   if (s.phase === 'vote') parts.push('守りは、一斉指名には効きません');
-  const facts=[...(s.observations[p] ?? [])].reverse();
+  const facts=[...(s.observations[p] ?? [])].reverse().slice(0,2);
   for (const [i,fact] of facts.entries()) {
     const name=shortNames(s.seats)[fact.target];
     const text=i ? `${name}:${CARD_NAMES[fact.card]}(当時)` : fact.type === 'swap' ? `${name}に${CARD_NAMES[fact.card]}を渡した(当時)` : `${name}の${CARD_NAMES[fact.card]}を見た(当時)`;
@@ -125,7 +125,9 @@ function padFor(s,p) {
     }
   } else note='手札を確かめよう';
   const count=active ? tiles.filter((tile)=>!tile.off).length : 0;
-  return {k:'tiles',token:t,tiles,min:count ? 1 : 0,max:count ? 1 : 0,ok,disabled:!active,note:s.phase === 'intro' ? note : memoryNote(s,p,note)};
+  const hint=active && (s.phase === 'vote' || s.phase === 'turn')
+    ? `${s.phase === 'vote' || s.step === 'whisper' ? 30 : 25}秒以内に決めてください` : undefined;
+  return {k:'tiles',token:t,tiles,...(hint ? {hint} : {}),min:count ? 1 : 0,max:count ? 1 : 0,ok,disabled:!active,note:s.phase === 'intro' ? note : memoryNote(s,p,note)};
 }
 /** @param {string} text @param {number} max */
 function short(text,max) { return [...text].slice(0,max).join(''); }
@@ -152,7 +154,7 @@ function finishTurn(s) {
 function reveal(s) { s.step='reveal';s.remaining=3000; }
 /** @param {GameState} s @param {'stall'|'bell'|null} winner @param {SeatId|null} catcher */
 function settle(s,winner,catcher=null) {
-  s.phase='result';s.winner=winner;s.remaining=8000;
+  s.phase='result';s.winner=winner;s.remaining=20000;
   s.holder=s.seats.find((v)=>v.hand.includes('bell'))?.id ?? null;
   if (!winner) {s.outcome='incomplete';s.seats.forEach((v)=>{v.score=0;v.rank=null;});return;}
   for (const v of s.seats) {

@@ -4,6 +4,7 @@
 // コンソールへ終了が届かず、「もう一度」が出なくなった。ゲーム単体の画面の試験（?mock）は、end() の検証を通らないので見逃した。
 import { describe, expect, it } from 'vitest';
 import { validateGameEnd } from '../src/end';
+import { validatePadSpec } from '../src/validate';
 // @ts-ignore 同梱ゲームは型の宣言を持たない素の JavaScript
 import { createGame, updateGame, viewFor } from '../../../games/bell-in-sleeve/logic.js';
 // @ts-ignore
@@ -87,4 +88,18 @@ describe('ふところの鈴：終了の合図は、コンソールの検証器�
     expect(validateGameEnd([{ p: 1, score: 3, rank: 1, cpu: false, ranked: true, label: '1位' }], { display: 'points', outcome: 'complete' }))
       .toEqual({ ok: false, reason: 'result-shape' });
   });
+});
+
+
+it('ふところの鈴：選択の時間案内と長い記録を含むpadは実際の検証器を通る', () => {
+  const s: any = createGame({ players: Array.from({ length: 8 }, (_, i) => human(i + 1)), leader: 1, seed: 19, nonce: 'limits', environment: env }).state;
+  Object.assign(s, { phase: 'turn', turn: 1, target: 2, card: 'swap', slots: [0, 1], h: 3 });
+  s.seats.forEach((v: any) => { v.hand = ['guard', 'catch', 'bell']; v.played = 2; v.name = '長い名前😀'.repeat(4); });
+  s.observations[1] = Array.from({ length: 40 }, (_, seq) => ({ seq, type: 'peek', target: 2, card: 'guard' }));
+  for (const step of ['pickCard', 'pickTarget', 'pickSlot', 'pickGive', 'whisper', 'vote']) {
+    Object.assign(s, { step: step === 'vote' ? 'pickCard' : step, phase: step === 'vote' ? 'vote' : 'turn' });
+    const pad = viewFor(s, 1).pad;
+    expect(validatePadSpec(pad).ok).toBe(true);
+    expect(pad.hint).toBe(`${step === 'whisper' || step === 'vote' ? 30 : 25}秒以内に決めてください`);
+  }
 });

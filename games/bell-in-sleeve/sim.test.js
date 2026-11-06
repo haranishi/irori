@@ -49,7 +49,7 @@ function simulate(n,seed,humans=0,verify=true) {
     r=input ? updateGame(s,{t:'input',p,input}) : updateGame(s,{t:'tick',ms:Math.max(1,s.remaining)});
     ends+=r.effects.filter((e)=>e.t==='end').length;
     const end=r.effects.find((e)=>e.t==='end');if(end)endResults=end.results;
-    if(input&&r.state.events.length===s.events.length&&r.state.phase===s.phase&&r.state.step===s.step&&JSON.stringify(r.state.votes)===JSON.stringify(s.votes)&&JSON.stringify(r.state.picks)===JSON.stringify(s.picks))throw Error('CPUが拒否された');
+    if(input&&!r.state.ended&&JSON.stringify(r.state.ready)===JSON.stringify(s.ready)&&r.state.events.length===s.events.length&&r.state.phase===s.phase&&r.state.step===s.step&&JSON.stringify(r.state.votes)===JSON.stringify(s.votes)&&JSON.stringify(r.state.picks)===JSON.stringify(s.picks))throw Error('CPUが拒否された');
   }
   if(!r.state.ended||ends!==1||r.state.outcome!=='complete')throw Error(`終了失敗 n=${n} seed=${seed} ${r.state.phase}/${r.state.step}`);
   return {state:r.state,phases,effects,endResults};

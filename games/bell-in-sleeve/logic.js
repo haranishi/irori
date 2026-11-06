@@ -86,8 +86,8 @@ function memoryNote(s,p,instruction) {
 /** @param {GameState} s @param {SeatId} p @returns {PadSpec} */
 function padFor(s,p) {
   const own=seat(s,p),t=token(s,p);
-  if (blocked(s) || s.phase === 'result') {
-    const message=blocked(s) ? '再開を待っています' : `${own.score}点${own.rank === null ? '' : `・${own.rank}位`}`;
+  if (blocked(s)) {
+    const message='再開を待っています';
     return {k:'tiles',token:t,tiles:own.hand.map((card,i)=>({id:`${t}_${i}`,label:CARD_NAMES[card],off:true})),min:0,max:0,ok:'決定',disabled:true,note:memoryNote(s,p,message)};
   }
   /** @type {Tile[]} */
@@ -97,6 +97,10 @@ function padFor(s,p) {
     active=p === s.leader && canBegin(s);
     tiles=[{id:`${t}_0`,label:'はじめる',off:!active}];
     note='札を出して鈴を探そう。鈴は出せません';
+  } else if (s.phase === 'result') {
+    active=!own.cpu && !own.left && !s.ready[p] && !s.ended;
+    tiles=[{id:`${t}_0`,label:'次へ',off:!active}];
+    note=s.ready[p] ? 'ほかの人を待っています' : `${own.score}点${own.rank === null ? '' : `・${own.rank}位`}`;
   } else if (s.phase === 'talk') {
     active=!own.cpu && !s.ready[p];
     tiles.push({id:`${t}_${own.hand.length}`,label:'指名へ進む',off:!active});
@@ -154,7 +158,7 @@ function finishTurn(s) {
 function reveal(s) { s.step='reveal';s.remaining=3000; }
 /** @param {GameState} s @param {'stall'|'bell'|null} winner @param {SeatId|null} catcher */
 function settle(s,winner,catcher=null) {
-  s.phase='result';s.winner=winner;s.remaining=20000;
+  s.phase='result';s.winner=winner;s.remaining=20000;s.ready={};
   s.holder=s.seats.find((v)=>v.hand.includes('bell'))?.id ?? null;
   if (!winner) {s.outcome='incomplete';s.seats.forEach((v)=>{v.score=0;v.rank=null;});return;}
   for (const v of s.seats) {
@@ -173,6 +177,7 @@ function tally(s) {
 function choose(s,p,i) {
   const own=seat(s,p);
   if (s.phase === 'intro') {start(s);return;}
+  if (s.phase === 'result') {s.ready[p]=true;if (s.seats.filter((v)=>!v.cpu && !v.left).every((v)=>s.ready[v.id])) s.ended=true;return;}
   if (s.phase === 'talk') {s.ready[p]=true;if (s.seats.filter((v)=>!v.cpu).every((v)=>s.ready[v.id])) {s.phase='vote';s.remaining=30000;}return;}
   if (s.phase === 'vote') {s.votes[p]=/** @type {Seat} */ (s.seats[i]).id;if (Object.keys(s.votes).length === s.seats.length) tally(s);return;}
   if (s.step === 'whisper') {
@@ -252,10 +257,10 @@ export function updateGame(state,event) {
     }
     const next=structuredClone(state);choose(next,p,i);
     // 他方の未確定の選択は変えず、同時選択の古いtokenを作らない。
-    if (state.phase === 'talk' && next.phase === 'talk' || state.phase === 'vote' && next.phase === 'vote' || state.step === 'whisper' && next.step === 'whisper') next.epochs[p]=(next.epochs[p] ?? 0)+1;
+    if (state.phase === 'result' && next.phase === 'result' || state.phase === 'talk' && next.phase === 'talk' || state.phase === 'vote' && next.phase === 'vote' || state.step === 'whisper' && next.step === 'whisper') next.epochs[p]=(next.epochs[p] ?? 0)+1;
     else bump(next);
     const cue=state.phase === 'intro' ? 'deal' : next.phase === 'result' ? next.winner === 'stall' ? 'win' : 'lose' : state.step === 'pickCard' ? 'place' : 'flip';
-    return transition(state,next,[{t:'cue',name:cue}]);
+    return transition(state,next,state.phase === 'result' ? [] : [{t:'cue',name:cue}]);
   }
   const next=structuredClone(state);
   if (event.t === 'menu') next.paused=event.paused;

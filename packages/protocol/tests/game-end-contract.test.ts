@@ -24,6 +24,7 @@ function play(humans: number[], seed: number, leave = false) {
   let end: any = null;
   let steps = 0;
   let left = false;
+  let resultInputs = 0;
   const take = (r: any) => {
     s = r.state;
     const e = r.effects.find((x: any) => x.t === 'end');
@@ -42,13 +43,14 @@ function play(humans: number[], seed: number, leave = false) {
       const input = decide(v, seat.id, rngs.get(seat.id))
         ?? (s.phase === 'intro' && seat.id === s.leader ? { k: 'tiles', ids: [v.pad.tiles[0].id], t: v.pad.token } : null);
       if (!input) continue;
+      if (s.phase === 'result') resultInputs++;
       take(updateGame(s, { t: 'input', p: seat.id, input }));
       acted = true;
       if (s.ended) break;
     }
     if (!acted) take(updateGame(s, { t: 'tick', ms: 1000 }));
   }
-  return { s, end };
+  return { s, end, resultInputs };
 }
 
 describe('ふところの鈴：終了の合図は、コンソールの検証器を通る', () => {
@@ -56,7 +58,8 @@ describe('ふところの鈴：終了の合図は、コンソールの検証器�
     it(`人${n}人＋CPUの通常終了`, () => {
       for (let seed = 0; seed < 5; seed++) {
         const humans = Array.from({ length: n }, (_, i) => i + 1);
-        const { s, end } = play(humans, seed);
+        const { s, end, resultInputs } = play(humans, seed);
+        expect(resultInputs).toBe(n);
         expect(s.ended).toBe(true);
         expect(end).not.toBeNull();
         const v = validateGameEnd(end.results, end.options);

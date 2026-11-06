@@ -48,7 +48,7 @@ describe('手元の記憶と進み具合',()=>{
     }
     s.votes[1]=2;expect(viewFor(s,1).pad.disabled).toBe(true);
     for (const extra of [{paused:true},{phase:'result'}]) {
-      const pad=viewFor({...s,...extra},1).pad;expect(pad).toMatchObject({k:'tiles',disabled:true});expect(pad.note).toContain('席2の金の鈴');
+      const pad=viewFor({...s,...extra},1).pad;expect(pad).toMatchObject({k:'tiles',disabled:extra.phase !== 'result'});expect(pad.note).toContain('席2の金の鈴');
     }
   });
   it('札の効果は12文字以内、使用前の制限も保つ',()=>{

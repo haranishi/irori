@@ -226,7 +226,7 @@ test('棚の読み込みが部屋につながるより遅くても、棚が出�
   };
   const host = await rig.openHost({ init: slow });
   await expect(host.page.locator('.card[data-game]').first()).toBeVisible();
-  // docs/ux.md の④（主役は選択中のゲームのカード）：棚が出たら、輪は棚のカード（game:…）。
+  // 一覧の読み込みが終わったら、選択の輪は格子の箱（game:…）へ移る。
   const focused = host.root.locator('[data-focused]').first();
   await expect(focused).toHaveAttribute('data-nav', /^game:/);
   const order = await host.shelf();

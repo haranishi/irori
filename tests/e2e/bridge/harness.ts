@@ -2,7 +2,7 @@
 //   1. SDK を本物の設定でビルドし、dist/irori.js を webroot/sdk/ に置く
 //   2. host-bridge の実ソースを、試験の入口ごと esbuild で1つに束ね、webroot/host.js に置く
 //   3. 試験用のページとゲームを webroot にそろえ、別オリジンのサーバーを2つ立てる（127.0.0.1 と localhost）
-// サーバーは空きポート（5190〜5199のうち）を選ぶ。固定ポートだと並列の実行で重なるため。
+// サーバーは空きポート（8887〜8899のうち）を選ぶ。固定ポートだと並列の実行で重なるため。
 import { spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';

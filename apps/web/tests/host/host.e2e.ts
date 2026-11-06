@@ -29,14 +29,28 @@ async function readQr(host: HostPage): Promise<string | null> {
 
 const focused = (host: HostPage) => host.page.locator('#app [data-focused]').first();
 
-async function focusGame(host: HostPage, id: string): Promise<void> {
-  const order = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game')));
-  for (let i = 0; i < order.length; i++) {
-    const current = await host.page.locator('.hero').getAttribute('data-game');
-    if (current === id) return;
-    await host.page.keyboard.press(order.indexOf(current) < order.indexOf(id) ? 'ArrowRight' : 'ArrowLeft');
+async function focusGame(host: HostPage, id: string, press = (key: string) => host.page.keyboard.press(key)): Promise<void> {
+  const cards = host.page.locator('.card[data-game]');
+  let order = await cards.evaluateAll(els => els.map(el => el.getAttribute('data-game')));
+  for (let page = 0; !order.includes(id) && page < 8; page++) {
+    const next = host.page.locator('[data-nav="shelf:next"]');
+    if (!await next.count()) break;
+    await next.click();
+    order = await cards.evaluateAll(els => els.map(el => el.getAttribute('data-game')));
   }
-  await expect(host.page.locator('.hero')).toHaveAttribute('data-game', id);
+  const cols = await host.page.locator('.shelf').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+  const target = order.indexOf(id);
+  expect(target).toBeGreaterThanOrEqual(0);
+  for (let i = 0; i < order.length; i++) {
+    const current = order.indexOf(await focused(host).count() ? await focused(host).getAttribute('data-game') : null);
+    if (current === target) break;
+    const key = current < 0 ? 'ArrowDown' : Math.floor(current / cols) !== Math.floor(target / cols)
+      ? current < target ? 'ArrowDown' : 'ArrowUp' : current < target ? 'ArrowRight' : 'ArrowLeft';
+    await press(key);
+    await expect.poll(async () => await focused(host).count() ? await focused(host).getAttribute('data-nav') : null)
+      .not.toBe(current < 0 ? null : `game:${order[current]}`);
+  }
+  await expect(focused(host)).toHaveAttribute('data-nav', `game:${id}`);
 }
 
 test('ホーム・参加者の帯・灰色・リーダーのリモコン（実際の /pad#CODE を3台）', async ({ browser }) => {
@@ -48,25 +62,32 @@ test('ホーム・参加者の帯・灰色・リーダーのリモコン（実�
   await expect(host.page.locator('.join__code')).toHaveText(code);
   // 開いたアドレスが 127.0.0.1 で、ほかに公開のアドレスも無い。ほかのスマホから開けないことを知らせ、
   // 「カメラでQRを読む」と、スマホから開けない手入力のアドレスは出さない。開き直す先を1行で示す。
-  await expect(host.page.locator('.join__title')).toHaveText('この画面からは参加できません');
-  await expect(host.page.locator('.join [data-loopback]')).toContainText('ほかのスマホから開けません');
+  await host.page.keyboard.press('q');
+  await expect(host.page.locator('.qr-dialog .join__title')).toHaveText('この画面からは参加できません');
+  await expect(host.page.locator('.qr-dialog [data-loopback]')).toContainText('ほかのスマホから開けません');
   await expect(host.page.locator('.join__scan')).toHaveCount(0);
-  await expect(host.page.locator('.join [data-fix]')).toContainText('npm run dev');
+  await expect(host.page.locator('.qr-dialog [data-fix]')).toContainText('npm run dev');
+  await host.page.keyboard.press('Escape');
   await expect(host.page.locator('.guide__step').first()).toContainText('この画面からは、スマホは参加できません');
   // 最初の1人が入るまで、3手順の案内。
   await expect(host.page.locator('.guide__step')).toHaveCount(3);
   // 誰もいないので、どのゲームも灰色。
   await expect(host.page.locator('.card[data-game="hello-pad"]')).toHaveAttribute('data-playable', 'false');
 
+  await focusGame(host, 'tap-race');
+  await expect(host.page.locator('.hero .fit')).toHaveText('あと1人で遊べます');
+  await host.page.keyboard.press('Enter');
+  await host.expectState('home');
+
   const p1 = await PagePad.join(browser, base(), code, 'たろう');
   await expect(host.page.locator('.seat[data-seat="1"]')).toBeVisible();
   await expect(host.page.locator('[data-guide]')).toHaveCount(0);
   await expect(host.page.locator('.seat[data-seat="1"] .seat__name')).toHaveText('たろう');
   await expect(host.page.locator('.seat[data-seat="1"]')).toHaveAttribute('data-leader', '');
-  // 1人では、2人からのゲームは灰色で、理由が1行。
+  // CPU対応のゲームは1人でも遊べる。不足理由は消える。
   const race = host.page.locator('.card[data-game="tap-race"]');
-  await expect(race).toHaveAttribute('data-playable', 'false');
-  await expect(race.locator('.card__sub')).toHaveText('あと1人で遊べます');
+  await expect(race).toHaveAttribute('data-playable', 'true');
+  await expect(host.page.locator('.hero .fit')).toHaveCount(0);
   await expect(host.page.locator('.card[data-game="hello-pad"]')).toHaveAttribute('data-playable', 'true');
 
   const p2 = await PagePad.join(browser, base(), code, 'はなこ');
@@ -82,23 +103,22 @@ test('ホーム・参加者の帯・灰色・リーダーのリモコン（実�
   await p3.expectKind('wait');
   await expect(p2.page.locator('.irori-pad')).toContainText('たろうが選んでいます');
 
-  // リーダーのリモコンで、棚の選択が動き、主役のカードが替わる。
-  const shelf = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game')!));
-  await expect(focused(host)).toHaveAttribute('data-nav', `game:${shelf[0]}`);
-  for (const id of shelf.slice(1, shelf.indexOf('hello-pad') + 1)) {
-    await p1.press('right');
-    await expect(focused(host)).toHaveAttribute('data-nav', `game:${id}`);
-  }
-  await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
+  // 格子をリモコンの4方向で往復し、選んだ箱を帯で確認する。
+  const remote = (key: string) => p1.press(({ ArrowRight: 'right', ArrowLeft: 'left', ArrowDown: 'down', ArrowUp: 'up' } as const)[key as 'ArrowRight']);
+  const interior = await host.page.locator('.card').nth(6).getAttribute('data-game');
+  await focusGame(host, interior!, remote);
+  const before = await focused(host).getAttribute('data-nav');
+  await p1.press('up');
+  await expect(focused(host)).not.toHaveAttribute('data-nav', before!);
+  await p1.press('down');
+  await expect(focused(host)).toHaveAttribute('data-nav', before!);
   await p1.press('right');
-  await expect(focused(host)).toHaveAttribute('data-nav', 'game:quiz-4');
+  await expect(focused(host)).not.toHaveAttribute('data-nav', before!);
   await p1.press('left');
-  await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
-  // 決定で詳細、戻るでホーム。
-  await p1.press('ok');
-  await host.expectState('detail');
+  await expect(focused(host)).toHaveAttribute('data-nav', before!);
+  // 戻るはホームのページ先頭へ。
   await p1.press('back');
-  await host.expectState('home');
+  await expect(host.page.locator('.card').first()).toHaveAttribute('data-focused', '');
 
   // リーダーが抜けたら、接続中の最小の席へリモコンが移る。
   await p1.close();
@@ -121,13 +141,8 @@ test('ゲームの起動・メニュー・終了・結果・「もう一度」�
   const p3 = await PagePad.join(browser, base(), code, 'じろう');
   await p1.expectKind('remote');
 
-  // 棚の位置に依存せず選び、決定 → 詳細 → 決定（はじめる）。
-  const order = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game')));
-  for (let i = 0; i < order.indexOf('hello-pad'); i++) await p1.press('right');
-  await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
-  await p1.press('ok');
-  await host.expectState('detail');
-  await expect(focused(host)).toHaveAttribute('data-nav', 'detail:start');
+  // 格子から選び、決定1回で起動する。
+  await focusGame(host, 'hello-pad', key => p1.press(({ ArrowRight: 'right', ArrowLeft: 'left', ArrowDown: 'down', ArrowUp: 'up' } as const)[key as 'ArrowRight']));
   await p1.press('ok');
   await host.expectState('playing');
   await expect(host.page.locator('.stage iframe')).toHaveAttribute('sandbox', 'allow-scripts');
@@ -190,37 +205,17 @@ test('キーボードでも同じ操作：矢印・Enter・Esc（ゲーム中は
   const focused = host.page.locator('#app [data-focused]').first();
   await focusGame(host, 'hello-pad');
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
-  // 上の並び（音・締め切り・共有）へ上がり、下へ戻ると、棚の選択中のカードに戻る（参加者の札へ飛ばない）。
-  await k.press('ArrowUp');
-  await expect(focused).toHaveAttribute('data-nav', /^tool:/);
-  await k.press('ArrowDown');
-  await expect(focused).toHaveAttribute('data-nav', 'game:hello-pad');
-  // 棚が11本になり、画面の近さで選んでも偶然ハローパッドに戻るようになった。棚の両端のカードでも、同じカードへ戻ることを確かめる。
+  // 上の道具・参加者から下へ戻ると、選択中の箱を保つ。
   for (const id of ['daifugo', 'tap-race']) {
     await focusGame(host, id);
-    await k.press('ArrowUp');
-    await expect(focused).toHaveAttribute('data-nav', /^tool:/);
+    await host.page.locator('[data-action="sound"]').focus();
     await k.press('ArrowDown');
     await expect(focused).toHaveAttribute('data-nav', `game:${id}`);
   }
-  await focusGame(host, 'hello-pad');
-  // 参加者の札を選ぶと、見出しの行に外し方の案内が出る。
+  await host.page.locator('.seat').first().focus();
   await k.press('ArrowDown');
-  await expect(focused).toHaveAttribute('data-nav', /^seat:/);
-  await expect(host.page.locator('.people__hint')).toBeVisible();
-  await k.press('ArrowUp');
-  await expect(focused).toHaveAttribute('data-nav', /^game:/);
-  await expect(host.page.locator('.people__hint')).toBeHidden();
-  // 札から上がった先は、真上のカード（左端のゲームのこともある）。棚の中で、ハローパッドへ戻る。
-  for (let i = 0; i < 5 && (await focused.getAttribute('data-nav')) !== 'game:hello-pad'; i++) await k.press('ArrowRight');
-  await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
-  await k.press('Enter');
-  await host.expectState('detail');
-  // メニューの開き方は、詳細の「操作」で伝える（ゲームの画面には重ねない）。
-  await expect(host.page.locator('[data-layer="detail"] [data-hint="menu"]')).toHaveText('メニュー：［Esc］か、スマホの右上の「…」から');
-  await k.press('Escape');
-  await host.expectState('home');
-  await k.press('Enter');
+  await expect(focused).toHaveAttribute('data-nav', 'game:tap-race');
+  await focusGame(host, 'hello-pad');
   await k.press('Enter');
   await host.expectState('playing');
   await pad.expectSpec((s) => s?.k === 'pad', 'ゲームの画面');
@@ -265,7 +260,6 @@ test('途中から来た人は、ゲーム中は「次のゲームから参加�
   const a = new ScriptPad(base(), code, 'たろう');
   await a.join();
   await focusGame(host, 'hello-pad');
-  await host.page.keyboard.press('Enter');
   await host.page.keyboard.press('Enter');
   await host.expectState('playing');
   await a.expectSpec((s) => s?.k === 'pad', 'ゲームの画面');
@@ -341,13 +335,13 @@ test('参加の締め切りと、参加者を外す（kick）', async ({ browser
   await lock.click();
   await expect(host.page.locator('.join')).toHaveAttribute('data-locked', 'true');
   await expect(lock.locator('.btn__label')).toHaveText('受け付けを再開');
-  // QRに重ねた「参加を締め切っています」は、低い画面でも QR の枠の中に収まる（左右で切れない）。
+  // QRに重ねた「参加を締め切っています」は、低い画面でも締切の印が QR の枠の中に収まる。
   for (const size of [{ width: 1280, height: 720 }, { width: 1920, height: 600 }, { width: 1366, height: 560 }]) {
     await host.page.setViewportSize(size);
     const inside = await host.page.evaluate(() => {
       const qr = document.querySelector('.home__join .join__qr')!.getBoundingClientRect();
-      const text = document.querySelector('.home__join .join__lock > span')!.getBoundingClientRect();
-      return text.left >= qr.left && text.right <= qr.right;
+      const mark = document.querySelector('.home__join .join__lock .icon')!.getBoundingClientRect();
+      return mark.left >= qr.left && mark.right <= qr.right && mark.top >= qr.top && mark.bottom <= qr.bottom;
     });
     expect(inside, `${size.width}x${size.height}`).toBe(true);
   }
@@ -398,12 +392,12 @@ test('ゲームパッドでも同じ操作（十字・A・B）', async ({ browse
     }, i);
   await host.page.evaluate(() => window.dispatchEvent(new Event('gamepadconnected')));
   const order = await host.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game')));
-  for (let i = 0; i < order.indexOf('hello-pad'); i++) await tap(15);
+  await focusGame(host, 'hello-pad', key => tap(({ ArrowUp: 12, ArrowDown: 13, ArrowLeft: 14, ArrowRight: 15 } as const)[key as 'ArrowUp']));
   await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
   await tap(0);
-  await host.expectState('detail');
+  await host.expectState('playing');
   await tap(1);
-  await host.expectState('home');
+  await host.expectState('paused');
   pad.close();
   await host.assertClean();
   await context.close();
@@ -439,8 +433,10 @@ test('公開のアドレス（PUBLIC_URL）：127.0.0.1 で開いても、QR・�
   const code = await host.code();
   expect(await readQr(host)).toBe(`${PUBLIC_URL}/pad#${code}`);
   await expect(host.page.locator('.join__qr')).toHaveAttribute('data-url', `${PUBLIC_URL}/pad#${code}`);
-  await expect(host.page.locator('.join__url')).toHaveText(`${new URL(PUBLIC_URL).host}/pad`);
+  await host.page.keyboard.press('q');
+  await expect(host.page.locator('.qr-dialog .join__url')).toHaveText(`${new URL(PUBLIC_URL).host}/pad`);
   await expect(host.page.locator('[data-loopback]')).toHaveCount(0);
+  await host.page.keyboard.press('Escape');
   await host.page.locator('[data-action="share"]').click();
   await expect(host.page.locator('[data-layer="share"] .share__url')).toHaveText(`${PUBLIC_URL}/`);
   // 部屋そのものは、開いたアドレスの Worker にある（案内の表示だけが変わる）。
@@ -472,20 +468,17 @@ test('スマホの幅（390×844）：最初の画面に、参加の入口（QR�
     if (!b) throw new Error(`${sel} が見えない`);
     return b;
   };
-  // 見る順：参加の板 → 参加者 → 選び方の1行（主役のすぐ上で、最初の画面に入る）→ 主役のカード → 棚。
-  const order = await Promise.all(['.home__join', '.home__people', '.home__prompt', '.home__hero', '.home__shelf'].map(async (sel) => (await box(sel)).y));
-  expect(order).toEqual([...order].sort((a, b) => a - b));
+  // 上は道具と参加者、中央は格子、左下はQR、名前の帯は格子の下。
   const qr = await box('.join__qr');
   const seat = await box('.seat');
   expect(qr.y + qr.height).toBeLessThanOrEqual(size.height);
-  expect(qr.width).toBeLessThanOrEqual(220);
+  expect(qr.x).toBeLessThan(size.width / 2);
+  expect(qr.width).toBe(96);
   expect(seat.y + seat.height).toBeLessThanOrEqual(size.height);
   const top = await box('.home__top');
   expect(top.y + top.height).toBeLessThanOrEqual(size.height * 0.2);
-  const prompt = await box('.home__prompt');
-  expect(prompt.y + prompt.height).toBeLessThanOrEqual(size.height);
-  await expect(host.page.locator('.start-prompt__touch')).toBeVisible();
-  await expect(host.page.locator('.start-prompt__wide')).toBeHidden();
+  const band = await box('.home__hero');
+  expect(band.y + band.height).toBeLessThanOrEqual(size.height);
   // 参加のページへの細い帯（48px以上）。音の知らせは、音のボタンの1か所だけ（帯は出さない）。
   const padlink = host.page.locator('a.padlink');
   await expect(padlink).toBeVisible();
@@ -496,7 +489,11 @@ test('スマホの幅（390×844）：最初の画面に、参加の入口（QR�
   for (const sel of ['[data-action="sound"]', '[data-action="lock"]', '[data-action="share"]', 'a[data-nav="tool:licenses"]']) {
     const b = await box(sel);
     expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(48);
+    expect(b.x).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width).toBeLessThanOrEqual(size.width);
   }
+  expect(await host.page.locator('.shelf').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(2);
+  expect((await box('.card')).width).toBeGreaterThanOrEqual(140);
   for (const pad of pads) pad.close();
   await host.assertClean();
   await host.context.close();
@@ -515,8 +512,6 @@ test('ゲームの途中で空いた席に入った別の人は、そのゲー�
     await expect(host.page.locator('.seat')).toHaveCount(3);
     // 試験用の外部ゲーム（棚の先頭）を、確かめを通して始める。
     const k = host.page.keyboard;
-    await k.press('Enter');
-    await host.expectState('detail');
     await k.press('Enter');
     await expect(host.page.locator('[data-layer="confirm"]')).toBeVisible();
     await k.press('ArrowLeft');
@@ -589,7 +584,7 @@ test('棚の一覧が部屋より遅く届いても、棚が出たら選択の�
   await context.close();
 });
 
-test('棚が12本になっても、カードは参加の板（QR とコード）に重ならない。右へ送ると、見える位置まで棚が流れる', async ({ browser }) => {
+test('棚が12本になっても、カードは参加の板（QR とコード）に重ならない。4方向で最後の箱まで選べる', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, locale: 'ja-JP' });
   const real = (await (await context.request.get(`${base()}/registry/index.json`)).json()) as { games: Array<{ id: string; title: Record<string, string> }> };
   const games = Array.from({ length: 12 }, (_, n) => {
@@ -621,8 +616,7 @@ test('棚が12本になっても、カードは参加の板（QR とコード）
   }
   // 選択を右端まで送る。最後のカードは、棚の中の見える位置まで流れてくる（重ならないまま）。
   const focused = host.page.locator('#app [data-focused]').first();
-  await expect(focused).toHaveAttribute('data-nav', /^game:/);
-  for (let i = 0; i < 11; i++) await host.page.keyboard.press('ArrowRight');
+  await focusGame(host, games[11]!.id);
   await expect(focused).toHaveAttribute('data-nav', `game:${games[11]!.id}`);
   await expect
     .poll(() =>

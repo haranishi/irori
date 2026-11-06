@@ -57,19 +57,18 @@ async function hostScreen(host: Host, where: string): Promise<void> {
   await ringVisible(host.page, where);
 }
 
-test('ホストの主要な画面（ホーム・詳細・メニュー・結果・共有・外す）に axe の違反がなく、輪が見える', HOST, async ({ rig }) => {
+test('ホストの主要な画面（ホーム・QR拡大・メニュー・結果・共有・外す）に axe の違反がなく、輪が見える', HOST, async ({ rig }) => {
   const host = await rig.openHost();
   for (const w of rig.watches) w.blankPagesOk = true;
   await hostScreen(host, 'ホーム（誰もいない）');
   const pads = await rig.join(host, ['たろう', 'はなこ', 'じろう']);
   await expect(host.page.locator('.seat[data-seat]')).toHaveCount(3);
-  const shelf = await host.shelf();
-  for (let i = 0; i < shelf.indexOf('hello-pad'); i++) await pads[0]!.tap('right');
-  await expect(host.page.locator('.hero')).toHaveAttribute('data-game', 'hello-pad');
-  await hostScreen(host, 'ホーム（3人）');
-  await pads[0]!.tap('ok');
-  await host.expectState('detail');
-  await hostScreen(host, 'ゲームの詳細');
+  await host.select('hello-pad', pads[0]);
+  await hostScreen(host, 'ホーム（3人・名前の帯）');
+  await host.key('q');
+  await expect(host.page.locator('[data-layer="qr"]')).toBeVisible();
+  await hostScreen(host, 'QR拡大');
+  await host.key('Escape');
   await pads[0]!.tap('ok');
   await host.expectState('playing', 20_000);
   await host.key('Escape');
@@ -144,12 +143,12 @@ test('スマホの画面の viewport は拡大を止めない（WCAG 1.4.4）', 
   expect(content).not.toMatch(/maximum-scale/);
 });
 
-test('棚に7本以上並んでも、カードの見えている部分は参加の板（QR とコード）と重ならない。右端まで送ると、棚の中に流れてくる（元は既知の不具合4）', HOST, async ({ rig }) => {
+test('格子の最後の箱まで選んでも、箱と左下のQRカードは重ならない', HOST, async ({ rig }) => {
   const host = await rig.openHost({ base: env('extra') });
   await rig.join(host, ['たろう', 'はなこ', 'じろう']);
   await expect.poll(async () => (await host.shelf()).length).toBeGreaterThanOrEqual(7);
   await expect(host.page.locator('.seat[data-seat]')).toHaveCount(3);
-  // 棚は自分の列の中で横に送る。カードのうち棚の箱で切られずに見えている部分が、参加の板と重ならないこと。
+  // 格子の箱が、左下のQRカードと重ならないこと。
   // あわせて、QR の真ん中に見えているのは QR（カードが上に重なっていない）。
   const overlaps = () =>
     host.page.evaluate(() => {
@@ -166,11 +165,11 @@ test('棚に7本以上並んでも、カードの見えている部分は参加�
       return { hit, qrOnTop: top?.closest('.home__join') !== null };
     });
   expect(await overlaps()).toEqual({ hit: [], qrOnTop: true });
-  // 選択を右端のカードまで送る。棚が流れて、そのカードは棚の中で見え、重ならないまま。
+  // 選択を格子の最後の箱まで送る。行をまたいでも箱が見え、QRと重ならない。
   const order = await host.shelf();
   const focused = host.root.locator('[data-focused]').first();
   await expect(focused).toHaveAttribute('data-nav', /^game:/);
-  for (let i = 0; i < order.length - 1; i++) await host.key('ArrowRight');
+  await host.select(order.at(-1)!);
   await expect(focused).toHaveAttribute('data-nav', `game:${order.at(-1)}`);
   await expect
     .poll(() =>

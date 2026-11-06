@@ -111,8 +111,8 @@ export default async function globalSetup() {
   cpSync(sdkFile(), join(extraBuild.outDir, 'sdk/irori.js'));
   cpSync(sdkFile(), join(extraBuild.outDir, 'games/c1-probe/irori.js'));
 
-  const ports = await pickPorts(6, { from: 8860, to: 8899 });
-  const [extPort] = await pickPorts(1, { from: 5290, to: 5299 });
+  const ports = await pickPorts(6, { from: 8880, to: 8885 });
+  const [extPort] = await pickPorts(1, { from: 8886, to: 8886 });
   const specs = [
     { key: 'main', name: 'c1-main', dir: web.outDir, vars: VARS },
     { key: 'extra', name: 'c1-extra', dir: extraBuild.outDir, vars: VARS },

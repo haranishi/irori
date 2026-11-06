@@ -55,7 +55,7 @@ test('見張りは、ほかのオリジン・CSP違反・コンソールのエ�
 });
 
 test('見張りは、本物の応答の Set-Cookie と、ほかのホストへの WebSocket を記録する', HOST, async ({ browser }) => {
-  const [port] = await pickPorts(1, { from: 5260, to: 5289 });
+  const [port] = await pickPorts(1, { from: 8887, to: 8899 });
   const server = createServer((req, res) => {
     if (req.url === '/cookie') {
       res.writeHead(200, { 'Set-Cookie': 'c1=1', 'Content-Type': 'text/plain' }).end('ok');

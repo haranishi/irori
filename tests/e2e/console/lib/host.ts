@@ -89,40 +89,35 @@ export class Host {
     return this.page.locator('.card[data-game]').evaluateAll((els) => els.map((el) => el.getAttribute('data-game') ?? ''));
   }
 
-  /**
-   * 棚でゲームを選び、詳細 → はじめる まで進めて、遊ぶ画面（playing）になるのを待つ。
-   * leader を渡せば、そのスマホのリモコン（右・左・決定）で操作する。渡さなければホストのキーボード。
-   */
-  async choose(id: string, leader?: Pad): Promise<void> {
+  /** 格子を十字キーで選ぶ。行をまたぐときは上下を使い、実際の列数を読む。 */
+  async select(id: string, leader?: Pad): Promise<void> {
     await this.expectState('home');
-    const keys = { right: 'ArrowRight', left: 'ArrowLeft', down: 'ArrowDown', ok: 'Enter' } as const;
-    const press = async (k: keyof typeof keys) => {
-      if (leader) await leader.tap(k);
-      else await this.key(keys[k]);
-    };
     if (leader) await leader.expectKind('remote');
-    const focused = () => this.root.locator('[data-focused]').first().getAttribute('data-nav').catch(() => null);
-    // 選択の輪が棚のカードに無ければ（上の帯など）、下へ動かして棚に入る。
-    for (let i = 0; i < 4 && !(await focused())?.startsWith('game:'); i++) {
-      const was = await focused();
-      await press('down');
-      await expect.poll(focused).not.toBe(was);
-    }
+    const keys = { right: 'ArrowRight', left: 'ArrowLeft', down: 'ArrowDown', up: 'ArrowUp' } as const;
+    const press = async (k: keyof typeof keys) => leader ? leader.tap(k) : this.key(keys[k]);
+    const focused = () => this.root.locator('[data-focused]').first().getAttribute('data-nav');
+    for (let n = 0; n < 4 && !(await focused())?.startsWith('game:'); n++) await press('down');
     const order = await this.shelf();
     const want = order.indexOf(id);
     if (want < 0) throw new Error(`棚に ${id} がない（${order.join(', ')}）`);
-    for (let i = 0; i < order.length + 1; i++) {
-      const now = await this.hero();
-      if (now === id) break;
-      const at = order.indexOf(now ?? '');
-      await press(at < want ? 'right' : 'left');
-      await expect.poll(() => this.hero()).not.toBe(now);
+    const cols = await this.page.locator('.shelf').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+    for (let n = 0; n < order.length + 2; n++) {
+      const nav = await focused();
+      const at = order.indexOf((nav ?? '').replace('game:', ''));
+      if (at === want) break;
+      const row = Math.floor(at / cols), target = Math.floor(want / cols);
+      await press(row < target ? 'down' : row > target ? 'up' : at < want ? 'right' : 'left');
+      await expect.poll(focused).not.toBe(nav);
     }
+    await expect(this.root.locator('[data-focused]').first()).toHaveAttribute('data-nav', `game:${id}`);
     await expect(this.page.locator('.hero')).toHaveAttribute('data-game', id);
-    await press('ok');
-    await this.expectState('detail');
-    await expect(this.root.locator('[data-focused]').first()).toHaveAttribute('data-nav', 'detail:start');
-    await press('ok');
+  }
+
+  /** 名前の帯で選択を確かめ、1回の決定で遊ぶ。 */
+  async choose(id: string, leader?: Pad): Promise<void> {
+    await this.select(id, leader);
+    if (leader) await leader.tap('ok');
+    else await this.key('Enter');
     await this.expectState('playing', 20_000);
   }
 

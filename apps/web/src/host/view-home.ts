@@ -127,7 +127,7 @@ export class HomeView {
   private page = 0;
   private columns = this.columnCount();
   private columnCount(): number {
-    return window.innerWidth >= 1700 ? 6 : window.innerWidth >= 1200 ? 5 : window.innerWidth >= 900 ? 4 : 3;
+    return window.innerWidth >= 1700 ? 6 : window.innerWidth >= 1200 ? 5 : window.innerWidth >= 900 ? 4 : window.innerWidth >= 600 ? 3 : 2;
   }
   private get pageSize(): number { return this.columns * 3; }
   private touched: number | null = null;
@@ -168,6 +168,7 @@ export class HomeView {
   }
 
   update(d: HomeData): void {
+    const focusInShelf = this.shelf.contains(document.activeElement);
     this.columns = this.columnCount();
     this.el.style.setProperty('--shelf-columns', String(this.columns));
     this.data = d;
@@ -190,6 +191,10 @@ export class HomeView {
     for (const card of this.shelf.querySelectorAll<HTMLElement>('[data-game]')) {
       if (card.dataset.index === String(d.selected)) card.dataset.selected = '';
       else delete card.dataset.selected;
+    }
+    // 描き直しで消えた棚内の現在位置だけを戻し、上の道具からは奪わない。
+    if (focusInShelf && !this.shelf.contains(document.activeElement)) {
+      this.shelf.querySelector<HTMLElement>('.card[data-selected]')?.focus({ preventScroll: true });
     }
   }
 

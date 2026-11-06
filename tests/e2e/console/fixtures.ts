@@ -122,7 +122,7 @@ export class Rig {
     let origin = baseUrl;
     let line: Line | null = null;
     if (o.line) {
-      const [port] = await pickPorts(1, { from: 5260, to: 5289 });
+      const [port] = await pickPorts(1, { from: 8887, to: 8899 });
       line = await Line.start(Number(new URL(baseUrl).port), port!);
       this.lines.push(line);
       origin = line.url;

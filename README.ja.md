@@ -15,9 +15,13 @@ npm install
 npm run dev
 ```
 
-表示された「大画面で開くURL」を、PCやTVのブラウザで開きます。スマホは同じWi-Fiにつなぎ、画面のQRコードを読んで「参加する」を押します。同梱のゲーム11本（`hello-pad` `tap-race` `quiz-4` `dot-grab` `ten-seconds` `blade-duel` `lantern-market` `strike-alley` `daifugo` `old-maid` `moon-village`）が遊べます。Node 24 以上が要ります。
+表示された「大画面で開くURL」を、PCやTVのブラウザで開きます。スマホは同じWi-Fiにつなぎ、画面のQRコードを読んで「参加する」を押します。同梱のゲーム13本（`hello-pad` `tap-race` `quiz-4` `dot-grab` `ten-seconds` `blade-duel` `lantern-market` `strike-alley` `daifugo` `old-maid` `moon-village` `bell-in-sleeve` `poker`）が遊べます。Node 24 以上が要ります。
 
-追加した[火花の間合い](games/blade-duel/README.md)は、気力を管理し、手を秘密に選んで一斉に斬り合う2人用チャンバラ。[灯市のかけひき](games/lantern-market/README.md)は、かぶった数字を除き、最大の一意札で灯を集める2〜8人のカード対戦です。PC1台なら `/games/blade-duel/?mock=2` または `/games/lantern-market/?mock=3` を開き、画面の仮想コントローラーで試せます。
+ホームは、ゲームの動画が流れる箱の格子です。箱を選ぶと名前・ジャンル・人数の帯が出て、決定で遊べます。左下のQRカードは押すと大きくなります。動きを減らす設定や省データでは静止画に切り替わります。
+
+第3弾の[ふところの鈴](games/bell-in-sleeve/README.md)は、札の効果と会話で鈴の持ち主を探す推理カードです。[持ち点ポーカー](games/poker/README.md)は、持ち点だけで6ハンドを競う札遊びです（お金・景品は使いません）。1人でも遊べるよう、人数が足りない対戦ゲームはCPUが席を埋めます。もともと1人で遊べるゲームは、そのまま遊べます。CPUの強さは「ふつう」を目指していますが、人の実力と比べた測定はしていません。
+
+[火花の間合い](games/blade-duel/README.md)は、気力を管理し、手を秘密に選んで一斉に斬り合う2人用チャンバラ。[灯市のかけひき](games/lantern-market/README.md)は、かぶった数字を除き、最大の一意札で灯を集める2〜8人のカード対戦です。PC1台なら `/games/blade-duel/?mock=2` または `/games/lantern-market/?mock=3` を開き、画面の仮想コントローラーで試せます。
 
 第2弾の4本は、長く遊べる定番です。[ストライク横丁](games/strike-alley/README.md)は、スマホで指を引いて放して投げるボウリング（1〜6人）。[大富豪](games/daifugo/README.md)（3〜8人）と[ババ抜き](games/old-maid/README.md)（2〜8人）は、手札を自分のスマホだけに出す札遊び。[月あかりの寄り合い](games/moon-village/README.md)は、進行役のいない人狼（4〜8人）です。PC1台なら `/games/strike-alley/?mock=2`・`/games/daifugo/?mock=4`・`/games/old-maid/?mock=3`・`/games/moon-village/?mock=5` を開き、画面の仮想コントローラーで試せます。
 
@@ -45,7 +49,7 @@ npm run dev
 | コントローラー7種（十字・スティック・ボタン、早押し、選択、札を選ぶ、タッチ、傾き、待機） | アルファ |
 | 隔離枠でのゲームの実行、登録情報のPR、CIでの検査 | アルファ |
 | 共有（X・LINE・共有シート・リンクのコピー）、OGP | アルファ |
-| 同梱のゲーム11本。ボウリング・札遊び2本・人狼を含み、終了・退出・再戦を試験している | アルファ |
+| 同梱のゲーム13本。ボウリング・札遊び・人狼・推理カード・ポーカーを含む | アルファ |
 | 実機（iPhone・Android）での長い試験、TVの内蔵ブラウザ | まだ。実機の報告を歓迎します。自動の試験は、Chromium と、Safari と同じ系統のエンジン（Playwright の WebKit）だけ |
 | ホストの画面を、スマホの幅で開く使い方 | 正式な対応の外（崩れはしないが、見た目の採点が合格線の前後） |
 | 実際に遊んで見つけた問題と、まだ確かめていないこと | [docs/known-issues.md](docs/known-issues.md)。報告も修正も歓迎します |
@@ -54,7 +58,7 @@ npm run dev
 | WebRTCでの低遅延化 | 遅延を実測してから判断（[ADR 0002](docs/decisions/0002-websocket-first.md)） |
 | アカウント・ランキング・チャット・課金・広告・解析・ゲームのアップロード | 作りません |
 
-「アルファ」は、自動の試験が通っている状態です（単体・結合の試験、実ブラウザの通しの試験、守りをわざと壊して試験が赤くなるかを確かめる変異試験。件数はCIの表示のとおり）。人が実際に長く使った記録は、まだありません。公開デモのデプロイは、していません。画面は日本語と英語、同梱のゲームの文は日本語だけです。
+「アルファ」は、自動の試験が通っている状態です（単体・結合の試験、実ブラウザの通しの試験、守りをわざと壊して試験が赤くなるかを確かめる変異試験。件数はCIの表示のとおり）。人が実際に長く使った記録は、まだありません。公開デモには、同梱13本すべてはまだ反映されていません。画面は日本語と英語、同梱のゲームの文は日本語だけです。
 
 ## 仕組み
 

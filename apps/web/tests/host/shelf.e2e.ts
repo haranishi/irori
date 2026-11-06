@@ -1,23 +1,42 @@
 // 棚の配置と実物の動画を、実Workerと接続ブラウザで確かめる。
-import { expect, test } from '@playwright/test';
+import { expect, test, type BrowserContext } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import jsQR from 'jsqr';
-import { openHost, PagePad } from './e2e/fixtures';
+import { openHost, PagePad, settle } from './e2e/fixtures';
 
 declare const process: { env: Record<string, string | undefined> };
-const base = () => process.env.IRORI_HOST_E2E_MAIN ?? 'http://127.0.0.1:8810';
+const base = () => process.env.IRORI_HOST_E2E_MAIN ?? 'http://127.0.0.1:8880';
+
+// この回の12本を固定し、並行して追加される次のゲームで配置の試験を変えない。
+async function pack3Catalog(context: BrowserContext): Promise<{ previews: number }> {
+  const catalog = { previews: 0 };
+  const ids = ['hello-pad', 'tap-race', 'dot-grab', 'quiz-4', 'ten-seconds', 'blade-duel', 'lantern-market', 'strike-alley', 'daifugo', 'old-maid', 'moon-village', 'bell-in-sleeve'];
+  await context.route('**/registry/index.json', async route => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json.games = json.games.filter((game: { id: string }) => ids.includes(game.id));
+    expect(json.games.map((game: { id: string }) => game.id).sort()).toEqual([...ids].sort());
+    expect(json.games.filter((game: { id: string }) => game.id !== 'bell-in-sleeve').every((game: { preview?: string }) => game.preview)).toBe(true);
+    catalog.previews = json.games.filter((game: { preview?: string }) => game.preview).length;
+    await route.fulfill({ response, json });
+  });
+  return catalog;
+}
 
 for (const [width, height] of [[1280, 720], [1920, 1080], [1024, 576]]) {
   test(`棚・帯・QR・参加 ${width}×${height}`, async ({ browser }) => {
-    const host = await openHost(browser, base(), { viewport: { width: width!, height: height! } });
+    const context = await browser.newContext({ viewport: { width: width!, height: height! } });
+    await pack3Catalog(context);
+    const host = await openHost(browser, base(), { context });
     let pad: PagePad | undefined;
     try {
       const page = host.page;
-      await expect(page.locator('.card')).toHaveCount(11);
-      await expect(page.locator('.shelf__empty')).toHaveCount((width! >= 1700 ? 6 : width! >= 1200 ? 5 : 4) * 3 - 11);
-      expect(await page.locator('.card__thumb').allTextContents()).toEqual(Array(11).fill(''));
+      await expect(page.locator('.card')).toHaveCount(12);
+      await expect(page.locator('.shelf__empty')).toHaveCount((width! >= 1700 ? 6 : width! >= 1200 ? 5 : 4) * 3 - 12);
+      expect(await page.locator('.card__thumb').allTextContents()).toEqual(Array(12).fill(''));
       expect(await page.locator('.shelf').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(width! >= 1700 ? 6 : width! >= 1200 ? 5 : 4);
       await expect(page.locator('.home__hero')).toBeHidden();
+      await settle(page);
       for (const selector of ['.card', '.home__dock', '.home__guide']) {
         for (const el of await page.locator(selector).all()) {
           const r = (await el.boundingBox())!;
@@ -35,9 +54,16 @@ for (const [width, height] of [[1280, 720], [1920, 1080], [1024, 576]]) {
       const qr = page.locator('.qr-dialog .join__qr');
       const box = (await qr.boundingBox())!;
       expect(box.width).toBeGreaterThanOrEqual(500);
-      const back = (await page.locator('[data-nav="qr:back"]').boundingBox())!;
-      expect(back.y + back.height).toBeLessThanOrEqual(height!);
-      const pixels = await qr.locator('svg').evaluate(async (svg) => {
+      for (const selector of ['.join__qr', '.join__codebox', '.join__warn', '[data-nav="qr:back"]']) {
+        for (const element of await page.locator(`.qr-dialog ${selector}`).all()) {
+          const r = (await element.boundingBox())!;
+          expect(r.x, selector).toBeGreaterThanOrEqual(0);
+          expect(r.y, selector).toBeGreaterThanOrEqual(0);
+          expect(r.x + r.width, selector).toBeLessThanOrEqual(width!);
+          expect(r.y + r.height, selector).toBeLessThanOrEqual(height!);
+        }
+      }
+      const pixels = await qr.locator('svg.qr').evaluate(async (svg) => {
         const img = new Image();
         img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
         await img.decode();
@@ -106,6 +132,7 @@ test('タップで選び、同じ箱の2回目で遊ぶ。ページを送って�
 
 test('動画は表示中だけ再生し、動きを減らす設定と省データではポスターに戻す', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const catalog = await pack3Catalog(context);
   try {
     await context.addInitScript(() => {
       const connection = new EventTarget() as EventTarget & { saveData: boolean };
@@ -116,7 +143,7 @@ test('動画は表示中だけ再生し、動きを減らす設定と省デー�
     const page = host.page;
     const video = page.locator('video').first();
     await expect.poll(() => video.evaluate((v: HTMLVideoElement) => !v.paused && v.currentTime > 0)).toBe(true);
-    await expect(page.locator('video')).toHaveCount(11);
+    await expect(page.locator('video')).toHaveCount(catalog.previews);
     for (const clip of await page.locator('video').all()) {
       await expect.poll(() => clip.evaluate((v: HTMLVideoElement) => !v.paused && v.readyState >= 2)).toBe(true);
     }
@@ -155,7 +182,7 @@ test('動画は表示中だけ再生し、動きを減らす設定と省デー�
       document.dispatchEvent(new Event('visibilitychange'));
     });
     await expect.poll(() => video.evaluate((v: HTMLVideoElement) => !v.paused)).toBe(true);
-    await page.locator('.card').first().evaluate((el) => { el.style.transform = 'translateX(-3000px)'; });
+    await video.evaluate((el) => { (el.closest('.card') as HTMLElement).style.transform = 'translateX(-3000px)'; });
     await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.paused && v.hidden)).toBe(true);
   } finally { await context.close(); }
 });
@@ -166,20 +193,28 @@ test('列数の境目で枠数とページを組み直し、動画は最大12本
     await context.route('**/registry/index.json', async route => {
       const response = await route.fetch();
       const json = await response.json();
-      json.games = Array.from({ length: 19 }, (_, n) => ({ ...json.games[0], id: `trial-${n}` }));
+      const preview = json.games.find((game: { preview?: string }) => game.preview);
+      expect(preview).toBeTruthy();
+      json.games = Array.from({ length: 19 }, (_, n) => ({ ...preview, id: `trial-${n}` }));
       await route.fulfill({ response, json });
     });
     const host = await openHost(browser, base(), { context });
-    for (const [width, columns] of [[1700, 6], [1699, 5], [1200, 5], [1199, 4], [900, 4], [899, 3]]) {
+    for (const [width, columns] of [[1700, 6], [1699, 5], [1200, 5], [1199, 4], [900, 4], [899, 3], [600, 3], [599, 2]]) {
       await host.page.setViewportSize({ width: width!, height: 1080 });
       await expect(host.page.locator('.card')).toHaveCount(columns! * 3);
       await expect(host.page.locator('video')).toHaveCount(Math.min(columns! * 3, 12));
       expect(await host.page.locator('.shelf').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(columns);
     }
+    await host.page.setViewportSize({ width: 899, height: 1080 });
     await host.page.locator('[data-nav="shelf:next"]').click();
     await expect(host.page.locator('.card[data-index="9"]')).toBeFocused();
     await host.page.setViewportSize({ width: 1700, height: 1080 });
     await expect(host.page.locator('.card[data-index="9"]')).toHaveAttribute('data-selected', '');
     await expect(host.page.locator('.card')).toHaveCount(18);
+    await expect(host.page.locator('.card[data-index="9"]')).toBeFocused();
+    await host.page.locator('[data-nav="tool:share"]').focus();
+    await host.page.setViewportSize({ width: 599, height: 1080 });
+    await expect(host.page.locator('.card[data-index="9"]')).toHaveAttribute('data-selected', '');
+    await expect(host.page.locator('[data-nav="tool:share"]')).toBeFocused();
   } finally { await context.close(); }
 });

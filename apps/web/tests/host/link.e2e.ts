@@ -185,8 +185,6 @@ test('外部のゲーム（?dev=）：開く前に「{ホスト名} のサーバ
   const k = host.page.keyboard;
   const focused = host.page.locator('#app [data-focused]').first();
   await k.press('Enter');
-  await host.expectState('detail');
-  await k.press('Enter');
   const confirm = host.page.locator('[data-layer="confirm"]');
   await expect(confirm).toContainText(`${devHost} のサーバーに接続します`);
   await expect(host.page.locator('.stage iframe')).toHaveCount(0);
@@ -226,7 +224,6 @@ async function launchDev(browser: Parameters<typeof openHost>[0], path: string) 
   const pad = new ScriptPad(main(), await host.code(), 'たろう');
   await pad.join();
   const k = host.page.keyboard;
-  await k.press('Enter');
   await k.press('Enter');
   await expect(host.page.locator('[data-layer="confirm"]')).toBeVisible();
   await k.press('ArrowLeft');

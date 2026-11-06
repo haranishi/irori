@@ -15,9 +15,13 @@ npm install
 npm run dev
 ```
 
-Open the printed URL on the big screen, join the same Wi-Fi with a phone, scan the QR code on the screen, and tap "Join". Eleven games are included: `hello-pad`, `tap-race`, `quiz-4`, `dot-grab`, `ten-seconds`, `blade-duel`, `lantern-market`, `strike-alley`, `daifugo`, `old-maid`, `moon-village`. Node 24 or later is required.
+Open the printed URL on the big screen, join the same Wi-Fi with a phone, scan the QR code on the screen, and tap "Join". Thirteen games are included: `hello-pad`, `tap-race`, `quiz-4`, `dot-grab`, `ten-seconds`, `blade-duel`, `lantern-market`, `strike-alley`, `daifugo`, `old-maid`, `moon-village`, `bell-in-sleeve`, `poker`. Node 24 or later is required.
 
-The new [Blade and Breath](games/blade-duel/README.md) is a two-player sword duel: choose a move in secret, manage your energy, and clash together. [Lanterns Unclaimed](games/lantern-market/README.md) is a card battle for 2–8 players: matching bids cancel out, so the highest unique card wins the lanterns. Try them on one computer at `/games/blade-duel/?mock=2` or `/games/lantern-market/?mock=3` using the on-screen controllers.
+The home screen shows game videos in a grid of boxes. Select a box to see its name, genre and player count, then confirm to play. Tap the QR card at the lower left to enlarge it. Videos switch to still images when reduced motion or data saving is enabled.
+
+The third pack adds [Bell in the Sleeve](games/bell-in-sleeve/README.md), a deduction card game about finding a hidden bell through card effects and conversation, and [Hearth Poker](games/poker/README.md), a six-hand card game played for points only (no money or prizes). You can play solo: games that need more seats fill them with CPU players when there are too few people. Games that already support one player keep their solo mode. CPU strength is intended to be normal; it has not been measured against human players.
+
+[Blade and Breath](games/blade-duel/README.md) is a two-player sword duel: choose a move in secret, manage your energy, and clash together. [Lanterns Unclaimed](games/lantern-market/README.md) is a card battle for 2–8 players: matching bids cancel out, so the highest unique card wins the lanterns. Try them on one computer at `/games/blade-duel/?mock=2` or `/games/lantern-market/?mock=3` using the on-screen controllers.
 
 The second pack adds four games meant to last: [Strike Yokocho](games/strike-alley/README.md) is bowling you throw by pulling your finger back on the phone (1–6 players); [Hearth Daifugo](games/daifugo/README.md) (3–8) and [Hearth Joker](games/old-maid/README.md) (2–8) are card games where your hand shows only on your own phone; [Night at Hearth Village](games/moon-village/README.md) is a werewolf game with no game master (4–8). On one computer, open `/games/strike-alley/?mock=2`, `/games/daifugo/?mock=4`, `/games/old-maid/?mock=3` or `/games/moon-village/?mock=5` and use the on-screen controllers.
 
@@ -45,7 +49,7 @@ The reasoning, and the things deliberately left out (accounts, analytics, ads, p
 | Seven controller kinds (pad, buzzer, choices, tiles, touch, tilt, wait) | Alpha |
 | Sandboxed games, registry by pull request, CI checks | Alpha |
 | Sharing (X, LINE, share sheet, copy link) and OGP | Alpha |
-| Eleven bundled games, including bowling, two card games and a werewolf game; endings, leavers and rematches are tested | Alpha |
+| Thirteen bundled games, including bowling, card games, a werewolf game, a deduction card game and poker (points only) | Alpha |
 | Long sessions on real iPhones and Android phones, TV browsers | Not tested yet. Reports are very welcome. Automated tests run Chromium and WebKit (Safari's engine, via Playwright) only |
 | Opening the host screen at phone width | Not officially supported (it does not break, but its visual score is around the pass line) |
 | Problems found by playing, and what is not verified yet | Listed in [docs/known-issues.md](docs/known-issues.md) (Japanese). Reports and fixes are welcome |
@@ -54,7 +58,7 @@ The reasoning, and the things deliberately left out (accounts, analytics, ads, p
 | WebRTC for lower latency | Planned after measuring ([ADR 0002](docs/decisions/0002-websocket-first.md)) |
 | Accounts, ranking, chat, payments, ads, analytics, game uploads | Not planned |
 
-"Alpha" means the automated tests pass (unit and integration tests, end-to-end tests in real browsers, and mutation tests that break a safeguard on purpose and check that a test turns red; counts are in the CI output). Nobody has used it for long yet. No public demo is deployed. The UI is Japanese and English; the sample games' text is Japanese only.
+"Alpha" means the automated tests pass (unit and integration tests, end-to-end tests in real browsers, and mutation tests that break a safeguard on purpose and check that a test turns red; counts are in the CI output). Nobody has used it for long yet. The public demo does not yet contain all thirteen bundled games. The UI is Japanese and English; the sample games' text is Japanese only.
 
 ## How it works
 

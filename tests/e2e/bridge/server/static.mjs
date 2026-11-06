@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
+import { pickPorts } from '../../../../tools/lib/edge-server.mjs';
 import { assertSafePath } from '../../../../tools/lib/files.mjs';
 
 const TYPES = {
@@ -18,7 +19,7 @@ const TYPES = {
  * @param {{ rootDir: string, host?: string }} opts
  * @returns {Promise<{ url: string, port: number, close: () => Promise<void> }>}
  */
-export function startStatic(opts) {
+export async function startStatic(opts) {
   const root = realpathSync(opts.rootDir);
   const host = opts.host ?? '127.0.0.1';
   const server = createServer(async (req, res) => {
@@ -66,10 +67,11 @@ export function startStatic(opts) {
       res.writeHead(missing ? 404 : 500).end(missing ? 'not found' : 'internal error');
     }
   });
+  const [chosenPort] = await pickPorts(1, { from: 8887, to: 8899 });
   return new Promise((resolvePromise, reject) => {
     server.once('error', reject);
-    // ポート0で空きを選ぶ（固定ポートは並列で重なるため）。
-    server.listen(0, host, () => {
+    // 担当範囲から空きを選ぶ。
+    server.listen(chosenPort, host, () => {
       const addr = server.address();
       const port = typeof addr === 'object' && addr ? addr.port : 0;
       resolvePromise({

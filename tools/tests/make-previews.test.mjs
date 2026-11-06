@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
-import { GAME_PLAYERS, activityRate, editPreview, inspectMetadata, makePreviews, motionDifference, parseArgs, replacePreview, verifyPreview } from '../make-previews.mjs';
+import { GAME_PLAYERS, activityRate, editPreview, inspectMetadata, makePreviews, motionDifference, osFontUsage, parseArgs, previewFontCss, replacePreview, verifyPreview } from '../make-previews.mjs';
 import { seededRandom } from '../preview-scripts/driver.mjs';
 
 const base = join(process.cwd(), '.probe-tmp');
@@ -147,5 +147,60 @@ describe('正式動画の安全な置き換え', () => {
     assert.deepEqual(readFileSync(backup), previous);
     assert.deepEqual(readFileSync(output), accepted);
     assert.equal(readdirSync(join(root, '.probe-tmp/previews/_backup')).length, 1);
+  });
+});
+
+describe('動画の文字の書体（OS の書体を動画に残さない）', () => {
+  const recorder = readFileSync(join(process.cwd(), 'tools/make-previews.mjs'), 'utf8');
+  const withFontEnv = async (value, run) => {
+    const before = process.env.IRORI_FONT_JP;
+    if (value === undefined) delete process.env.IRORI_FONT_JP; else process.env.IRORI_FONT_JP = value;
+    try { await run(); } finally { if (before === undefined) delete process.env.IRORI_FONT_JP; else process.env.IRORI_FONT_JP = before; }
+  };
+  const fontRoot = (name) => {
+    const root = join(work, name);
+    mkdirSync(join(root, 'tools/preview-scripts'), { recursive: true });
+    writeFileSync(join(root, 'tools/preview-scripts/poker.mjs'), 'export const players = 4;\n');
+    return root;
+  };
+  it('画面の文字を、再配布してよい書体（IroriOfl）に強制する CSS を作る', () => {
+    const css = previewFontCss();
+    assert.match(css, /font-family: 'IroriOfl'/);
+    assert.match(css, /@font-face/);
+    assert.match(css, /\/__font\/jp\.ttf/);
+    assert.match(css, /body \* \{ font-family: 'IroriOfl', sans-serif !important; \}/);
+  });
+  it('OS の書体で描かれた文字だけを数え、読み込んだ書体や0字は数えない', () => {
+    const custom = { familyName: 'IroriOfl', isCustomFont: true, glyphCount: 12 };
+    assert.deepEqual(osFontUsage([{ selector: 'p.a', fonts: [custom] }, { selector: 'p.b', fonts: [] }]), []);
+    assert.deepEqual(osFontUsage([{ selector: 'p.a', fonts: [{ familyName: 'Hiragino Sans', isCustomFont: false, glyphCount: 0 }] }]), []);
+    const used = osFontUsage([
+      { selector: 'p.a', fonts: [custom, { familyName: 'Hiragino Sans', isCustomFont: false, glyphCount: 3 }] },
+      { selector: 'span.b', fonts: [{ familyName: 'Hiragino Sans', isCustomFont: false, glyphCount: 2 }, { familyName: 'Apple Symbols', isCustomFont: false, glyphCount: 1 }] },
+    ]);
+    assert.deepEqual(used.map((u) => [u.family, u.glyphs]).sort(), [['Apple Symbols', 1], ['Hiragino Sans', 5]]);
+    assert.deepEqual(used.find((u) => u.family === 'Hiragino Sans').selectors, ['p.a', 'span.b']);
+  });
+  it('書体のファイルが無い・確認ずみのものと違うときは、ブラウザにつなぐ前に止まる', async () => {
+    const root = fontRoot('font-missing');
+    await withFontEnv(undefined, () => assert.rejects(makePreviews(root, { ids: ['poker'], baseUrl: 'http://127.0.0.1:9', verifyOnly: false }), /IRORI_FONT_JP/));
+    const wrong = join(work, 'not-the-font.ttf');
+    writeFileSync(wrong, 'これは確認ずみの書体ではない');
+    await withFontEnv(wrong, () => assert.rejects(makePreviews(fontRoot('font-wrong'), { ids: ['poker'], baseUrl: 'http://127.0.0.1:9', verifyOnly: false }), /SHA-256/));
+  });
+  it('検証だけのときは、書体を要求しない', async () => {
+    await withFontEnv(undefined, async () => {
+      const results = await makePreviews(fontRoot('font-verify'), { ids: ['poker'], baseUrl: 'http://127.0.0.1:9', verifyOnly: true });
+      assert.equal(results.length, 1);
+      assert.ok(results[0].error, '動画が無いので検査は失敗する（書体の要求ではなく動画の不在で）');
+      assert.doesNotMatch(results[0].error, /IRORI_FONT_JP/);
+    });
+  });
+  it('撮影の流れに、書体の差し替えと、OS の書体が残っていないことの検査が入っている', () => {
+    assert.match(recorder, /addStyleTag\(\{ content: previewFontCss\(\) \}\)/);
+    assert.match(recorder, /canvasFontPatchScript\(\)/);
+    assert.match(recorder, /await waitForOflFonts\(page/);
+    assert.match(recorder, /await assertNoOsFonts\(page, id\)/);
+    assert.match(recorder, /loadOflFonts\(process\.env, \['jp'\]\)/);
   });
 });

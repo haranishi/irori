@@ -8,16 +8,19 @@
 メインが確認用サーバーと撮影用ブラウザを起動してから実行する。
 道具はサーバーを起動・停止せず、専用のブラウザ文脈だけ作って閉じる。
 
+撮るときは、書体のファイル（Noto Sans JP・SIL OFL）の場所を `IRORI_FONT_JP` で渡す（取得先と SHA-256 は `tools/lib/ofl-fonts.mjs` の冒頭。ファイルはリポジトリに入れない）。
 ```sh
-nice -n 10 node tools/make-previews.mjs
-nice -n 10 node tools/make-previews.mjs --base-url http://127.0.0.1:8787 --only old-maid
-nice -n 10 node tools/make-previews.mjs --verify-only
+IRORI_FONT_JP=<Noto Sans JP のファイル> nice -n 10 node tools/make-previews.mjs
+IRORI_FONT_JP=<同上> nice -n 10 node tools/make-previews.mjs --base-url http://127.0.0.1:8787 --only old-maid
+nice -n 10 node tools/make-previews.mjs --verify-only   # 検査だけ。書体は要らない
 ```
 
 接続先は `ws://127.0.0.1:9333/pw`。録画は1280×720のページ全体。
 `?mock=N` の人数は台本で指定し、仮想パッドの帯はCSSで隠す。
 台本の `query` で `demo=1` などの撮影元を選べる。未指定なら従来の `mock=N`。
-書体はゲーム自身の表示を使い、取得や追加をしない。
+文字は、OS の書体（Hiragino や SF）でなく、再配布してよい Noto Sans JP に差し替えて撮る。動画を CC BY 4.0 で配るため（`docs/legal/rights-check.md`）。
+差し替えは、ページの CSS と canvas の書体の指定の両方に行い、撮る前に、画面に OS の書体の文字が残っていないことを確かめる（残っていれば動画を作らずに止まる。見えない仮想プレイヤーの帯は除く）。
+書体のファイルが無い・確認ずみのものと違うときも、ブラウザにつなぐ前に止まる。
 `ffmpeg` と `ffprobe` は既定の導入先を使う。別の環境では
 `IRORI_FFMPEG` と `IRORI_FFPROBE` で実行ファイルを指定する。
 

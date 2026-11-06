@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import { assertSafePath, assertSafeTree, isDirectRun } from './lib/files.mjs';
+import { canvasFontPatchScript, fontFaceCss, loadOflFonts, waitForOflFonts } from './lib/ofl-fonts.mjs';
 import { seededRandom, step } from './preview-scripts/driver.mjs';
 
 export const GAME_PLAYERS = {
@@ -203,7 +204,62 @@ export function editContinuousPreview(raw, candidate, windows, duration = 9.5) {
   throw failure ?? new Error('9〜10秒の連続窓がありません');
 }
 
-async function capture(browser, root, id, baseUrl) {
+/**
+ * 動画の文字を、OS の書体（Hiragino や SF）でなく、再配布してよい Noto Sans JP（SIL OFL）に替える CSS。
+ * 動画を CC BY 4.0 で配るため（docs/legal/rights-check.md）。書体ファイルは、リポジトリに入れない。
+ */
+export function previewFontCss() {
+  return [
+    fontFaceCss({ jpUrl: '/__font/jp.ttf' }),
+    "html, body, body * { font-family: 'IroriOfl', sans-serif !important; }",
+  ].join('\n');
+}
+
+/**
+ * 画面に描かれた文字のうち、OS の書体で描かれたものを数える（CDP の CSS.getPlatformFontsForNode の結果を渡す）。
+ * 動画に OS の書体の文字が残っていないことを確かめるため。entries は [{ selector, fonts: [{ familyName, isCustomFont, glyphCount }] }]。
+ */
+export function osFontUsage(entries) {
+  const used = new Map();
+  for (const { selector, fonts } of entries) {
+    for (const f of fonts) {
+      if (f.isCustomFont || !(f.glyphCount > 0)) continue;
+      const row = used.get(f.familyName) ?? { glyphs: 0, selectors: new Set() };
+      row.glyphs += f.glyphCount;
+      row.selectors.add(selector);
+      used.set(f.familyName, row);
+    }
+  }
+  return [...used].map(([family, { glyphs, selectors }]) => ({ family, glyphs, selectors: [...selectors].slice(0, 5) }));
+}
+
+/** 録画する画面に、OS の書体が使われていないこと。使われていれば、動画を作らずに止める。 */
+async function assertNoOsFonts(page, id) {
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const { root } = await cdp.send('DOM.getDocument', { depth: 0 });
+    // 撮影では見えない仮想プレイヤーの帯（opacity:0）は、動画に写らないので除く。
+    const { nodeIds } = await cdp.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: 'body *:not(.irori-mock):not(.irori-mock *)' });
+    const entries = [];
+    for (const nodeId of nodeIds) {
+      const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
+      if (!fonts.some((f) => !f.isCustomFont && f.glyphCount > 0)) continue;
+      const { node } = await cdp.send('DOM.describeNode', { nodeId });
+      const cls = (node.attributes ?? []).find((_, i, a) => a[i - 1] === 'class') ?? '';
+      entries.push({ selector: `${node.nodeName.toLowerCase()}${cls ? `.${cls.split(/\s+/)[0]}` : ''}`, fonts });
+    }
+    const bad = osFontUsage(entries);
+    if (bad.length) {
+      throw new Error(`${id}: 画面に OS の書体が使われています（動画に残せません）: ${bad.map((b) => `${b.family}×${b.glyphs}字（${b.selectors.join(', ')}）`).join(' / ')}`);
+    }
+  } finally {
+    await cdp.detach().catch(() => {});
+  }
+}
+
+async function capture(browser, root, id, baseUrl, fonts) {
   const scriptPath = join(root, `tools/preview-scripts/${id}.mjs`);
   const script = existsSync(scriptPath) ? await import(pathToFileURL(scriptPath)) : {};
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1,
@@ -218,6 +274,9 @@ async function capture(browser, root, id, baseUrl) {
       // OSのポインタを捕まえない。ゲームの規則や描画は変更しない。
       Element.prototype.requestPointerLock = () => Promise.reject(new Error('撮影ではマウス固定を使いません'));
     });
+    // 画面の文字を、再配布してよい書体に替える。書体は同じオリジンから配る（枠はオリジンが空なので CORS も許す）。
+    await context.route('**/__font/jp.ttf', (route) => route.fulfill({ status: 200, contentType: 'font/ttf', headers: { 'access-control-allow-origin': '*', 'cache-control': 'no-store' }, body: fonts.jp }));
+    await context.addInitScript(canvasFontPatchScript());
     const page = await context.newPage();
     const born = performance.now();
     video = page.video();
@@ -226,6 +285,11 @@ async function capture(browser, root, id, baseUrl) {
     await page.goto(`${baseUrl}/games/${id}/?${query}`, { timeout: 20_000 });
     await page.locator('.irori-mock[data-ready]').waitFor({ state: 'attached', timeout: 15_000 });
     await page.addStyleTag({ content: '.irori-mock__banner,.irori-mock__panel,.irori-mock__results { opacity:0!important; pointer-events:none!important } body { cursor:none!important }' });
+    await page.addStyleTag({ content: previewFontCss() });
+    await waitForOflFonts(page, { jp: true, mono: false });
+    // 書体が読み込まれたあとで、canvas を描き直させる。
+    await page.evaluate(() => new Promise((done) => { window.dispatchEvent(new Event('resize')); requestAnimationFrame(() => requestAnimationFrame(done)); }));
+    await assertNoOsFonts(page, id);
     const rng = seededRandom(20261106);
     let tick = 0;
     const act = async () => {
@@ -280,13 +344,15 @@ export async function makePreviews(root, options) {
   }
   for (const dir of ['registry/previews', '.probe-tmp/previews', '.probe-tmp/sheets']) mkdirSync(join(root, dir), { recursive: true });
   const results = [];
+  // 書体が無い・確認ずみのものと違うときは、ブラウザにつなぐ前に止める（OS の書体の動画を作らないため）。
+  const fonts = options.verifyOnly ? null : loadOflFonts(process.env, ['jp']);
   const browser = options.verifyOnly ? null : await chromium.connect(ENDPOINT, { timeout: 15_000 });
   try {
     for (const id of options.ids) {
       try {
         const output = join(root, `registry/previews/${id}.mp4`);
         if (!options.verifyOnly) {
-          const { raw, start, skipQuiet, duration, windows } = await capture(browser, root, id, options.baseUrl);
+          const { raw, start, skipQuiet, duration, windows } = await capture(browser, root, id, options.baseUrl, fonts);
           const candidate = join(root, `.probe-tmp/previews/${id}.mp4`);
           // 同じ録画内で開始位置だけを探す。静止画への人工的な動きは加えない。
           if (windows) editContinuousPreview(raw, candidate, windows, duration);

@@ -30,7 +30,7 @@ export function heading(model) {
   const name=short(model.seats.find((s)=>s.id === model.turn)?.name ?? '',12);
   if (model.phase === 'intro') return '鈴は、誰のふところに？';
   if (model.phase === 'deal') return 'そっと、自分の札を確かめよう';
-  if (model.phase === 'talk') return '鈴の行方を、話し合おう';
+  if (model.phase === 'talk') return model.seats.filter((s)=>!s.cpu).length === 1 ? 'CPUは話さないため、話し合いは10秒' : '鈴の行方を、話し合おう';
   if (model.phase === 'vote') return 'せーので、持ち主を指名';
   if (model.phase === 'result') return model.outcome === 'incomplete' ? '席が空いたので、今回は勝負なし' : model.winner === 'stall' ? '見つけた！ 金の鈴' : '鈴は、逃げ切りました';
   const steps={pickCard:'札を選んでいます',pickTarget:'相手を選んでいます',pickSlot:'伏せた位置を選んでいます',pickGive:'差し出す札を選んでいます',whisper:'ふたりで、ひそひそ話',reveal:'手がかりを確かめています'};
@@ -40,7 +40,7 @@ export function heading(model) {
 export function eventText(model,event) {
   const name=(/** @type {import('./cards.js').SeatId|undefined} */ id)=>short(model.seats.find((s)=>s.id === id)?.name ?? 'だれか',12);
   const p=name(event.p),target=name(event.target);
-  const lines={play:`${p}：${event.card ? CARD_NAMES[event.card] : '札'}を出した`,peek:`${p}が${target}をのぞき見`,swap:`${p}と${target}が札を取り替えた`,whisper:`${p}と${target}がひそひそ話`,guard:`${p}が${target}をかばった`,miss:`${target}は、いまは鈴を持っていない`,caught:`${p}が鈴を見つけた！`,auto:`${p}は、おまかせ`,skip:`${p}は見送り`,noTarget:'みんな守られているので、指名なし'};
+  const lines={play:`${p}：${event.card ? CARD_NAMES[event.card] : '札'}を出した`,peek:`${p}が${target}をのぞき見`,swap:`${p}と${target}が札を取り替えた`,whisper:`${p}と${target}がひそひそ話`,guard:`${p}が${target}をかばった`,miss:`${p}の指名は外れ（−1点）・${target}はいま持っていない`,caught:`${p}が鈴を見つけた！`,auto:`${p}は、おまかせ`,skip:`${p}は見送り`,noTarget:'みんな守られているので、指名なし'};
   return short(lines[/** @type {keyof typeof lines} */ (event.type)] ?? '札が動きました',64);
 }
 /** @param {HTMLElement} stage @param {HTMLElement} status */
@@ -57,8 +57,8 @@ export function createView(stage,status) {
       stage.dataset.phase=model.phase;stage.dataset.count=String(model.seats.length);stage.dataset.frozen=String(held || model.blocked);
       const scene=`${model.phase}:${model.step}:${model.turn}:${model.events.at(-1)?.seq ?? 0}`;
       stage.dataset.scene=scene;
-      const clockText=()=>model.phase === 'intro' ? '準備' : model.phase === 'result' ? `あと${Math.ceil(model.remaining/1000)}秒で、次の画面へ` : `${Math.ceil(model.remaining/1000)}秒`;
-      const duration=model.phase === 'talk' ? 45000 : model.phase === 'vote' || model.step === 'whisper' ? 30000 : model.phase === 'deal' || model.phase === 'result' ? 8000 : model.step === 'reveal' ? 3000 : 25000;
+      const clockText=()=>model.phase === 'intro' ? '準備' : model.phase === 'result' ? `あと${Math.ceil(model.remaining/1000)}秒で、「もう一度／ホームへ」の画面へ` : `${Math.ceil(model.remaining/1000)}秒`;
+      const duration=model.phase === 'talk' ? model.seats.filter((s)=>!s.cpu).length === 1 ? 10000 : 45000 : model.phase === 'vote' || model.step === 'whisper' ? 30000 : model.phase === 'deal' || model.phase === 'result' ? 8000 : model.step === 'reveal' ? 3000 : 25000;
       const fingerprint=JSON.stringify({...model,remaining:0});
       const oldClock=stage.querySelector('.clock');
       if (fingerprint === lastModel && oldClock instanceof HTMLElement) {
@@ -92,7 +92,8 @@ export function createView(stage,status) {
       model.seats.forEach((seat,i)=>{
         const angle=i*2*Math.PI/model.seats.length;
         const node=el('article','seat');node.dataset.id=String(seat.id);
-        node.style.left=`${50+39*Math.sin(angle)}%`;node.style.top=`${50-35*Math.cos(angle)}%`;
+        const position=model.seats.length === 8 ? [[50,13],[76,16],[90,50],[76,84],[50,87],[24,84],[10,50],[24,16]][i] : [50+39*Math.sin(angle),50-35*Math.cos(angle)];
+        node.style.left=`${position?.[0]}%`;node.style.top=`${position?.[1]}%`;
         node.dataset.top=String(Math.cos(angle) > .9);
         node.dataset.lower=String(-Math.cos(angle) > .7);
         node.dataset.active=String(model.phase === 'turn' && model.turn === seat.id);
@@ -110,7 +111,7 @@ export function createView(stage,status) {
         const fan=el('div','fan');fan.setAttribute('aria-label',`伏せた札 ${seat.count}枚`);
         for (let j=0;j<Math.min(4,seat.count);j++) {const back=el('i','back');back.style.setProperty('--angle',`${(j-(seat.count-1)/2)*12}deg`);fan.append(back);}
         node.append(fan,el('div','seat-meta',seat.left ? '退出しました' : !seat.online ? '接続待ち · 時間でおまかせ' : `${seat.count}枚${seat.cpu ? ' · CPU' : ''}`));
-        const badges=el('div','badges');if (seat.guard) badges.append(el('span','guard','⟐ 守られています'));
+        const badges=el('div','badges');if (seat.guard) badges.append(el('span','guard','⟐ つかまえる除け'));
         if (model.clear.includes(seat.id)) badges.append(el('span','clear','いまは持っていない'));
         node.append(badges);
         if (model.phase === 'result' && model.holder === seat.id && model.outcome === 'complete') {
@@ -121,7 +122,7 @@ export function createView(stage,status) {
       table.append(center,seats);
       const footer=el('footer','foot');
       if (model.phase === 'result') {
-        const board=el('ol','results');board.setAttribute('aria-label','得点表');
+        const board=el('ol','results');board.setAttribute('aria-label','得点表');board.style.gridTemplateColumns=`repeat(${Math.ceil(model.results.length/2)},1fr)`;
         for (const r of [...model.results].sort((a,b)=>(a.rank ?? 99)-(b.rank ?? 99))) {
           const name=short(model.seats.find((s)=>s.id === r.p)?.name ?? '',12);
           const row=el('li','',`${r.rank === null ? '—' : `${r.rank}位`} ${name}${r.cpu ? '（CPU）' : ''} ${r.score}点`);

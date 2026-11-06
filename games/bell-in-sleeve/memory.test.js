@@ -42,7 +42,7 @@ describe('手元の記憶と進み具合',()=>{
     for (const phase of ['talk','vote']) {
       s.phase=phase;const pad=viewFor(s,1).pad;
       expect(pad.k).toBe('tiles');expect(pad.note).toContain('席2の金の鈴');
-      const hands=phase === 'talk' ? pad.tiles : pad.tiles.slice(5);
+      const hands=phase === 'talk' ? pad.tiles.slice(0,-1) : pad.tiles.slice(5);
       expect(hands.map((t)=>t.label)).toEqual(s.seats[0].hand.map((c)=>CARD_NAMES[c]));
       expect(hands.every((t)=>t.off)).toBe(true);
     }
@@ -53,7 +53,7 @@ describe('手元の記憶と進み具合',()=>{
   });
   it('札の効果は12文字以内、使用前の制限も保つ',()=>{
     const s=scene();s.seats[0].hand=['peek','swap','whisper','catch','guard','bell'];
-    expect(viewFor(s,1).pad.tiles.map((t)=>t.sub)).toEqual(['ひとりの札を見る','札を取りかえる','見せ合う','ひとりを指名','ひとりを守る','出せない']);
+    expect(viewFor(s,1).pad.tiles.map((t)=>t.sub)).toEqual(['ひとりの札を見る','札を取りかえる','見せ合う','ひとりを指名','つかまえるを防ぐ','出せない']);
     expect(viewFor(s,1).pad.tiles.every((t)=>[...t.sub].length <= 12)).toBe(true);
     s.seats[0].played=0;expect(viewFor(s,1).pad.tiles[3]).toMatchObject({sub:'二周目から',off:true});
   });

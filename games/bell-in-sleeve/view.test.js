@@ -39,7 +39,7 @@ describe('ふところの鈴：公開の画面',()=>{
     const state=initial([...humans.slice(0,1),...fillSeats(1)]);state.seats[0].guard=true;
     state.events=[{seq:1,type:'miss',p:'cpu1',target:1}];
     const {stage,view}=fixture();view.render(publicView(state));
-    expect(stage.querySelectorAll('.robot')).toHaveLength(4);expect(stage.querySelector('.guard').textContent).toContain('守られています');
+    expect(stage.querySelectorAll('.robot')).toHaveLength(4);expect(stage.querySelector('.guard').textContent).toContain('つかまえる除け');
     expect(stage.querySelector('.clear').textContent).toBe('いまは持っていない');
     state.events.push({seq:2,type:'swap',p:1,target:'cpu1'});view.render(publicView(state));expect(stage.querySelector('.clear')).toBeNull();
   });
@@ -49,7 +49,7 @@ describe('ふところの鈴：公開の画面',()=>{
     const {stage,view}=fixture();view.render(publicView(state));
     expect(stage.querySelector('[data-id="cpu2"] .bell')).not.toBeNull();expect(stage.querySelectorAll('.cat')).toHaveLength(1);
     expect(stage.querySelectorAll('.results li')).toHaveLength(5);
-    expect(stage.querySelector('.clock').textContent).toContain('次の画面へ');
+    expect(stage.querySelector('.clock').textContent).toContain('「もう一度／ホームへ」の画面へ');
     expect(stage.querySelectorAll('.score-reasons,.vote-detail')).toHaveLength(10);
     expect(stage.querySelector('.progress').textContent).toContain('周目・あと');
     expect(stage.querySelector('.results').textContent).toContain('1位 CPU 2（CPU） 4点');

@@ -15,7 +15,7 @@ import {CARD_NAMES,compareSeats,deal,makeRng,shuffle} from './cards.js';
 /** @typedef {{p:SeatId,score:number,rank:number|null,cpu:boolean,ranked:boolean,label:string,voteFor:SeatId|null,votesReceived:number,voters:SeatId[],reasons:{label:string,score:number}[]}} Result */
 /** コンソールへ渡す結果の行。SDKの検証器（packages/protocol の validateGameEnd）は、この4項目以外を持つ行を拒む。 @typedef {{p:number,score:number,label:string,ranked:boolean}} EndRow */
 /** @typedef {{t:'pad',to:SeatId,spec:PadSpec}|{t:'cue',name:'deal'|'flip'|'place'|'win'|'lose'}|{t:'vibrate',to:SeatId,ms:number[]}|{t:'end',results:EndRow[],options:{display:'points',outcome:'complete'|'incomplete'}}} GameEffect */
-/** @typedef {{phase:'intro'|'deal'|'turn'|'talk'|'vote'|'result',step:'pickCard'|'pickTarget'|'pickSlot'|'pickGive'|'whisper'|'reveal',seats:Seat[],leader:SeatId|null,nonce:string,rngState:number,h:number,turn:SeatId|null,card:Card|null,target:SeatId|null,slots:number[],slot:number|null,remaining:number,paused:boolean,environment:Environment|null,epochs:Record<SeatId,number>,events:PublicEvent[],seq:number,observations:Record<SeatId,Observation[]>,notices:Record<SeatId,string>,picks:Record<SeatId,number>,votes:Record<SeatId,SeatId>,winner:'stall'|'bell'|null,holder:SeatId|null,outcome:'complete'|'incomplete',ended:boolean}} GameState */
+/** @typedef {{phase:'intro'|'deal'|'turn'|'talk'|'vote'|'result',step:'pickCard'|'pickTarget'|'pickSlot'|'pickGive'|'whisper'|'reveal',seats:Seat[],leader:SeatId|null,nonce:string,rngState:number,h:number,turn:SeatId|null,card:Card|null,target:SeatId|null,slots:number[],slot:number|null,remaining:number,paused:boolean,environment:Environment|null,epochs:Record<SeatId,number>,events:PublicEvent[],seq:number,observations:Record<SeatId,Observation[]>,notices:Record<SeatId,string>,picks:Record<SeatId,number>,votes:Record<SeatId,SeatId>,ready:Record<SeatId,boolean>,winner:'stall'|'bell'|null,holder:SeatId|null,outcome:'complete'|'incomplete',ended:boolean}} GameState */
 /** @typedef {{state:GameState,effects:GameEffect[]}} Transition */
 /** @param {GameState} s */
 const blocked=(s)=>s.paused || !s.environment?.connected || !s.environment.visible;
@@ -48,23 +48,35 @@ export function createGame(init) {
   /** @type {GameState} */
   const state={phase:'intro',step:'pickCard',seats:init.players.map((p)=>({...p,cpu:p.cpu === true || typeof p.id === 'string',hand:[],played:0,guard:false,guardUntil:0,score:0,rank:null,left:false})).sort((a,b)=>compareSeats(a.id,b.id)),
     leader:init.leader,nonce:init.nonce,rngState:init.seed >>> 0,h:0,turn:null,card:null,target:null,slots:[],slot:null,remaining:0,paused:init.paused ?? false,
-    environment:init.environment ? {...init.environment} : null,epochs:{},events:[],seq:0,observations:{},notices:{},picks:{},votes:{},winner:null,holder:null,outcome:'complete',ended:false};
+    environment:init.environment ? {...init.environment} : null,epochs:{},events:[],seq:0,observations:{},notices:{},picks:{},votes:{},ready:{},winner:null,holder:null,outcome:'complete',ended:false};
   return transition(null,state);
 }
-const CARD_SUB={peek:'ひとりの札を見る',swap:'札を取りかえる',whisper:'見せ合う',catch:'ひとりを指名',guard:'ひとりを守る',bell:'出せない'};
+const CARD_SUB={peek:'ひとりの札を見る',swap:'札を取りかえる',whisper:'見せ合う',catch:'ひとりを指名',guard:'つかまえるを防ぐ',bell:'出せない'};
 /** @param {GameState} s */
 function progress(s) {
   const left=s.seats.reduce((n,v)=>n+Math.max(0,s.h-1-v.played),0);
   return {round:s.h ? Math.min(s.h-1,1+Math.min(...s.seats.map((v)=>v.played))) : 0,left};
+}
+/** 同じ接頭辞やCPU風の人名も、席順の番号を添えて区別する。 @param {readonly Player[]} seats */
+export function shortNames(seats) {
+  const names=seats.map((v)=>v.cpu || typeof v.id === 'string' ? `C${String(v.id).replace('cpu','')}` : short(v.name,3));
+  let collisions=true;
+  while (collisions) {
+    const duplicate=names.map((name)=>names.filter((other)=>other === name).length > 1);
+    collisions=duplicate.some(Boolean);
+    duplicate.forEach((same,i)=>{if (same) names[i]+=`#${i+1}`;});
+  }
+  return Object.fromEntries(seats.map((v,i)=>[v.id,names[i]]));
 }
 /** 手札と最新の事実を優先。古い事実は短縮し、全文が入るものだけ新しい順に残す。 @param {GameState} s @param {SeatId} p @param {string} instruction */
 function memoryNote(s,p,instruction) {
   const own=seat(s,p),now=progress(s);
   const parts=[`${now.round}周目・あと${now.left}手`,`手札:${own.hand.map((c)=>CARD_NAMES[c]).join('・')}`,short(instruction,22)];
   if (s.notices[p]) parts.push(short(s.notices[p],18));
+  if (s.phase === 'vote') parts.push('守りは、一斉指名には効きません');
   const facts=[...(s.observations[p] ?? [])].reverse();
   for (const [i,fact] of facts.entries()) {
-    const name=short(seat(s,fact.target).name,i ? 3 : 6);
+    const name=shortNames(s.seats)[fact.target];
     const text=i ? `${name}:${CARD_NAMES[fact.card]}(当時)` : fact.type === 'swap' ? `${name}に${CARD_NAMES[fact.card]}を渡した(当時)` : `${name}の${CARD_NAMES[fact.card]}を見た(当時)`;
     if ([...parts.join('｜'),...text].length+1 > 120) break;
     parts.push(text);
@@ -86,7 +98,9 @@ function padFor(s,p) {
     tiles=[{id:`${t}_0`,label:'はじめる',off:!active}];
     note='札を出して鈴を探そう。鈴は出せません';
   } else if (s.phase === 'talk') {
-    note=`話し合い・あと${Math.ceil(s.remaining/1000)}秒`;
+    active=!own.cpu && !s.ready[p];
+    tiles.push({id:`${t}_${own.hand.length}`,label:'指名へ進む',off:!active});
+    note=s.ready[p] ? 'ほかの人を待っています' : s.seats.filter((v)=>!v.cpu).length === 1 ? 'CPUは話さないため10秒' : `話し合い・あと${Math.ceil(s.remaining/1000)}秒`;
   } else if (s.phase === 'vote') {
     active=!(p in s.votes);
     tiles=[...s.seats.map((v,i)=>({id:`${t}_${i}`,label:short(v.name,12),off:v.id === p})),...own.hand.map((card,i)=>({id:`${t}_${s.seats.length+i}`,label:CARD_NAMES[card],sub:'自分の手札',off:true}))];
@@ -127,7 +141,7 @@ function openTurn(s) { s.phase='turn';s.step='pickCard';s.card=null;s.target=nul
 function finishTurn(s) {
   if (s.step === 'reveal' && s.turn !== null) {s.notices[s.turn]='';if (s.target !== null) s.notices[s.target]='';}
   actor(s).played++;if (actor(s).played >= actor(s).guardUntil) actor(s).guard=false;
-  if (s.seats.every((v)=>v.played >= s.h-1)) {s.phase='talk';s.remaining=45000;s.turn=null;return;}
+  if (s.seats.every((v)=>v.played >= s.h-1)) {s.phase='talk';s.remaining=s.seats.filter((v)=>!v.cpu).length === 1 ? 10000 : 45000;s.ready={};s.turn=null;return;}
   const i=s.seats.findIndex((v)=>v.id === s.turn);
   for (let j=1;j<=s.seats.length;j++) {
     const next=/** @type {Seat} */ (s.seats[(i+j)%s.seats.length]);
@@ -157,6 +171,7 @@ function tally(s) {
 function choose(s,p,i) {
   const own=seat(s,p);
   if (s.phase === 'intro') {start(s);return;}
+  if (s.phase === 'talk') {s.ready[p]=true;if (s.seats.filter((v)=>!v.cpu).every((v)=>s.ready[v.id])) {s.phase='vote';s.remaining=30000;}return;}
   if (s.phase === 'vote') {s.votes[p]=/** @type {Seat} */ (s.seats[i]).id;if (Object.keys(s.votes).length === s.seats.length) tally(s);return;}
   if (s.step === 'whisper') {
     s.picks[p]=i;
@@ -181,7 +196,7 @@ function choose(s,p,i) {
     if (s.card === 'guard') {target.guard=true;target.guardUntil=target.played+(target.id === p ? 2 : 1);record(s,{type:'guard',p,target:target.id});finishTurn(s);}
     else if (s.card === 'catch') {
       if (target.hand.includes('bell')) {record(s,{type:'caught',p,target:target.id});settle(s,'stall',p);}
-      else {own.score--;record(s,{type:'miss',p,target:target.id});finishTurn(s);}
+      else {own.score--;s.notices[p]='外れました −1点';record(s,{type:'miss',p,target:target.id});finishTurn(s);}
     } else if (s.card === 'whisper') {s.step='whisper';s.picks={};s.remaining=30000;}
     else {const rng=makeRng(s.rngState);s.slots=shuffle(target.hand.map((_,j)=>j),rng);s.rngState=rng.state;s.step='pickSlot';s.remaining=25000;}
   } else if (s.step === 'pickSlot') {
@@ -235,7 +250,7 @@ export function updateGame(state,event) {
     }
     const next=structuredClone(state);choose(next,p,i);
     // 他方の未確定の選択は変えず、同時選択の古いtokenを作らない。
-    if (state.phase === 'vote' && next.phase === 'vote' || state.step === 'whisper' && next.step === 'whisper') next.epochs[p]=(next.epochs[p] ?? 0)+1;
+    if (state.phase === 'talk' && next.phase === 'talk' || state.phase === 'vote' && next.phase === 'vote' || state.step === 'whisper' && next.step === 'whisper') next.epochs[p]=(next.epochs[p] ?? 0)+1;
     else bump(next);
     const cue=state.phase === 'intro' ? 'deal' : next.phase === 'result' ? next.winner === 'stall' ? 'win' : 'lose' : state.step === 'pickCard' ? 'place' : 'flip';
     return transition(state,next,[{t:'cue',name:cue}]);
@@ -270,7 +285,7 @@ function transition(before,state,extra=[]) {
  * 余分な項目があるとコンソールが黙って拒み、「もう一度」が出なくなる（2026-11-06に実際に起きた）。
  * @param {GameState} state @returns {EndRow[]}
  */
-function endRows(state) { return state.seats.filter((v)=>!v.cpu && typeof v.id === 'number').map((v)=>({p:/** @type {number} */ (v.id),score:v.score,label:state.outcome === 'incomplete' ? '勝負なし' : `${v.rank}位`,ranked:state.outcome === 'complete'})); }
+function endRows(state) { return state.seats.filter((v)=>!v.cpu && typeof v.id === 'number').map((v)=>({p:/** @type {number} */ (v.id),score:v.score,label:state.outcome === 'incomplete' ? '勝負なし' : `${v.rank}位${state.seats.some((v)=>v.cpu) ? '(CPUこみ)' : ''}`,ranked:state.outcome === 'complete' && !state.seats.some((v)=>v.cpu)})); }
 /** @param {GameState} state @returns {Result[]} */
 function results(state) {
   const catcher=state.events.find((e)=>e.type === 'caught')?.p;

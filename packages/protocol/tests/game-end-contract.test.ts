@@ -62,6 +62,14 @@ describe('ふところの鈴：終了の合図は、コンソールの検証器�
         expect(v.ok, `seed=${seed} reason=${v.ok ? '' : v.reason}`).toBe(true);
         expect(end.results.map((r: any) => r.p).sort()).toEqual(humans);
         expect(end.options).toEqual({ display: 'points', outcome: 'complete' });
+        for (const row of end.results) {
+          const seat = s.seats.find((v: any) => v.id === row.p);
+          const cpu = s.seats.some((v: any) => v.cpu);
+          expect(Object.keys(row).sort()).toEqual(['label', 'p', 'ranked', 'score']);
+          expect(row.ranked).toBe(!cpu);
+          expect(row.label).toBe(`${seat.rank}位${cpu ? '(CPUこみ)' : ''}`);
+          expect([...row.label].length).toBeLessThanOrEqual(12);
+        }
       }
     });
   }

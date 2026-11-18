@@ -16,7 +16,7 @@ import {
   type PadFrame,
   type PadSpec,
   type PlayerId,
-  type PlayerInfo,
+  type RoomPlayerInfo,
   type TileSpec,
   type ToHostFrame,
   type ToPadFrame,
@@ -399,13 +399,14 @@ function padFrame(o: Obj): PadFrame {
   }
 }
 
-function playerInfo(v: unknown, where: string, lenient: boolean): PlayerInfo {
+function playerInfo(v: unknown, where: string, lenient: boolean, membership = false): RoomPlayerInfo {
   const o = obj(v, where);
-  onlyKeys(o, ['id', 'name', 'online'], where);
+  onlyKeys(o, membership ? ['id', 'name', 'online', 'membership'] : ['id', 'name', 'online'], where);
   return {
     id: seat(o.id, `${where}.id`),
     name: playerName(o.name, `${where}.name`, lenient),
     online: bool(o.online, `${where}.online`),
+    ...(membership && o.membership !== undefined ? { membership: ident(o.membership, `${where}.membership`) } : {}),
   };
 }
 
@@ -424,14 +425,14 @@ function toHostFrame(o: Obj, lenient: boolean): ToHostFrame {
         t: 'welcome',
         role: 'host',
         code: o.code,
-        players: o.players.map((p, i) => playerInfo(p, `welcome.players[${i}]`, lenient)),
+        players: o.players.map((p, i) => playerInfo(p, `welcome.players[${i}]`, lenient, true)),
         max: seat(o.max, 'welcome.max'),
         locked: bool(o.locked, 'welcome.locked'),
       };
     }
     case 'joined':
       onlyKeys(o, ['t', 'p'], 'joined');
-      return { t: 'joined', p: playerInfo(o.p, 'joined.p', lenient) };
+      return { t: 'joined', p: playerInfo(o.p, 'joined.p', lenient, true) };
     case 'left':
       onlyKeys(o, ['t', 'p', 'why'], 'left');
       return { t: 'left', p: seat(o.p, 'left.p'), why: oneOf(o.why, LEFT_WHY, 'left.why') };

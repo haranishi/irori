@@ -16,6 +16,7 @@ import {
   type PadHello,
   type PlayerId,
   type PlayerInfo,
+  type RoomPlayerInfo,
   type RoomStatus,
   type ToHostFrame,
   type ToPadFrame,
@@ -53,6 +54,7 @@ const SEEN_STEP_MS = 5_000;
 const MINUTE_MS = 60_000;
 
 interface Seat extends SeatState {
+  membership: string;
   conn: ConnId | null;
 }
 
@@ -86,6 +88,15 @@ function limitsOf(over: Partial<RoomLimits> | undefined): RoomLimits {
 
 function info(s: Seat): PlayerInfo {
   return { id: s.id, name: s.name, online: s.conn !== null };
+}
+
+/** 席番号・名前が再利用されても参加者を取り違えないための、独立した96ビットのID。 */
+function membershipId(deps: RoomDeps): string {
+  return Array.from(deps.rand(12), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function roomInfo(s: Seat): RoomPlayerInfo {
+  return { ...info(s), ...(s.membership ? { membership: s.membership } : {}) };
 }
 
 export class RoomCore {
@@ -126,7 +137,10 @@ export class RoomCore {
     this.locked = state.locked;
     this.hostSeen = state.hostSeen;
     this.hostOffAt = state.hostOffAt;
-    for (const s of state.seats) this.seats.set(s.id, { ...s, conn: null });
+    for (const s of state.seats) {
+      this.seats.set(s.id, { ...s, membership: s.membership ?? membershipId(deps), conn: null });
+      if (!s.membership) this.dirty = true;
+    }
   }
 
   /** 部屋を作る。key はホストにだけ返し、ここにはハッシュだけを残す。 */
@@ -250,7 +264,7 @@ export class RoomCore {
       hostOffAt: this.hostOffAt,
       seats: [...this.seats.values()]
         .sort((a, b) => a.id - b.id)
-        .map(({ id, name, resumeHash, online, offAt }) => ({ id, name, resumeHash, online, offAt })),
+        .map(({ id, membership, name, resumeHash, online, offAt }) => ({ id, membership, name, resumeHash, online, offAt })),
     };
   }
 
@@ -473,6 +487,7 @@ export class RoomCore {
     const token = base64url(this.deps.rand(this.L.RESUME_TOKEN_BYTES));
     const s: Seat = {
       id,
+      membership: membershipId(this.deps),
       name: this.uniqueName(sanitizeName(f.name, `プレイヤー${id}`)),
       resumeHash: this.deps.hash(token),
       online: true,
@@ -485,7 +500,7 @@ export class RoomCore {
     this.dirty = true;
     this.touch(c, now);
     this.send(c.id, { t: 'welcome', role: 'pad', you: info(s), resume: token, host: this.hostConn !== null });
-    this.toHost({ t: 'joined', p: info(s) });
+    this.toHost({ t: 'joined', p: roomInfo(s) });
   }
 
   private resumeSeat(c: Conn, s: Seat, token: string, now: number): void {
@@ -523,8 +538,8 @@ export class RoomCore {
     }
   }
 
-  private players(): PlayerInfo[] {
-    return [...this.seats.values()].sort((a, b) => a.id - b.id).map(info);
+  private players(): RoomPlayerInfo[] {
+    return [...this.seats.values()].sort((a, b) => a.id - b.id).map(roomInfo);
   }
 
   // ---- フレーム ----

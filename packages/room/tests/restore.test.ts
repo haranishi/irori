@@ -103,3 +103,29 @@ describe('休止からの復帰', () => {
     expect(w.closeCode(c)).toBe(CLOSE_CODES.timeout);
   });
 });
+
+it('参加IDは再接続・休止で変わらず、同じ名前での新規参加では変わる', () => {
+  const { w, a } = setup();
+  const first = w.core.snapshot().seats.find(s => s.id === a.seat)?.membership;
+  expect(first).toMatch(/^[a-f0-9]{24}$/);
+  expect(first).not.toBe(a.resume);
+  w.drop(a.conn);
+  w.hibernate();
+  const back = w.pad({ resume: a.resume ?? '' });
+  expect(w.core.snapshot().seats.find(s => s.id === a.seat)?.membership).toBe(first);
+  w.send(back.conn, { t: 'bye' });
+  const other = w.pad({ name: 'あ' });
+  expect(other.seat).toBe(a.seat);
+  expect(w.core.snapshot().seats.find(s => s.id === other.seat)?.membership).not.toBe(first);
+});
+
+it('旧保存形式の参加者には公開IDを付けて保存し、次の休止でも保つ', () => {
+  const { w, a } = setup();
+  for (const seat of w.persisted!.seats) delete seat.membership;
+  w.hibernate();
+  w.send(a.conn, MENU);
+  const id = w.persisted!.seats[0]!.membership;
+  expect(id).toMatch(/^[a-f0-9]{24}$/);
+  w.hibernate();
+  expect(w.core.snapshot().seats[0]?.membership).toBe(id);
+});

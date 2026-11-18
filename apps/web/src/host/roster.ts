@@ -1,6 +1,6 @@
 // 参加者の一覧とリーダー（画面に依存しない純粋な関数）。中継から届いた welcome・joined・left・online を当てる。
 // リーダーは最初に入った席。離れたら（切れた・抜けた）、接続中の最小の席へ移る（docs/ux.md の4）。
-import { LIMITS, type PlayerId, type PlayerInfo, type ToHostFrame } from '@irori/protocol';
+import { LIMITS, type PlayerId, type RoomPlayerInfo as PlayerInfo, type ToHostFrame } from '@irori/protocol';
 
 export interface Roster {
   readonly players: readonly PlayerInfo[];

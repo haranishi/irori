@@ -1,0 +1,9 @@
+{
+  "id": "host-c-seat-membership",
+  "note": "席の照合から参加IDの比較を外す＝ホストの再接続中に席番号と名前が再利用されると、前の人の秘密の画面を別の人へ送る",
+  "file": "apps/web/src/host/lineup.ts",
+  "find": "now.membership !== l.memberships.get(p) || ",
+  "replace": "",
+  "command": ["npm", "test", "-w", "@irori/web", "--", "tests/host/lineup.test.ts"],
+  "timeoutMs": 180000
+}

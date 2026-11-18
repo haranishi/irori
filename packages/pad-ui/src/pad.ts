@@ -284,10 +284,13 @@ abstract class Surface implements Control {
   }
 }
 
-/** フォーカスした方向面を矢印キーで操作する。離す・フォーカスを失うと中立へ戻す。 */
+/** フォーカスした方向面を矢印キーで操作する。離す・フォーカスを失う・ウィンドウを離れる・画面が隠れると中立へ戻す。 */
 class KeyboardAxis {
   private readonly held = new Set<string>();
   private dead = false;
+  /** ウィンドウを離れたとき、キーを離す操作は別のアプリに届く。ここで解除しないと、押したままの状態が残る。 */
+  private readonly leave = (): void => this.release();
+  private readonly hide = (): void => { if (document.hidden) this.release(); };
 
   constructor(el: HTMLElement, private readonly send: (v: XY) => void) {
     el.tabIndex = 0;
@@ -302,6 +305,8 @@ class KeyboardAxis {
     el.addEventListener('keydown', (e) => change(e, true));
     el.addEventListener('keyup', (e) => change(e, false));
     el.addEventListener('blur', () => this.release(), true);
+    window.addEventListener('blur', this.leave);
+    document.addEventListener('visibilitychange', this.hide);
   }
 
   release(): void {
@@ -310,7 +315,12 @@ class KeyboardAxis {
     this.send(NEUTRAL);
   }
 
-  dispose(): void { this.dead = true; this.held.clear(); }
+  dispose(): void {
+    this.dead = true;
+    this.held.clear();
+    window.removeEventListener('blur', this.leave);
+    document.removeEventListener('visibilitychange', this.hide);
+  }
 }
 
 class DirPad extends Surface {

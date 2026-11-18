@@ -1,0 +1,20 @@
+[
+  {
+    "id": "pad-h-keyboard-no-window-blur",
+    "note": "キーボードの方向入力が、ウィンドウを離れても解除されない＝押したまま別のアプリへ切り替えると、方向入力が送られ続ける",
+    "file": "packages/pad-ui/src/pad.ts",
+    "find": "window.addEventListener('blur', this.leave);",
+    "replace": "void this.leave;",
+    "command": ["npm", "test", "-w", "@irori/pad-ui"],
+    "timeoutMs": 120000
+  },
+  {
+    "id": "pad-h-keyboard-no-visibility-release",
+    "note": "キーボードの方向入力が、画面が隠れても解除されない＝押したままタブを切り替えると、方向入力が送られ続ける",
+    "file": "packages/pad-ui/src/pad.ts",
+    "find": "document.addEventListener('visibilitychange', this.hide);",
+    "replace": "void this.hide;",
+    "command": ["npm", "test", "-w", "@irori/pad-ui"],
+    "timeoutMs": 120000
+  }
+]

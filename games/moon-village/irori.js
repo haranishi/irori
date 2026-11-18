@@ -795,6 +795,10 @@ var KeyboardAxis = class {
 	send;
 	held = new Set();
 	dead = false;
+	leave = () => this.release();
+	hide = () => {
+		if (document.hidden) this.release();
+	};
 	constructor(el, send) {
 		this.send = send;
 		el.tabIndex = 0;
@@ -816,6 +820,8 @@ var KeyboardAxis = class {
 		el.addEventListener("keydown", (e) => change(e, true));
 		el.addEventListener("keyup", (e) => change(e, false));
 		el.addEventListener("blur", () => this.release(), true);
+		window.addEventListener("blur", this.leave);
+		document.addEventListener("visibilitychange", this.hide);
 	}
 	release() {
 		if (this.dead || this.held.size === 0) return;
@@ -825,6 +831,8 @@ var KeyboardAxis = class {
 	dispose() {
 		this.dead = true;
 		this.held.clear();
+		window.removeEventListener("blur", this.leave);
+		document.removeEventListener("visibilitychange", this.hide);
 	}
 };
 var DirPad = class extends Surface {

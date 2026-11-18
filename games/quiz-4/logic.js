@@ -93,14 +93,14 @@ export function nextHistory(history, picked, keep) {
 }
 
 /**
- * 1問ぶんの出題。選択肢の並びを混ぜ、id を c0〜c3 にする（正解が毎回同じ場所に来ないように）。
+ * 1問ぶんの出題。選択肢の並びを混ぜ、id に問題の識別子を含める（正解が毎回同じ場所に来ないように）。
  * @param {Question} q
  * @param {() => number} rng
  * @returns {Round}
  */
 export function toRound(q, rng) {
   const labels = shuffle([q.a, ...q.w], rng);
-  return { id: q.id, text: q.q, choices: labels.map((label, i) => ({ id: `c${i}`, label })), answer: `c${labels.indexOf(q.a)}` };
+  return { id: q.id, text: q.q, choices: labels.map((label, i) => ({ id: `${q.id}_c${i}`, label })), answer: `${q.id}_c${labels.indexOf(q.a)}` };
 }
 
 export const PADS = {

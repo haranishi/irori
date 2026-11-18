@@ -89,7 +89,7 @@ describe('問題の選び方', () => {
   it('選択肢は4つで、並びを混ぜ、正解の id を覚える', () => {
     const q = QUESTIONS[0];
     const round = toRound(q, makeRng(5));
-    expect(round.choices.map((c) => c.id)).toEqual(['c0', 'c1', 'c2', 'c3']);
+    expect(round.choices.map((c) => c.id)).toEqual([0, 1, 2, 3].map(i => `${q.id}_c${i}`));
     expect(round.choices.map((c) => c.label).sort()).toEqual([q.a, ...q.w].sort());
     expect(round.choices.find((c) => c.id === round.answer)?.label).toBe(q.a);
     const places = new Set(Array.from({ length: 40 }, (_, s) => toRound(q, makeRng(s + 1)).answer));

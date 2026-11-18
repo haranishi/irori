@@ -59,7 +59,7 @@ describe('スマホの再接続', () => {
     const late = w.pad({ resume: a.resume ?? '' });
     expect(late.seat).toBe(1);
     expect(late.resume).not.toBe(a.resume);
-    expect(w.take(h)).toEqual([{ t: 'joined', p: { id: 1, name: 'プレイヤー1', online: true } }]);
+    expect(w.take(h)).toEqual([{ t: 'joined', p: { id: 1, name: 'プレイヤー1', online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) } }]);
   });
 
   it('目覚ましが遅れても、期限を過ぎた札では入れない', () => {
@@ -72,7 +72,7 @@ describe('スマホの再接続', () => {
     expect(late.resume).not.toBe(a.resume);
     expect(w.take(h)).toEqual([
       { t: 'left', p: 1, why: 'timeout' },
-      { t: 'joined', p: { id: 1, name: 'プレイヤー1', online: true } },
+      { t: 'joined', p: { id: 1, name: 'プレイヤー1', online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) } },
     ]);
   });
 });
@@ -87,7 +87,7 @@ describe('ホストの不在', () => {
     w.advance(10_000);
     const h2 = w.host();
     const frames = w.take(h2);
-    expect(frames[0]).toMatchObject({ t: 'welcome', players: [{ id: 1, online: true }, { id: 2, online: true }, { id: 3, online: false }] });
+    expect(frames[0]).toMatchObject({ t: 'welcome', players: [{ id: 1, online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) }, { id: 2, online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) }, { id: 3, online: false }] });
     // 切れている席（3）には頼まない。その席は戻ってきたときに pad? が届く
     expect(frames.slice(1)).toEqual([{ t: 'pad?', p: 1 }, { t: 'pad?', p: 2 }]);
     for (const p of pads.slice(0, 2)) expect(w.take(p.conn)).toEqual([{ t: 'host', on: true }]);

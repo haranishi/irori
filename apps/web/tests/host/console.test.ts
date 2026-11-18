@@ -352,6 +352,16 @@ describe('実物のGameFrameへの結果と環境の連携', () => {
 
   const updates = (messages: HostToGame[]) => messages.filter((m) => m.m !== 'init');
 
+  it('部屋の参加IDはホストだけで照合し、ゲームには従来の参加者情報を渡す', async () => {
+    const original = p(1, 'たろう');
+    const { root } = await launched([{ ...original, membership: 'abcdef012345abcdef012345' } as PlayerInfo, p(2, 'はなこ')]);
+    const game = await connect(root);
+    const init = game.messages.find((m) => m.m === 'init');
+    expect(init).toBeDefined();
+    if (init?.m !== 'init') throw new Error('init missing');
+    expect(init.players).toEqual([original, p(2, 'はなこ')]);
+  });
+
   it('cueは前面・消音解除・音の解除がそろうときだけSoundsへ渡す', async () => {
     const cue = vi.spyOn(Sounds.prototype, 'cue').mockImplementation(() => {});
     const on = vi.spyOn(Sounds.prototype, 'on', 'get').mockReturnValue(true);

@@ -19,7 +19,7 @@ describe('ホスト1・スマホ3の通し', () => {
     for (const [i, name] of names.entries()) {
       const p = await pad(base, room.code, { name });
       expect(p.welcome).toMatchObject({ t: 'welcome', role: 'pad', you: { id: i + 1, name, online: true }, host: true });
-      expect(await h.take({ t: 'joined' })).toEqual({ t: 'joined', p: { id: i + 1, name, online: true } });
+      expect(await h.take({ t: 'joined' })).toEqual({ t: 'joined', p: { id: i + 1, name, online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) } });
       pads.push(p);
     }
     expect((await status(base, room.code)).body).toEqual({ exists: true, locked: false, players: 3, max: 3 });
@@ -72,7 +72,9 @@ describe('ホスト1・スマホ3の通し', () => {
     const h1 = await host(base, room);
     const a = await pad(base, room.code);
     const b = await pad(base, room.code);
-    await h1.take({ t: 'joined', p: { id: 2, name: 'プレイヤー2', online: true } });
+    for (const id of [1, 2]) {
+      expect(await h1.take({ t: 'joined' })).toEqual({ t: 'joined', p: { id, name: `プレイヤー${id}`, online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) } });
+    }
     h1.close();
     expect(await a.peer.take({ t: 'host' })).toEqual({ t: 'host', on: false });
     expect(await b.peer.take({ t: 'host' })).toEqual({ t: 'host', on: false });

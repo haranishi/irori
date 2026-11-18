@@ -98,7 +98,7 @@ describe('退出', () => {
     const again = w.pad({ resume: b.resume ?? '' });
     expect(again.seat).toBe(2);
     expect(again.resume).not.toBe(b.resume);
-    expect(w.take(h)).toEqual([{ t: 'joined', p: { id: 2, name: 'プレイヤー2', online: true } }]);
+    expect(w.take(h)).toEqual([{ t: 'joined', p: { id: 2, name: 'プレイヤー2', online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) } }]);
   });
 
   it('切れている席も kick で外せる', () => {

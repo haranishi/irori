@@ -18,7 +18,7 @@ describe('作成', () => {
     expect(Object.keys(w.persisted ?? {}).sort()).toEqual(
       ['code', 'createdAt', 'hostOffAt', 'hostSeen', 'keyHash', 'lastActivity', 'locked', 'seats', 'v'].sort(),
     );
-    expect(Object.keys(w.persisted?.seats[0] ?? {}).sort()).toEqual(['id', 'name', 'offAt', 'online', 'resumeHash'].sort());
+    expect(Object.keys(w.persisted?.seats[0] ?? {}).sort()).toEqual(['id', 'membership', 'name', 'offAt', 'online', 'resumeHash'].sort());
   });
 });
 
@@ -30,7 +30,7 @@ describe('入室', () => {
     const p = w.pad({ name: 'たろう' });
     expect(w.take(p.conn)).toEqual([{ t: 'welcome', role: 'pad', you: { id: 1, name: 'たろう', online: true }, resume: p.resume, host: true }]);
     expect(p.resume).toMatch(/^[A-Za-z0-9_-]{22}$/);
-    expect(w.take(h)).toEqual([{ t: 'joined', p: { id: 1, name: 'たろう', online: true } }]);
+    expect(w.take(h)).toEqual([{ t: 'joined', p: { id: 1, name: 'たろう', online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) } }]);
     expect(JSON.stringify(w.persisted)).not.toContain(p.resume);
   });
 
@@ -40,7 +40,7 @@ describe('入室', () => {
     expect(w.take(p.conn)).toMatchObject([{ t: 'welcome', host: false }]);
     const h = w.host();
     expect(w.take(h)).toEqual([
-      { t: 'welcome', role: 'host', code: 'BCDF', players: [{ id: 1, name: 'プレイヤー1', online: true }], max: 8, locked: false },
+      { t: 'welcome', role: 'host', code: 'BCDF', players: [{ id: 1, name: 'プレイヤー1', online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) }], max: 8, locked: false },
       { t: 'pad?', p: 1 },
     ]);
     expect(w.take(p.conn)).toEqual([{ t: 'host', on: true }]);
@@ -168,7 +168,7 @@ describe('握手', () => {
     expect(w.take(a)).toContainEqual({ t: 'err', code: 'replaced' });
     expect(w.closeCode(a)).toBe(CLOSE_CODES.replaced);
     expect(w.take(b)).toEqual([
-      { t: 'welcome', role: 'host', code: 'BCDF', players: [{ id: 1, name: 'プレイヤー1', online: true }], max: 8, locked: false },
+      { t: 'welcome', role: 'host', code: 'BCDF', players: [{ id: 1, name: 'プレイヤー1', online: true, membership: expect.stringMatching(/^[a-f0-9]{24}$/) }], max: 8, locked: false },
       { t: 'pad?', p: 1 },
     ]);
     expect(w.take(p.conn)).toEqual([]);

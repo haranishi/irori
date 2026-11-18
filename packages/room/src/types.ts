@@ -28,6 +28,8 @@ export type Effect =
 
 export interface SeatState {
   id: number;
+  /** 認証情報ではない参加ID。旧保存形式では未設定。 */
+  membership?: string;
   name: string;
   /** 再開の札のハッシュ。札そのものは持たない。 */
   resumeHash: string;

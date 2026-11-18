@@ -13,6 +13,11 @@ export interface PlayerInfo {
   online: boolean;
 }
 
+/** 部屋内での参加1回を識別する公開ID。再開の札とは別で、認証には使わない。 */
+export interface RoomPlayerInfo extends PlayerInfo {
+  membership?: string;
+}
+
 /** スマホからホストへ届く入力。受け取る側は必ず検証を通す。 */
 export type InputEvent =
   | { k: 'btn'; id: string; d: 0 | 1 }
@@ -137,8 +142,8 @@ export type PadFrame =
 
 /** サーバー → ホスト */
 export type ToHostFrame =
-  | { t: 'welcome'; role: 'host'; code: string; players: PlayerInfo[]; max: number; locked: boolean }
-  | { t: 'joined'; p: PlayerInfo }
+  | { t: 'welcome'; role: 'host'; code: string; players: RoomPlayerInfo[]; max: number; locked: boolean }
+  | { t: 'joined'; p: RoomPlayerInfo }
   | { t: 'left'; p: PlayerId; why: 'bye' | 'timeout' | 'kick' }
   | { t: 'online'; p: PlayerId; on: boolean }
   /** T はサーバーが受け取った時刻（ミリ秒）。早押しの順番に使える。 */

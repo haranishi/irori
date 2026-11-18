@@ -443,7 +443,7 @@ export class Console {
 
   private gamePlayers(): PlayerInfo[] {
     const run = this.running;
-    return run ? this.roster.players.filter((p) => run.lineup.seats.has(p.id)) : [];
+    return run ? this.roster.players.filter((p) => run.lineup.seats.has(p.id)).map(({ id, name, online }) => ({ id, name, online })) : [];
   }
 
   /** ゲームに渡すリーダー。コンソールのリーダーが参加者でなければ、参加者の中で選び直す。 */

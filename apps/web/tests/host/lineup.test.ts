@@ -49,3 +49,31 @@ describe('ゲームの参加者（席の番号と、その席に入った回）'
     expect(resultName(r, [], 3, 'プレイヤー3')).toEqual({ name: 'じろう', gone: true });
   });
 });
+
+// Use actual room frames: two different admissions may have the same seat/name.
+// No real credentials or external service is involved in this fixture.
+it('ホスト不在中に同名で席が入れ替わっても、前の参加者の秘密の画面を渡さない', async () => {
+  const { World } = await import('../../../../packages/room/tests/world');
+  const { parseToHostFrame } = await import('@irori/protocol');
+  const w = new World();
+  const host = w.host();
+  const original = w.pad();
+  const joined = w.take(host).find(f => f.t === 'joined');
+  if (!joined || joined.t !== 'joined') throw new Error('joined missing');
+  const lineup = startLineup([joined.p]);
+  w.drop(host);
+  w.send(original.conn, { t: 'bye' });
+  const replacement = w.pad();
+  expect(replacement.seat).toBe(original.seat);
+  const nextHost = w.host();
+  const welcome = w.take(nextHost).find(f => f.t === 'welcome');
+  const parsed = parseToHostFrame(JSON.stringify(welcome));
+  if (!parsed.ok || parsed.frame.t !== 'welcome') throw new Error('welcome invalid');
+  expect(parsed.frame.players[0]?.name).toBe(joined.p.name);
+  const next = reconcile(lineup, parsed.frame.players);
+  const plan = planPads({ owner: 'game', players: parsed.frame.players, leader: 1,
+    participants: next.seats, gameSpecs: new Map([[1, { k: 'wait', title: '秘密の役：人狼' }]]), text: TEXT });
+  console.info('same seat/name replacement:', { seat: replacement.seat, name: joined.p.name, screen: plan.get(1) });
+  expect(plan.get(1)).toMatchObject({ k: 'wait', title: TEXT.lateTitle });
+  expect(expandTarget(1, next.seats)).toEqual([]);
+});

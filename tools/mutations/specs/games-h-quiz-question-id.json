@@ -1,0 +1,9 @@
+{
+  "id": "games-h-quiz-question-id",
+  "note": "4択クイズの選択肢IDから問題の識別子を外す（c0〜c3に戻す）＝遅れて届いた前の問題の回答を、次の問題の回答として採点する",
+  "file": "games/quiz-4/logic.js",
+  "find": "({ id: `${q.id}_c${i}`, label })), answer: `${q.id}_c${labels.indexOf(q.a)}` }",
+  "replace": "({ id: `c${i}`, label })), answer: `c${labels.indexOf(q.a)}` }",
+  "command": ["npm", "run", "test:games", "--", "games/quiz-4/"],
+  "timeoutMs": 180000
+}

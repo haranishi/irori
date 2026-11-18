@@ -284,9 +284,39 @@ abstract class Surface implements Control {
   }
 }
 
+/** フォーカスした方向面を矢印キーで操作する。離す・フォーカスを失うと中立へ戻す。 */
+class KeyboardAxis {
+  private readonly held = new Set<string>();
+  private dead = false;
+
+  constructor(el: HTMLElement, private readonly send: (v: XY) => void) {
+    el.tabIndex = 0;
+    const change = (e: KeyboardEvent, down: boolean) => {
+      if (this.dead || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      e.preventDefault();
+      if (down) this.held.add(e.key);
+      else this.held.delete(e.key);
+      send({ x: Number(this.held.has('ArrowRight')) - Number(this.held.has('ArrowLeft')),
+        y: Number(this.held.has('ArrowDown')) - Number(this.held.has('ArrowUp')) });
+    };
+    el.addEventListener('keydown', (e) => change(e, true));
+    el.addEventListener('keyup', (e) => change(e, false));
+    el.addEventListener('blur', () => this.release(), true);
+  }
+
+  release(): void {
+    if (this.dead || this.held.size === 0) return;
+    this.held.clear();
+    this.send(NEUTRAL);
+  }
+
+  dispose(): void { this.dead = true; this.held.clear(); }
+}
+
 class DirPad extends Surface {
   private readonly arrows: Record<'up' | 'down' | 'left' | 'right', HTMLButtonElement>;
   private readonly t: Throttle<XY>;
+  private readonly keys: KeyboardAxis;
 
   constructor(out: Out, s: PadStrings) {
     const arrow = (dir: 'up' | 'down' | 'left' | 'right') =>
@@ -295,6 +325,7 @@ class DirPad extends Surface {
     super(h('div', { class: 'irori-pad__dpad', role: 'group', 'aria-label': s.dpad }, arrows.up, arrows.left, arrows.right, arrows.down));
     this.arrows = arrows;
     this.t = new Throttle<XY>(AXIS_MS, (v) => out({ k: 'axis', id: 'dpad', x: v.x, y: v.y }), sameXY, NEUTRAL, AXIS_REPEAT);
+    this.keys = new KeyboardAxis(this.el, (v) => { this.show(v); this.t.push(v); });
   }
 
   protected move(e: PointerEvent): void {
@@ -323,6 +354,7 @@ class DirPad extends Surface {
   }
 
   release(): void {
+    this.keys.release();
     this.active = null;
     this.show(NEUTRAL);
     this.t.settle(NEUTRAL);
@@ -330,6 +362,7 @@ class DirPad extends Surface {
 
   override dispose(): void {
     super.dispose();
+    this.keys.dispose();
     this.t.cancel();
   }
 }
@@ -337,12 +370,19 @@ class DirPad extends Surface {
 class Stick extends Surface {
   private readonly knob: HTMLElement;
   private readonly t: Throttle<XY>;
+  private readonly keys: KeyboardAxis;
 
   constructor(out: Out, s: PadStrings) {
     const knob = h('div', { class: 'irori-pad__knob' });
     super(h('div', { class: 'irori-pad__stick', role: 'group', 'aria-label': s.stick }, knob));
     this.knob = knob;
     this.t = new Throttle<XY>(AXIS_MS, (v) => out({ k: 'axis', id: 'stick', x: v.x, y: v.y }), sameXY, NEUTRAL, AXIS_REPEAT);
+    this.keys = new KeyboardAxis(this.el, (v) => {
+      const length = Math.max(1, Math.hypot(v.x, v.y));
+      const x = r2(v.x / length), y = r2(v.y / length);
+      this.knob.style.transform = `translate(${x * 64}%, ${y * 64}%)`;
+      this.t.push({ x, y });
+    });
   }
 
   protected move(e: PointerEvent): void {
@@ -363,6 +403,7 @@ class Stick extends Surface {
   }
 
   release(): void {
+    this.keys.release();
     this.active = null;
     this.knob.style.transform = '';
     this.t.settle(NEUTRAL);
@@ -370,6 +411,7 @@ class Stick extends Surface {
 
   override dispose(): void {
     super.dispose();
+    this.keys.dispose();
     this.t.cancel();
   }
 }

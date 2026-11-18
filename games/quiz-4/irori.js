@@ -791,9 +791,46 @@ var Surface = class {
 		this.active = null;
 	}
 };
+var KeyboardAxis = class {
+	send;
+	held = new Set();
+	dead = false;
+	constructor(el, send) {
+		this.send = send;
+		el.tabIndex = 0;
+		const change = (e, down) => {
+			if (this.dead || ![
+				"ArrowUp",
+				"ArrowDown",
+				"ArrowLeft",
+				"ArrowRight"
+			].includes(e.key)) return;
+			e.preventDefault();
+			if (down) this.held.add(e.key);
+			else this.held.delete(e.key);
+			send({
+				x: Number(this.held.has("ArrowRight")) - Number(this.held.has("ArrowLeft")),
+				y: Number(this.held.has("ArrowDown")) - Number(this.held.has("ArrowUp"))
+			});
+		};
+		el.addEventListener("keydown", (e) => change(e, true));
+		el.addEventListener("keyup", (e) => change(e, false));
+		el.addEventListener("blur", () => this.release(), true);
+	}
+	release() {
+		if (this.dead || this.held.size === 0) return;
+		this.held.clear();
+		this.send(NEUTRAL);
+	}
+	dispose() {
+		this.dead = true;
+		this.held.clear();
+	}
+};
 var DirPad = class extends Surface {
 	arrows;
 	t;
+	keys;
 	constructor(out, s) {
 		const arrow = (dir) => h$1("button", {
 			type: "button",
@@ -819,6 +856,10 @@ var DirPad = class extends Surface {
 			x: v.x,
 			y: v.y
 		}), sameXY, NEUTRAL, AXIS_REPEAT);
+		this.keys = new KeyboardAxis(this.el, (v) => {
+			this.show(v);
+			this.t.push(v);
+		});
 	}
 	move(e) {
 		const { x: dx, y: dy } = this.rel(e);
@@ -853,18 +894,21 @@ var DirPad = class extends Surface {
 		else delete this.arrows[k].dataset.pressed;
 	}
 	release() {
+		this.keys.release();
 		this.active = null;
 		this.show(NEUTRAL);
 		this.t.settle(NEUTRAL);
 	}
 	dispose() {
 		super.dispose();
+		this.keys.dispose();
 		this.t.cancel();
 	}
 };
 var Stick = class extends Surface {
 	knob;
 	t;
+	keys;
 	constructor(out, s) {
 		const knob = h$1("div", { class: "irori-pad__knob" });
 		super(h$1("div", {
@@ -879,6 +923,15 @@ var Stick = class extends Surface {
 			x: v.x,
 			y: v.y
 		}), sameXY, NEUTRAL, AXIS_REPEAT);
+		this.keys = new KeyboardAxis(this.el, (v) => {
+			const length = Math.max(1, Math.hypot(v.x, v.y));
+			const x = r2$1(v.x / length), y = r2$1(v.y / length);
+			this.knob.style.transform = `translate(${x * 64}%, ${y * 64}%)`;
+			this.t.push({
+				x,
+				y
+			});
+		});
 	}
 	move(e) {
 		let { x, y } = this.rel(e);
@@ -898,12 +951,14 @@ var Stick = class extends Surface {
 		this.t.push(NEUTRAL);
 	}
 	release() {
+		this.keys.release();
 		this.active = null;
 		this.knob.style.transform = "";
 		this.t.settle(NEUTRAL);
 	}
 	dispose() {
 		super.dispose();
+		this.keys.dispose();
 		this.t.cancel();
 	}
 };

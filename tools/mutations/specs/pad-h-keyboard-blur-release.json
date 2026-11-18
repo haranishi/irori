@@ -1,0 +1,9 @@
+{
+  "id": "pad-h-keyboard-no-blur-release",
+  "note": "キーボードの方向入力が、フォーカスを失っても解除されない＝矢印キーを押したままフォーカスが外れると、方向入力が送られ続ける",
+  "file": "packages/pad-ui/src/pad.ts",
+  "find": "el.addEventListener('blur', () => this.release(), true);",
+  "replace": "void 0;",
+  "command": ["npm", "test", "-w", "@irori/pad-ui"],
+  "timeoutMs": 120000
+}

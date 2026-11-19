@@ -59,6 +59,30 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
     };
     const state = async () => (await call('GET', '/state')) as unknown as State;
     const pad = async (n: number) => (await state()).pads.find((p) => p.n === n)!;
+    /**
+     * 止めた時計のままだと、ホストがスマホへ画面を送る予約（タイマー）が動かず、読み取りだけを繰り返しても、待ちが進まない。
+     * そこで、2回目以降の読み取りの前に、時計を進める要求（1ミリ秒）を出して、予約を動かす。
+     * サーバーの後処理（settle）も加わって、1回につき約120ミリ秒進む。最初の読み取りで条件が満たされれば、時計は動かさない。
+     */
+    const pollWithClock = <T>(read: () => Promise<T>) => {
+      let n = 0;
+      return expect.poll(async () => {
+        if (n++ > 0) await call('POST', '/clock/advance', { ms: 1 });
+        return read();
+      });
+    };
+    const waitForPad2Input = async (kinds: [string, string]) => {
+      const screens = async () => {
+        const s = await state();
+        return [s.host.state, ...s.pads.map((p) => p.kind)];
+      };
+      // スマホ2の入力と一時停止の要求は同じ接続を通る。
+      // 一時停止画面が出たら、先に届いた入力と一時停止は、その順でゲームの枠に送られている。
+      await call('POST', '/pad/2/menu', { item: 'pause' });
+      await pollWithClock(screens).toEqual(['paused', 'remote', 'wait']);
+      await call('POST', '/host/key', { key: 'Escape' });
+      await pollWithClock(screens).toEqual(['playing', ...kinds]);
+    };
     /** 棚の選択の輪を、/state の focused を見ながら id の箱へ動かし、1回の決定で始める。 */
     const choose = async (id: string, order: string[]) => {
       for (let i = 0; i < order.length; i++) {
@@ -67,10 +91,11 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
         const at = order.indexOf(f.replace('game:', ''));
         const row = Math.floor(at / 5), target = Math.floor(order.indexOf(id) / 5);
         await call('POST', '/pad/1/tap', { id: at < 0 || row < target ? 'down' : row > target ? 'up' : at < order.indexOf(id) ? 'right' : 'left' });
+        await pollWithClock(async () => (await state()).host.focused ?? '').not.toBe(f);
       }
       expect((await state()).host.focused).toBe(`game:${id}`);
       await call('POST', '/pad/1/tap', { id: 'ok' });
-      await expect.poll(async () => (await state()).host.state).toBe('playing');
+      await pollWithClock(async () => (await state()).host.state).toBe('playing');
     };
     const order = JSON.parse(env('shelf')) as string[];
 
@@ -92,30 +117,30 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
     expect(await call('POST', '/pad/2/join', { name: 'はなこ' })).toMatchObject({ seat: 2 });
     let s = await state();
     expect(s.clock.mode).toBe('paused');
-    expect(s.host.state).toBe('home');
-    expect(s.host.players).toBe(2);
-    expect(s.pads.map((p) => [p.seat, p.kind])).toEqual([
-      [1, 'remote'],
-      [2, 'wait'],
-    ]);
-    expect(s.pads[0]!.buttons.map((b) => b.id)).toEqual(expect.arrayContaining(['up', 'down', 'left', 'right', 'ok', 'back']));
+    await pollWithClock(state).toMatchObject({
+      host: { state: 'home', players: 2 },
+      pads: [{ seat: 1, kind: 'remote' }, { seat: 2, kind: 'wait' }],
+    });
+    expect((await pad(1)).buttons.map((b) => b.id)).toEqual(expect.arrayContaining(['up', 'down', 'left', 'right', 'ok', 'back']));
 
     // 連打レース：時計が止まっているので、実時間を待ってもカウントダウンは進まない。
     await choose('tap-race', order);
-    s = await state();
-    expect([s.host.gameId, s.host.game?.phase]).toEqual(['tap-race', 'count']);
+    await pollWithClock(async () => {
+      s = await state();
+      return [s.host.gameId, s.host.game?.phase];
+    }).toEqual(['tap-race', 'count']);
     await sleep(3_500);
     expect((await state()).host.game?.phase).toBe('count');
     await call('POST', '/clock/advance', { ms: 3_500 });
-    s = await state();
-    expect(s.host.game?.phase).toBe('race');
-    expect(s.pads.map((p) => p.kind)).toEqual(['buzzer', 'buzzer']);
+    await pollWithClock(async () => (await state()).host.game?.phase).toBe('race');
+    await pollWithClock(async () => (await state()).pads.map((p) => p.kind)).toEqual(['buzzer', 'buzzer']);
     expect(await call('POST', '/pad/1/tap', { id: 'buzzer', count: 40, intervalMs: 20 })).toEqual({ tapped: 40 });
     await call('POST', '/pad/2/tap', { id: 'buzzer', count: 5 });
-    expect((await pad(1)).text).toContain('完走');
+    await pollWithClock(async () => (await pad(1)).text).toContain('完走');
+    await waitForPad2Input(['wait', 'buzzer']);
     await call('POST', '/clock/advance', { ms: 31_000 });
+    await pollWithClock(async () => (await state()).host.state).toBe('results');
     s = await state();
-    expect(s.host.state).toBe('results');
     expect(s.host.results.map((r) => [r.seat, r.rank])).toEqual([
       [1, 1],
       [2, 2],
@@ -131,43 +156,56 @@ test('試遊サーバー：curl と同じ要求だけで、時計を止めたま
     // ホームへ → クイズ：選ぶ・回線を切って戻す（選択肢が戻る）。
     await call('POST', '/pad/1/tap', { id: 'right' });
     await call('POST', '/pad/1/tap', { id: 'ok' });
-    expect((await state()).host.state).toBe('home');
+    await pollWithClock(async () => (await state()).host.state).toBe('home');
     await choose('quiz-4', order);
     await call('POST', '/clock/advance', { ms: 3_200 });
-    s = await state();
+    await pollWithClock(async () => {
+      s = await state();
+      return s.pads[0]!.choices.length;
+    }).toBe(4);
     expect([s.host.game?.phase, s.host.game?.round]).toEqual(['question', '1']);
-    expect(s.pads[0]!.choices).toHaveLength(4);
     const labels = s.pads[0]!.choices.map((c) => c.label);
     for (const l of labels) expect(s.host.game?.text).toContain(l);
     // 答える前に、スマホ2の回線を切って戻す。戻ったスマホには、同じ問題の選択肢が戻る。
     await call('POST', '/pad/2/disconnect');
     await expect.poll(async () => (await pad(2)).link).toBe('lost');
     await call('POST', '/pad/2/reconnect');
-    await expect.poll(async () => (await pad(2)).link).toBe('open');
-    s = await state();
-    expect([s.pads[1]!.kind, s.host.game?.phase]).toEqual(['choices', 'question']);
-    expect(s.pads[1]!.choices.map((c) => c.label)).toEqual(labels);
+    await pollWithClock(async () => {
+      const s = await state();
+      const p = s.pads[1]!;
+      return { link: p.link, kind: p.kind, phase: s.host.game?.phase, labels: p.choices.map((c) => c.label) };
+    }).toEqual({ link: 'open', kind: 'choices', phase: 'question', labels });
     await call('POST', '/pad/1/choose', { index: 0 });
-    expect((await pad(1)).choices.every((c) => c.disabled)).toBe(true);
+    await pollWithClock(async () => (await pad(1)).choices.map((c) => c.disabled)).toEqual(labels.map(() => true));
     await call('POST', '/pad/2/choose', { index: 1 });
-    // 2人とも答えたので、締切を待たずに答え合わせ。
+    // スマホに答え合わせが届いてから、ホストの描画を進める（20ミリ秒）。答え合わせの表示が終わる（3.5秒）までは進めない。
+    await pollWithClock(async () => (await pad(2)).text).toMatch(/正解！|ざんねん/);
+    await call('POST', '/clock/advance', { ms: 20 });
     expect((await state()).host.game?.phase).toBe('reveal');
 
     // メニューから戻ってハローパッド：押し続け・スティック・おわる。
     await call('POST', '/host/key', { key: 'Escape' });
-    expect((await state()).host.state).toBe('paused');
-    // メニューの並びは変わりうるので、/state の focused を見ながら、下へ「ホームへ」まで動かす。
-    for (let i = 0; i < 8 && (await state()).host.focused !== 'menu:home'; i++) await call('POST', '/host/key', { key: 'ArrowDown' });
+    await pollWithClock(async () => (await state()).host.state).toBe('paused');
+    // メニューの並びは変わりうるので、/state の focused を見ながら、下へ「ホームへ」まで動かす。キーごとに、選択が動くのを待つ。
+    for (let i = 0; i < 8; i++) {
+      const f = (await state()).host.focused ?? '';
+      if (f === 'menu:home') break;
+      await call('POST', '/host/key', { key: 'ArrowDown' });
+      await pollWithClock(async () => (await state()).host.focused ?? '').not.toBe(f);
+    }
     expect((await state()).host.focused).toBe('menu:home');
     await call('POST', '/host/key', { key: 'Enter' });
-    expect((await state()).host.state).toBe('home');
+    await pollWithClock(async () => (await state()).host.state).toBe('home');
     await choose('hello-pad', order);
+    // ゲームが始まっても、スマホの画面は少し遅れて「ぴょん」のボタンに変わる。変わる前に押すと、サーバーが409を返す。
+    await pollWithClock(async () => (await state()).pads.map((p) => p.kind)).toEqual(['pad', 'pad']);
     expect(await call('POST', '/pad/2/hold', { id: 'hop', ms: 400 })).toEqual({ held: 400 });
     expect(await call('POST', '/pad/1/stick', { x: 1, y: 0, ms: 600 })).toMatchObject({ held: 600 });
     await call('POST', '/pad/2/tap', { id: 'hop' });
+    await waitForPad2Input(['pad', 'pad']);
     await call('POST', '/pad/1/tap', { id: 'end' });
+    await pollWithClock(async () => (await state()).host.state).toBe('results');
     s = await state();
-    expect(s.host.state).toBe('results');
     expect(s.host.results.find((r) => r.seat === 2)?.label).toBe('ぴょん2回');
 
     // 退出と、知らない操作の返事。

@@ -44,6 +44,8 @@ test('火花の間合い：気力を溜め、大技で受けを貫く。秘密�
   await host.expectPhase('choose');
   const frame = (await host.gameFrame())!;
   const before = await frame.locator('body').innerText();
+  // 大画面が選択に進んでも、スマホ2には前の待機画面が残ることがある。
+  await pads[1]!.expectKind('choices');
   const otherPad = await pads[1]!.page.locator('.irori-pad').innerText();
   await choose(pads[0]!, 'focus', true);
   await pads[0]!.expectKind('wait');

@@ -1,7 +1,7 @@
 // dot-grab（あつめて点）：スティックを倒し続けると動き続け（スマホが約1秒ごとに同じ向きを送り直す）、
 // 取った点が結果に出る。終わり方は時間切れと全員退出（抜けた人も、抜けたときの数で結果に残る）。席が切れると、その席の入力では動き続けない。
 // 位置はゲームのキャンバスから読む（lib/dotgrab.ts）。時間切れは、ホストの時計を進めて起こす。
-import { AXIS_HOLD_MS, GAME_MS, INTRO_MS } from '../../../games/dot-grab/logic.js';
+import { AXIS_HOLD_MS, GAME_MS, INTRO_MS, SPEED } from '../../../games/dot-grab/logic.js';
 import { expect, test, type Rig } from './fixtures';
 import { collect, moverAt } from './lib/dotgrab';
 import { ALL, HOST, PHONE } from './lib/tags';
@@ -20,20 +20,27 @@ async function start(rig: Rig, o: { line?: boolean } = {}) {
 test('dot-grab：倒し続けると動き続ける（約1秒ごとの送り直し）。離すと止まる', ALL, async ({ rig }) => {
   const { host, pads } = await start(rig);
   const x0 = (await moverAt(host, 1)).x;
-  await pads[0]!.stickDown(0.25, 0);
+  const TILT = 0.25;
+  await pads[0]!.stickDown(TILT, 0);
   const t0 = Date.now();
   const xs: number[] = [];
-  for (const at of [1_000, 2_500, 4_000, 5_500]) {
-    await sleep(Math.max(0, t0 + at - Date.now()));
+  const at = [1_000, 2_500, 4_000, 5_500];
+  for (const ms of at) {
+    await sleep(Math.max(0, t0 + ms - Date.now()));
     xs.push((await moverAt(host, 1)).x);
   }
   await pads[0]!.stickUp();
+  const positions = `位置 ${[x0, ...xs].map((x) => x.toFixed(0)).join(' → ')}`;
   // 倒している間ずっと右へ進む。送り直しがなければ、最後の入力から AXIS_HOLD_MS で止まる（4秒・5.5秒が同じになる）。
-  expect(xs[0]! - x0, `位置 ${[x0, ...xs].map((x) => x.toFixed(0)).join(' → ')}`).toBeGreaterThan(20);
-  for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!, `位置 ${[x0, ...xs].map((x) => x.toFixed(0)).join(' → ')}`).toBeGreaterThan(50);
+  // 動いた量の下限は、速さの絶対値ではなく「止まっていない」ことを見る。ゲームは、1コマで進める時間を MAX_DT までに切るので、
+  // コマの間が長い環境（CI の WebKit など）では、実時間より遅く進む（CI では、1.5秒の窓で31〜46px。公称112.5pxの約3〜4割）。
+  // 下限は、公称の移動量（倒した量 × SPEED × 窓の秒数）の1割。止まれば0になるので、見分けられる。
+  const floor = (seconds: number) => TILT * SPEED * seconds * 0.1;
+  expect(xs[0]! - x0, positions).toBeGreaterThan(floor(at[0]! / 1_000));
+  for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!, positions).toBeGreaterThan(floor((at[i]! - at[i - 1]!) / 1_000));
   // ホストに届いた同じ向きの axis は、約1秒ごと。
   // 指の座標は画素に丸められることがあるので、0.25 の近く（向きは右）で見る。
-  const held = host.inputs(1).filter((r) => r.f.i?.k === 'axis' && Math.abs((r.f.i.x ?? 0) - 0.25) < 0.04 && Math.abs(r.f.i.y ?? 0) < 0.04);
+  const held = host.inputs(1).filter((r) => r.f.i?.k === 'axis' && Math.abs((r.f.i.x ?? 0) - TILT) < 0.04 && Math.abs(r.f.i.y ?? 0) < 0.04);
   expect(held.length).toBeGreaterThanOrEqual(5);
   const gaps = held.slice(1).map((r, i) => r.at - held[i]!.at);
   for (const g of gaps.slice(1)) {
